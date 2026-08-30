@@ -1,0 +1,56 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.StatementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="Bảng kê cước theo tháng" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+        <StackPanel DockPanel.Dock="Top">
+            <WrapPanel>
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Khách hàng"/>
+                    <ComboBox Style="{StaticResource FilterCombo}" Width="240" ItemsSource="{Binding Customers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding CustomerId}"/>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Tháng"/>
+                    <TextBox Style="{StaticResource FilterField}" Width="70" Text="{Binding Month}"/>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Năm"/>
+                    <TextBox Style="{StaticResource FilterField}" Width="80" Text="{Binding Year}"/>
+                </StackPanel>
+            </WrapPanel>
+            <WrapPanel Style="{StaticResource ActionBar}">
+                <Button Content="Tổng hợp" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanCreate}"/>
+                <Button Content="Xuất PDF" Style="{StaticResource SecondaryButton}" Command="{Binding ExportPdfCommand}" IsEnabled="{Binding CanPrint}"/>
+                <Button Content="Xuất Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
+            </WrapPanel>
+        </StackPanel>
+        <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Top"
+                Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
+        </Border>
+        <TextBlock DockPanel.Dock="Top" Style="{StaticResource TabularText}" Margin="0,8,0,16" TextWrapping="Wrap">
+            <Run Text="Chuyến:"/> <Run Text="{Binding Current.TripCount, Mode=OneWay}"/>
+            <Run Text="  Cước:"/> <Run Text="{Binding Current.FreightTotal, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
+            <Run Text="  Phụ phí:"/> <Run Text="{Binding Current.SurchargeTotal, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
+            <Run Text="  Phát sinh:"/> <Run Text="{Binding Current.ExtraCostTotal, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
+            <Run Text="  Trước VAT:"/> <Run Text="{Binding Current.GrandTotal, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
+            <Run Text="  VAT:"/> <Run Text="{Binding Current.VatAmount, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
+            <Run Text="  Sau VAT:"/> <Run Text="{Binding Current.TotalWithVat, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
+        </TextBlock>
+        <DataGrid ItemsSource="{Binding Lines}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Ngày" Binding="{Binding TripDate, StringFormat=dd/MM/yyyy}" Width="90"/>
+                <DataGridTextColumn Header="Mã lệnh" Binding="{Binding DispatchCode}" Width="90"/>
+                <DataGridTextColumn Header="Tuyến" Binding="{Binding Route}" Width="*"/>
+                <DataGridTextColumn Header="Biển số" Binding="{Binding PlateNumber}" Width="100" ElementStyle="{StaticResource TabularCell}"/>
+                <DataGridTextColumn Header="Trọng tải" Binding="{Binding Tonnage}" Width="90" ElementStyle="{StaticResource TabularCell}"/>
+                <DataGridTextColumn Header="Tài xế" Binding="{Binding DriverName}" Width="130"/>
+                <DataGridTextColumn Header="Cước" Binding="{Binding UnitPrice, Converter={StaticResource VndMoney}}" Width="90" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                <DataGridTextColumn Header="Phụ phí" Binding="{Binding Surcharge, Converter={StaticResource VndMoney}}" Width="80" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                <DataGridTextColumn Header="Phát sinh" Binding="{Binding ExtraCost, Converter={StaticResource VndMoney}}" Width="80" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                <DataGridTextColumn Header="Tổng" Binding="{Binding LineTotal, Converter={StaticResource VndMoney}}" Width="90" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                <DataGridTextColumn Header="Ghi chú" Binding="{Binding Notes}" Width="140"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

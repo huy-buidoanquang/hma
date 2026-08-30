@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hma.Application\Hma.Application.csproj" />
+    <ProjectReference Include="..\Hma.Infrastructure.SqlServer\Hma.Infrastructure.SqlServer.csproj" />
+    <ProjectReference Include="..\Hma.Reporting\Hma.Reporting.csproj" />
+    <ProjectReference Include="..\Hma.Domain\Hma.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationTitle>Hà Minh Anh — Điều hành xe</ApplicationTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Resource Include="Fonts\OpenSans-Regular.ttf"/>
+    <Resource Include="Fonts\OpenSans-SemiBold.ttf"/>
+  </ItemGroup>
+
+</Project>

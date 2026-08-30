@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Hma.Domain/Hma.Domain.csproj" />
+  <Project Path="Hma.Application/Hma.Application.csproj" />
+  <Project Path="Hma.Infrastructure.SqlServer/Hma.Infrastructure.SqlServer.csproj" />
+  <Project Path="Hma.Reporting/Hma.Reporting.csproj" />
+  <Project Path="Hma.Desktop.Wpf/Hma.Desktop.Wpf.csproj" />
+  <Project Path="Hma.Domain.Tests/Hma.Domain.Tests.csproj" />
+  <Project Path="Hma.Application.Tests/Hma.Application.Tests.csproj" />
+</Solution>

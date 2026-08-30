@@ -1,0 +1,20 @@
+---
+description: HMA Clean Architecture — layer boundaries, rewrite rules, and desktop-first host
+alwaysApply: true
+---
+
+# Architecture
+
+Solution: `Hma.Domain` → `Hma.Application` → `Hma.Infrastructure.SqlServer` + `Hma.Reporting` ← `Hma.Desktop.Wpf`.
+
+- Domain: entities and pure domain services only. No EF, no WPF, no SQL.
+- Application: use cases/services, abstractions (`IHmaDbContext`, auth). No `System.Windows`, no connection strings.
+- Infrastructure: EF Core, SQL Server, seeding. Map to English PascalCase schema (`Customer`, not `khachhang`).
+- Reporting: PDF/Excel adapters (QuestPDF, ClosedXML). No business rules.
+- Desktop: WPF host, MVVM, DI. Call Application only — never `SqlClient` or DbContext from views.
+
+Do not compile or copy `legacy/`. Port behavior, not Plexis metadata, Crystal, or Infragistics. Do not add ASP.NET controllers, JWT, or Swagger in this phase; a future web host must reuse Application + Domain unchanged.
+
+User-facing messages stay Vietnamese. Identifiers, table names, and screen keys stay English (`customers`, `dispatch-orders`). Check `ICurrentUser.Can` at the application boundary, not in control event handlers.
+
+Target: .NET 10, C# latest, SQL Server 2016+. Use constructor DI; register in each project's `DependencyInjection`. Prefer EF Core on `IHmaDbContext` over a extra repository layer.

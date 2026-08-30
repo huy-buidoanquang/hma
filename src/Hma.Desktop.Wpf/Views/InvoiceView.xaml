@@ -1,0 +1,89 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.InvoiceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors">
+    <Grid>
+        <DockPanel Visibility="{Binding IsBrowsing, Converter={StaticResource BoolToVisibility}}" Margin="16">
+            <TextBlock DockPanel.Dock="Top" Text="Hóa đơn GTGT" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
+                <Button Content="Thêm mới" Command="{Binding NewItemCommand}"/>
+                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
+                <Button Content="Xuất Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}"/>
+            </WrapPanel>
+            <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                      b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Số HĐ" Binding="{Binding Code}" Width="90"/>
+                    <DataGridTextColumn Header="Ngày" Binding="{Binding InvoiceDate, StringFormat=dd/MM/yyyy}"/>
+                    <DataGridTextColumn Header="Khách" Binding="{Binding Customer.Name}" Width="*"/>
+                    <DataGridTextColumn Header="Tổng" Binding="{Binding TotalAmount, Converter={StaticResource VndMoney}}" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+        <DockPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}" Margin="16">
+            <TextBlock DockPanel.Dock="Top" Text="{Binding EditorTitle}" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <StackPanel DockPanel.Dock="Bottom" Style="{StaticResource EditorActions}">
+                <Button Content="Lưu" Command="{Binding SaveCommand}"/>
+                <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
+                <Button Content="In HĐ" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}"/>
+            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="280"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <WrapPanel>
+                        <StackPanel Width="140" Margin="0,0,8,0"><Label Content="Số HĐ"/><TextBox Text="{Binding Editor.Code}" IsReadOnly="True"/></StackPanel>
+                        <StackPanel Width="160" Margin="0,0,8,0"><Label Content="Ngày"/><DatePicker SelectedDate="{Binding Editor.InvoiceDate}"/></StackPanel>
+                        <StackPanel Width="240" Margin="0,0,8,0"><Label Content="Khách hàng"/><ComboBox ItemsSource="{Binding Customers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding Editor.CustomerId}"/></StackPanel>
+                        <StackPanel Width="100"><Label Content="VAT %"/><TextBox Text="{Binding Editor.VatRate}"/></StackPanel>
+                    </WrapPanel>
+                    <DockPanel Height="160" Margin="0,8,0,0">
+                        <StackPanel DockPanel.Dock="Right" Width="128">
+                            <Button Content="Nạp LDX" Style="{StaticResource SecondaryButton}" Command="{Binding RefreshAvailableCommand}" Margin="8,0,0,8"/>
+                            <Button Content="Thêm dòng" Style="{StaticResource SecondaryButton}" Command="{Binding AddLineCommand}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                        <DataGrid ItemsSource="{Binding Available}" SelectedItem="{Binding AvailableSelected}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="LDX" Binding="{Binding Code}" Width="80"/>
+                                <DataGridTextColumn Header="Khách" Binding="{Binding SenderCustomer.Name}" Width="*"/>
+                                <DataGridTextColumn Header="Tiền" Binding="{Binding TotalAmount, Converter={StaticResource VndMoney}}" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Editor.AmountInWords}" Style="{StaticResource TabularText}" Margin="0,8,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="2" Style="{StaticResource EditorCard}">
+                    <StackPanel>
+                        <Grid Style="{StaticResource FormRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Style="{StaticResource FormLabel}" Content="Thành tiền"/>
+                            <TextBox Grid.Column="1" Margin="0" Style="{StaticResource MoneyField}" Text="{Binding Editor.Amount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                        </Grid>
+                        <Grid Style="{StaticResource FormRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Style="{StaticResource FormLabel}" Content="Tiền VAT"/>
+                            <TextBox Grid.Column="1" Margin="0" Style="{StaticResource MoneyField}" Text="{Binding Editor.VatAmount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                        </Grid>
+                        <Grid Style="{StaticResource FormRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Style="{StaticResource FormLabel}" Content="Tổng cộng"/>
+                            <TextBox Grid.Column="1" Margin="0" Style="{StaticResource MoneyField}" Text="{Binding Editor.TotalAmount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </DockPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,24 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Controls.EditorOverlay"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors"
+             Background="Transparent">
+    <UserControl.Template>
+        <ControlTemplate TargetType="UserControl">
+            <Grid>
+                <Border Background="{DynamicResource BrushOverlayMask}"/>
+                <Border Style="{StaticResource EditorCard}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Width="520" MaxHeight="640">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding EditorTitle}"
+                                   Style="{StaticResource SectionTitle}"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" b:ScrollViewerBehaviors.FormScroll="True">
+                            <ContentPresenter Content="{TemplateBinding Content}"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </ControlTemplate>
+    </UserControl.Template>
+</UserControl>

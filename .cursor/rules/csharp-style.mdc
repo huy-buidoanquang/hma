@@ -1,0 +1,30 @@
+---
+description: C# naming, syntax, async, errors, and testing for HMA
+globs: src/**/*.cs
+alwaysApply: false
+---
+
+# C# style
+
+- PascalCase: types, methods, public members. camelCase: locals and private fields (`_db` only if stored; prefer primary constructors).
+- Interfaces: `I` prefix (`IAuthService`). Constants: PascalCase (`MaxSearchRows`), not SCREAMING_SNAKE.
+- File name equals the primary type: `CustomerService.cs` → `CustomerService`.
+- Use `var` when the type is obvious. Prefer LINQ, pattern matching, null-conditional, interpolation, records for immutable DTOs.
+- `async`/`await` for all I/O. Pass `CancellationToken`. Avoid `.Result` / `.Wait()`.
+- Throw `InvalidOperationException` (Vietnamese message) for business failures; do not use exceptions as normal control flow.
+- Keep services small and constructor-injected. Do not new up `HmaDbContext` or other services inside methods.
+- Eager-load with `Include` when the caller needs navigations. Always `Take(...)` on unbounded search.
+- New tests: xUnit + NSubstitute (or Moq), next to behavior they lock (freight, sequences, amount-in-words, permissions).
+
+```csharp
+// BAD
+public async void Save() => db.SaveChanges();
+
+// GOOD
+public async Task SaveAsync(Customer customer, CancellationToken ct = default)
+{
+    if (string.IsNullOrWhiteSpace(customer.Code))
+        throw new InvalidOperationException("Mã khách hàng là bắt buộc.");
+    await db.SaveChangesAsync(ct);
+}
+```

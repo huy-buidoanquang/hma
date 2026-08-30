@@ -1,0 +1,35 @@
+---
+description: Each class, interface, and enum lives in its own physical file
+globs: src/**/*.cs
+alwaysApply: true
+---
+
+# One type per file
+
+Every top-level `class`, `record`, `struct`, `interface`, and `enum` goes in its own `.cs` file named after the type. Do not dump catalogs, contracts, or view-models into a shared file.
+
+```csharp
+// BAD — Catalog.cs or Contracts.cs
+public abstract class Entity { }
+public class City : Entity { }
+public interface IAuthService { }
+public enum PermissionAction { View = 4 }
+
+// GOOD
+// Entity.cs, City.cs, IAuthService.cs, PermissionAction.cs
+namespace Hma.Domain.Entities;
+
+public class City : Entity
+{
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+}
+```
+
+Allowed exceptions:
+
+- `partial` type split by WPF: `CustomerView.xaml` + `CustomerView.xaml.cs` (still one type).
+- A single `file`-scoped or `private` nested type used only as an implementation detail of the outer type.
+- One static `DependencyInjection` class per project in `DependencyInjection.cs`.
+
+When adding a type, create the file in the matching folder (`Entities/`, `Services/`, `Abstractions/`, `ViewModels/`, `Views/`). When touching a file that already contains multiple types, split them before adding more. Do not put ViewModels for different screens in `*ViewModels.cs`.

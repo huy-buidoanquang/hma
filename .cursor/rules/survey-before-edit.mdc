@@ -1,0 +1,29 @@
+---
+description: Survey related code and reason deeply before any edit
+alwaysApply: true
+---
+
+# Survey before every edit
+
+Do not patch, refactor, or add files until you have read the code that will be affected and formed a concrete plan. "Luôn luôn" — this applies to every code change, including one-line fixes.
+
+Before the first edit in a turn:
+
+1. Find callers, callees, interfaces, DI registration, XAML bindings, schema/ETL, and tests that touch the same behavior.
+2. Infer the current contract (inputs, side effects, permissions, Vietnamese messages, screen keys) from the code, not from memory or the request alone.
+3. State the smallest change that preserves that contract. If two layers could hold the logic, put it in Application/Domain, not the WPF view.
+
+Do not:
+
+- Edit from a stack trace or a file the user has open without opening neighbors (`*Service`, entity, `IHmaDbContext`, ViewModel, `DependencyInjection`).
+- Duplicate a type or helper that already exists in another file.
+- Change a public method signature without updating every call site in the same change set.
+- Touch `legacy/` unless the task is explicitly to read behavior from it.
+
+```text
+BAD:  Open FooService.cs → add a method → hope the ViewModel compiles.
+GOOD: Read FooService, IFoo, DI, FooWorkspaceViewModel, FooView.xaml, entity, schema.
+      Then edit the one layer that owns the rule; wire the rest in the same pass.
+```
+
+If related code is missing or contradictory, stop and say so instead of guessing a patch.

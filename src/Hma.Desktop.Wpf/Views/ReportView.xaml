@@ -1,0 +1,53 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.ReportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer Margin="16">
+        <StackPanel>
+            <TextBlock Text="Báo cáo quản trị" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <TextBlock Text="Theo ngày" Style="{StaticResource SectionTitle}"/>
+            <WrapPanel Style="{StaticResource ToolbarPanel}">
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Ngày"/>
+                    <DatePicker Style="{StaticResource FilterDate}" SelectedDate="{Binding Day}"/>
+                </StackPanel>
+                <Button Content="In lệnh trong ngày" Style="{StaticResource SecondaryButton}" Command="{Binding PrintDailyCommand}" IsEnabled="{Binding CanPrint}" VerticalAlignment="Bottom" Margin="4,16"/>
+            </WrapPanel>
+            <TextBlock Text="Theo kỳ" Style="{StaticResource SectionTitle}"/>
+            <WrapPanel Style="{StaticResource ToolbarPanel}">
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Từ ngày"/>
+                    <DatePicker Style="{StaticResource FilterDate}" SelectedDate="{Binding From}"/>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Đến ngày"/>
+                    <DatePicker Style="{StaticResource FilterDate}" SelectedDate="{Binding To}"/>
+                </StackPanel>
+                <Button Content="Tuần này" Style="{StaticResource SecondaryButton}" Command="{Binding ThisWeekCommand}" VerticalAlignment="Bottom" Margin="4,16"/>
+                <Button Content="Quý này" Style="{StaticResource SecondaryButton}" Command="{Binding ThisQuarterCommand}" VerticalAlignment="Bottom" Margin="4,16"/>
+                <Button Content="Năm nay" Style="{StaticResource SecondaryButton}" Command="{Binding ThisYearCommand}" VerticalAlignment="Bottom" Margin="4,16"/>
+                <Button Content="Tải báo cáo" Command="{Binding LoadPeriodCommand}" VerticalAlignment="Bottom" Margin="4,16"/>
+                <Button Content="In kỳ" Style="{StaticResource SecondaryButton}" Command="{Binding PrintPeriodCommand}" IsEnabled="{Binding CanPrint}" VerticalAlignment="Bottom" Margin="4,16"/>
+            </WrapPanel>
+            <Border Style="{StaticResource StatusBanner}" Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
+            </Border>
+            <TextBlock Text="Theo khách hàng" Style="{StaticResource SectionTitle}" Margin="0,16,0,8"/>
+            <DataGrid ItemsSource="{Binding CustomerRows}" Height="180" Margin="0,0,0,16">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Khách" Binding="{Binding Customer}" Width="*"/>
+                    <DataGridTextColumn Header="Chuyến" Binding="{Binding Trips}" Width="80" ElementStyle="{StaticResource TabularCell}"/>
+                    <DataGridTextColumn Header="Cước" Binding="{Binding Freight, Converter={StaticResource VndMoney}}" Width="140" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="Theo xe" Style="{StaticResource SectionTitle}"/>
+            <DataGrid ItemsSource="{Binding VehicleRows}" Height="180">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Biển số" Binding="{Binding Plate}" Width="120" ElementStyle="{StaticResource TabularCell}"/>
+                    <DataGridTextColumn Header="Chuyến" Binding="{Binding Trips}" Width="80" ElementStyle="{StaticResource TabularCell}"/>
+                    <DataGridTextColumn Header="Cước" Binding="{Binding Freight, Converter={StaticResource VndMoney}}" Width="120" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                    <DataGridTextColumn Header="Tuyến" Binding="{Binding Routes}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,59 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer Margin="16">
+        <StackPanel>
+            <TextBlock Text="Dashboard cước vận chuyển" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <WrapPanel Style="{StaticResource ToolbarPanel}">
+                <Label Content="Tháng" Margin="0,0,5,0"/>
+                <TextBox Style="{StaticResource FilterField}" Width="64" Text="{Binding Month}"/>
+                <Label Content="Năm" Margin="0,0,5,0"/>
+                <TextBox Style="{StaticResource FilterField}" Width="80" Text="{Binding Year}"/>
+                <Button Content="Làm mới" Command="{Binding RefreshCommand}"/>
+            </WrapPanel>
+            <WrapPanel Margin="0,0,0,16">
+                <Border Style="{StaticResource KpiCard}">
+                    <StackPanel>
+                        <TextBlock Text="Tổng cước tháng" Style="{StaticResource CaptionText}"/>
+                        <TextBlock Text="{Binding Snapshot.FreightTotal, Converter={StaticResource VndMoney}}" Style="{StaticResource WorkspaceTitle}" Typography.NumeralAlignment="Tabular" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource KpiCard}">
+                    <StackPanel>
+                        <TextBlock Text="Chưa đối soát" Style="{StaticResource CaptionText}"/>
+                        <TextBlock Text="{Binding Snapshot.PendingReconcile}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource KpiCard}">
+                    <StackPanel>
+                        <TextBlock Text="Đã đối soát" Style="{StaticResource CaptionText}"/>
+                        <TextBlock Text="{Binding Snapshot.Reconciled}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource KpiCard}">
+                    <StackPanel>
+                        <TextBlock Text="Chờ chứng từ" Style="{StaticResource CaptionText}"/>
+                        <TextBlock Text="{Binding Snapshot.WaitingDocuments}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+            <TextBlock Text="Theo khách hàng" Style="{StaticResource SectionTitle}"/>
+            <DataGrid ItemsSource="{Binding Customers}" Height="180" Margin="0,0,0,16">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Khách" Binding="{Binding Customer}" Width="*"/>
+                    <DataGridTextColumn Header="Chuyến" Binding="{Binding Trips}" Width="80" ElementStyle="{StaticResource TabularCell}"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Freight, Converter={StaticResource VndMoney}}" Width="140" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="Theo xe" Style="{StaticResource SectionTitle}"/>
+            <DataGrid ItemsSource="{Binding Vehicles}" Height="180">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Biển số" Binding="{Binding Plate}" Width="120" ElementStyle="{StaticResource TabularCell}"/>
+                    <DataGridTextColumn Header="Chuyến" Binding="{Binding Trips}" Width="80" ElementStyle="{StaticResource TabularCell}"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Freight, Converter={StaticResource VndMoney}}" Width="140" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                    <DataGridTextColumn Header="Tuyến" Binding="{Binding Routes}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

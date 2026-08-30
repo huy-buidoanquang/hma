@@ -1,0 +1,24 @@
+---
+description: WPF MVVM — views bind to view-models, no business or SQL in code-behind
+globs: src/Hma.Desktop.Wpf/**/*.{cs,xaml}
+alwaysApply: false
+---
+
+# WPF MVVM
+
+- Views (`Views/*.xaml`) are layout only. Code-behind may `InitializeComponent` and nothing else unless a view-only quirk requires it.
+- One screen → `FooView.xaml` + `FooView.xaml.cs` + `FooWorkspaceViewModel.cs` (or `FooViewModel.cs`). Do not group multiple workspace types in one file.
+- ViewModels: CommunityToolkit.Mvvm (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`). Expose `ObservableCollection<T>` for grids. Commands call Application services.
+- `WorkspaceBase` for loadable screens. Navigation keys match permission screen keys (`customers`, `dispatch-orders`).
+- Bind in XAML (`DataContext`, `Command`, `ItemsSource`). Do not reach into named controls from the ViewModel.
+- Never use `Plexis.*`, Crystal, or Infragistics. Printing goes through `IDocumentPrinter` in `Hma.Reporting`.
+- Register ViewModels as scoped/transient in the desktop host DI; resolve `MainWindow` / `LoginWindow` from the container.
+
+```csharp
+// BAD — code-behind
+private async void Save_Click(...) => await db.SaveChangesAsync();
+
+// GOOD — ViewModel
+[RelayCommand]
+private async Task Save(CancellationToken ct) => await _customers.SaveAsync(Editor, ct);
+```

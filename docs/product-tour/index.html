@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Hà Minh Anh — Phần mềm điều hành xe &amp; đối soát cước</title>
+  <style>
+    :root {
+      --navy: #0D47A1;
+      --blue: #2196F3;
+      --ink: #0A111A;
+      --muted: #374151;
+      --line: #E5E7EB;
+      --paper: #F5F5F5;
+      --white: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+    a { color: var(--navy); }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+    header.hero {
+      background: linear-gradient(135deg, #0A3178 0%, var(--navy) 45%, #1565C0 100%);
+      color: var(--white);
+      padding: 56px 24px 48px;
+    }
+    header.hero .wrap { padding-bottom: 0; }
+    .eyebrow {
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      font-size: 12px;
+      opacity: .85;
+      font-weight: 600;
+    }
+    h1 { font-size: 40px; font-weight: 650; margin: 10px 0 8px; letter-spacing: -.02em; }
+    .tagline { font-size: 20px; opacity: .95; margin: 0 0 28px; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .kpi {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .kpi b { display: block; font-size: 22px; font-weight: 650; }
+    .kpi span { font-size: 12px; opacity: .85; }
+    nav.toc {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: -28px 0 40px;
+      box-shadow: 0 8px 24px rgba(13,71,161,.08);
+    }
+    nav.toc h2 { margin: 0 0 12px; font-size: 15px; color: var(--navy); }
+    nav.toc ol {
+      columns: 2;
+      margin: 0;
+      padding-left: 20px;
+    }
+    nav.toc li { margin: 4px 0; break-inside: avoid; }
+    section {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 32px;
+      margin: 0 0 28px;
+    }
+    section h2 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      color: var(--navy);
+      letter-spacing: -.02em;
+    }
+    .lead { color: var(--muted); margin: 0 0 18px; }
+    .chain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0 0;
+    }
+    .chain span {
+      background: #E3F2FD;
+      color: var(--navy);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .chain span:after { content: " →"; opacity: .45; }
+    .chain span:last-child:after { content: ""; }
+    figure {
+      margin: 20px 0 8px;
+      page-break-inside: avoid;
+    }
+    figure img {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: block;
+      background: #fff;
+    }
+    figcaption {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    ul.feats { margin: 0 0 8px; padding-left: 20px; }
+    ul.feats li { margin: 6px 0; }
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: var(--paper);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 17px; color: var(--navy); }
+    .note {
+      background: #E3F2FD;
+      border-left: 4px solid var(--blue);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 24px;
+    }
+    @media (max-width: 800px) {
+      h1 { font-size: 28px; }
+      .kpis, .two, nav.toc ol { grid-template-columns: 1fr; columns: 1; }
+    }
+    @media print {
+      body { background: #fff; font-size: 12pt; }
+      header.hero { padding: 28px 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .wrap { max-width: none; padding: 0 12px 24px; }
+      nav.toc { margin-top: 16px; box-shadow: none; }
+      section { break-inside: avoid; box-shadow: none; }
+      a { text-decoration: none; color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Tài liệu giới thiệu sản phẩm · Tháng 8/2026</div>
+      <h1>Hà Minh Anh</h1>
+      <p class="tagline">Phần mềm điều hành xe · đối soát cước vận chuyển</p>
+      <p style="max-width:720px;opacity:.92">
+        Thay Excel và chứng từ rời bằng một chuỗi dữ liệu khép kín:
+        từ khách hàng, lệnh điều xe, xe và tài xế đối tác, đến chứng từ,
+        đối soát và bảng kê tháng — không nhập lại nhiều lần.
+      </p>
+      <div class="kpis">
+        <div class="kpi"><b>173,9 tr</b><span>Tổng cước tháng 8/2026 (demo)</span></div>
+        <div class="kpi"><b>31 lệnh</b><span>Đang quản lý trên hệ thống</span></div>
+        <div class="kpi"><b>15 khách</b><span>Hồ sơ vận tải Bắc Bộ</span></div>
+        <div class="kpi"><b>17 màn hình</b><span>Điều phối · Kế toán · Quản lý</span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <nav class="toc">
+      <h2>Mục lục chức năng</h2>
+      <ol>
+        <li><a href="#login">Đăng nhập &amp; phân quyền</a></li>
+        <li><a href="#dashboard">Dashboard cước vận chuyển</a></li>
+        <li><a href="#customers">Khách hàng</a></li>
+        <li><a href="#partners">Đối tác cung cấp xe</a></li>
+        <li><a href="#fleet">Tài xế &amp; xe</a></li>
+        <li><a href="#org">Nhân viên, phòng ban, chức vụ, thành phố</a></li>
+        <li><a href="#prices">Bảng giá</a></li>
+        <li><a href="#dispatch">Lệnh điều xe &amp; chứng từ</a></li>
+        <li><a href="#lookup">Tra cứu chuyến</a></li>
+        <li><a href="#reconcile">Đối soát</a></li>
+        <li><a href="#statements">Bảng kê tháng · PDF / Excel</a></li>
+        <li><a href="#reports">Báo cáo quản trị</a></li>
+        <li><a href="#admin">Tham số &amp; người dùng</a></li>
+      </ol>
+    </nav>
+
+    <section>
+      <h2>Chuỗi nghiệp vụ khép kín</h2>
+      <p class="lead">Một lệnh điều xe được tạo từ đầu trở thành dữ liệu gốc cho theo dõi chuyến, cước và bảng kê khách hàng.</p>
+      <div class="chain">
+        <span>Khách hàng</span>
+        <span>Lệnh điều xe</span>
+        <span>Xe + tài xế</span>
+        <span>Chứng từ</span>
+        <span>Cước</span>
+        <span>Đối soát</span>
+        <span>Bảng kê tháng</span>
+      </div>
+      <p style="margin:18px 0 0;color:var(--muted)">
+        Ứng dụng desktop Windows, giao diện tiếng Việt, dữ liệu tập trung trên SQL Server.
+        Ảnh trong tài liệu này chụp từ bản chạy thật với dữ liệu minh họa tuyến Bắc Bộ.
+      </p>
+    </section>
+
+    <section id="login">
+      <h2>1. Đăng nhập &amp; phân quyền</h2>
+      <p class="lead">Mỗi người dùng có tài khoản riêng. Quản lý thấy toàn bộ menu; kế toán chỉ thấy các màn được cấp quyền Xem / Thêm / Sửa / Xóa / In.</p>
+      <ul class="feats">
+        <li><strong>Quản lý / Giám đốc:</strong> toàn quyền, khóa lệnh, khóa bảng giá, quản lý người dùng và tham số hệ thống.</li>
+        <li><strong>Kế toán:</strong> lệnh, đối soát, bảng kê, danh mục, tra cứu, dashboard và báo cáo theo từng cờ quyền.</li>
+      </ul>
+      <figure>
+        <img src="images/00-login.png" alt="Màn hình đăng nhập Hà Minh Anh"/>
+        <figcaption>Màn hình đăng nhập — phiên làm việc gắn với người dùng, không dùng chung một máy tính vô danh.</figcaption>
+      </figure>
+    </section>
+
+    <section id="dashboard">
+      <h2>2. Dashboard cước vận chuyển</h2>
+      <p class="lead">Ban điều hành nhìn ngay sức khỏe tháng: tổng cước, số chuyến chưa / đã đối soát, chuyến chờ chứng từ — rồi khoan xuống theo khách và theo xe.</p>
+      <ul class="feats">
+        <li>Chọn tháng / năm và làm mới số liệu.</li>
+        <li>Bốn chỉ số: tổng cước tháng, chưa đối soát, đã đối soát, chờ chứng từ.</li>
+        <li>Bảng theo khách hàng (số chuyến, doanh thu) và theo biển số (số chuyến, doanh thu, tuyến đã chạy).</li>
+      </ul>
+      <figure>
+        <img src="images/01-dashboard.png" alt="Dashboard cước vận chuyển tháng 8/2026"/>
+        <figcaption>Dashboard tháng 8/2026 — 173,9 triệu đồng cước, 14 chuyến chưa đối soát, 7 chuyến chờ chứng từ.</figcaption>
+      </figure>
+    </section>
+
+    <section id="customers">
+      <h2>3. Khách hàng</h2>
+      <p class="lead">Hồ sơ khách thanh toán: mã, tên công ty, MST, địa chỉ, người liên hệ, điện thoại, email, thành phố và kế toán phụ trách.</p>
+      <ul class="feats">
+        <li>Tìm theo mã, tên, địa chỉ, MST, khoảng ngày.</li>
+        <li>Thêm / xem / sửa / xóa; xuất Excel danh sách.</li>
+        <li>Gắn kế toán phụ trách từng khách — phục vụ đối soát và bảng kê.</li>
+      </ul>
+      <figure>
+        <img src="images/02-customers.png" alt="Danh sách khách hàng"/>
+        <figcaption>15 khách hàng minh họa — Thép Bắc Việt, Nhựa An Phát, Dệt may Thái Hà…</figcaption>
+      </figure>
+      <figure>
+        <img src="images/19-customer-editor.png" alt="Form sửa khách hàng KH001"/>
+        <figcaption>Form chi tiết KH001 — Công ty TNHH TM Thép Bắc Việt, kế toán Nguyễn Thị Hoa.</figcaption>
+      </figure>
+    </section>
+
+    <section id="partners">
+      <h2>4. Đối tác cung cấp xe</h2>
+      <p class="lead">HMA điều xe của nhiều công ty đối tác. Hồ sơ đối tác gồm mã, tên, MST, địa chỉ, liên hệ — tài xế và xe được gắn về từng đối tác.</p>
+      <figure>
+        <img src="images/03-partners.png" alt="Danh mục đối tác"/>
+        <figcaption>Danh mục đối tác vận tải — nguồn xe và tài xế không thuộc HMA.</figcaption>
+      </figure>
+    </section>
+
+    <section id="fleet">
+      <h2>5. Tài xế &amp; xe</h2>
+      <p class="lead">Hồ sơ tập trung: CCCD, ngày sinh, số điện thoại, biển số, loại xe, tải trọng — và lịch sử chuyến ngay trên form chi tiết.</p>
+      <figure>
+        <img src="images/04-drivers.png" alt="Danh sách tài xế"/>
+        <figcaption>8 tài xế thuộc các đối tác Hồng Hà, Đức Thành, Đông Đô…</figcaption>
+      </figure>
+      <figure>
+        <img src="images/20-driver-history.png" alt="Lịch sử chuyến của tài xế TX001"/>
+        <figcaption>TX001 Nguyễn Văn Hùng — lịch sử chuyến (ngày, mã lệnh, khách, tuyến, biển, cước).</figcaption>
+      </figure>
+      <figure>
+        <img src="images/05-vehicles.png" alt="Danh sách xe"/>
+        <figcaption>8 xe từ 3,5 tấn đến 15 tấn, tìm nhanh theo biển số; mỗi xe có lịch sử chuyến tương tự tài xế.</figcaption>
+      </figure>
+    </section>
+
+    <section id="org">
+      <h2>6. Tổ chức nội bộ &amp; danh mục tuyến</h2>
+      <p class="lead">Nhân viên HMA (phòng ban, chức vụ), thành phố lấy/giao — dùng cho combo trên lệnh và báo cáo, không nhập tự do mỗi lần.</p>
+      <div class="two">
+        <figure>
+          <img src="images/06-employees.png" alt="Nhân viên"/>
+          <figcaption>Nhân viên — phòng ban, chức vụ, biển số nếu có.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/07-departments.png" alt="Phòng ban"/>
+          <figcaption>Phòng ban.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/08-job-titles.png" alt="Chức vụ"/>
+          <figcaption>Chức vụ.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/09-cities.png" alt="Thành phố"/>
+          <figcaption>Thành phố lấy hàng / giao hàng.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="prices">
+      <h2>7. Bảng giá</h2>
+      <p class="lead">Cước theo tuyến × loại xe. Có bảng giá chung và bảng giá riêng từng khách, hiệu lực từ–đến. Khi tạo lệnh, hệ thống có thể lấy đơn giá đã thiết lập. Quản lý khóa bảng giá kèm lý do.</p>
+      <figure>
+        <img src="images/10-price-lists.png" alt="Danh sách bảng giá"/>
+        <figcaption>BG-2026 bảng giá chung tuyến Bắc Bộ; BG-KH001 ưu đãi riêng Thép Bắc Việt — cả năm 2026.</figcaption>
+      </figure>
+    </section>
+
+    <section id="dispatch">
+      <h2>8. Lệnh điều xe — chức năng trung tâm</h2>
+      <p class="lead">Tiếp nhận yêu cầu, phát hành lệnh, phân công xe/tài xế, theo dõi trạng thái, tính cước, đính kèm chứng từ và in.</p>
+      <ul class="feats">
+        <li><strong>Tìm:</strong> số LDX, từ–đến ngày, khách, biển số, loại xe, điểm giao, trạng thái lệnh, trạng thái đối soát, khoảng tiền.</li>
+        <li><strong>Chi tiết:</strong> người gửi (khách thanh toán) / người nhận, giờ lấy hàng, xe, tài xế, lưới hàng hóa, đơn giá / phụ phí / phát sinh / tổng / bằng chữ.</li>
+        <li><strong>Khách vãng lai:</strong> thêm nhanh người gửi/nhận mã VL- ngay trên lệnh.</li>
+        <li><strong>Chứng từ:</strong> đính kèm lệnh, biên bản giao hàng, hóa đơn và tài liệu khác; mở file từ lệnh.</li>
+        <li><strong>Quy trình:</strong> tính cước từ bảng giá, hoàn thành, khóa lệnh (quản lý), in một lệnh; Excel cước; in tổng hợp theo ngày / tháng / theo khách.</li>
+      </ul>
+      <figure>
+        <img src="images/11-dispatch.png" alt="Danh sách lệnh điều xe"/>
+        <figcaption>31 lệnh — tuyến, biển, tải, tài xế, cước, phụ phí, phát sinh, đối soát, trạng thái, khách.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/18-dispatch-detail.png" alt="Form sửa lệnh điều xe 029"/>
+        <figcaption>Sửa lệnh 029 — Đại Lộc → Gang thép Thái Nguyên, gạch block + xi măng, lệnh đã khóa.</figcaption>
+      </figure>
+    </section>
+
+    <section id="lookup">
+      <h2>9. Tra cứu chuyến</h2>
+      <p class="lead">Một ô: số lệnh điều xe hoặc biển số. Kết quả là lịch sử chuyến; bấm Mở lệnh để nhảy thẳng vào chi tiết.</p>
+      <figure>
+        <img src="images/12-lookup.png" alt="Màn hình tra cứu chuyến"/>
+        <figcaption>Tra cứu — nhập số LDX hoặc biển số, Tìm, rồi Mở lệnh.</figcaption>
+      </figure>
+    </section>
+
+    <section id="reconcile">
+      <h2>10. Đối soát</h2>
+      <p class="lead">Trước khi vào bảng kê tháng, kế toán kiểm checklist: chứng từ giao hàng, đúng tuyến, đúng đơn giá, phụ phí, phát sinh, số tiền cuối. Xác nhận chuyển trạng thái Chưa đối soát → Đã đối soát. Mọi thay đổi cước / xe / tuyến / trạng thái được ghi lịch sử.</p>
+      <figure>
+        <img src="images/13-reconcile.png" alt="Màn hình đối soát"/>
+        <figcaption>10 chuyến chờ đối soát — checklist bên phải, lịch sử thay đổi theo từng lệnh.</figcaption>
+      </figure>
+      <p class="note">Chuyến thiếu chứng từ hoặc chưa xác nhận cước không được đưa tự động vào bảng kê chính thức.</p>
+    </section>
+
+    <section id="statements">
+      <h2>11. Bảng kê cước theo tháng</h2>
+      <p class="lead">Đầu ra quan trọng nhất: chọn khách hàng + tháng/năm → hệ thống tổng hợp các chuyến đã hoàn thành và đã đối soát. Xuất PDF để gửi khách, Excel để kế toán kiểm tra.</p>
+      <ul class="feats">
+        <li>Dòng: ngày, mã lệnh, tuyến, biển số, trọng tải, tài xế, cước, phụ phí, phát sinh, tổng, ghi chú.</li>
+        <li>Cộng: số chuyến, tổng cước, phụ phí, phát sinh, trước VAT, VAT, sau VAT (thuế suất lấy từ tham số).</li>
+      </ul>
+      <figure>
+        <img src="images/14-statements.png" alt="Bảng kê cước theo tháng"/>
+        <figcaption>Bảng kê tháng — Tổng hợp, Xuất PDF, Xuất Excel.</figcaption>
+      </figure>
+    </section>
+
+    <section id="reports">
+      <h2>12. Báo cáo quản trị</h2>
+      <p class="lead">Ban giám đốc theo dõi theo ngày hoặc theo kỳ (tuần / quý / năm), in lệnh trong ngày hoặc in tổng hợp kỳ, xem số chuyến và cước theo khách / theo xe.</p>
+      <figure>
+        <img src="images/15-reports.png" alt="Báo cáo quản trị"/>
+        <figcaption>Báo cáo — preset tuần này / quý này / năm nay, tải số liệu, in ngày và in kỳ.</figcaption>
+      </figure>
+    </section>
+
+    <section id="admin">
+      <h2>13. Tham số hệ thống &amp; người dùng</h2>
+      <p class="lead">Chỉ quản lý. Cấu hình vận hành và phân quyền từng tài khoản kế toán theo màn hình.</p>
+      <ul class="feats">
+        <li>Giao diện sáng / tối, thuế VAT (%), thư mục lưu chứng từ.</li>
+        <li>Số đếm tự tăng của lệnh điều xe và bảng kê.</li>
+        <li>Người dùng: login, tên hiển thị, mật khẩu, cờ Quản lý; lưới quyền Xem / Thêm / Sửa / Xóa / In theo từng màn.</li>
+      </ul>
+      <figure>
+        <img src="images/16-settings.png" alt="Tham số hệ thống"/>
+        <figcaption>Tham số — VAT 10%, bộ đếm lệnh 31, bộ đếm bảng kê 11.</figcaption>
+      </figure>
+      <figure>
+        <img src="images/17-users.png" alt="Danh sách người dùng"/>
+        <figcaption>Hai vai trò minh họa: admin (quản lý) và ketoan (kế toán, không cờ QL).</figcaption>
+      </figure>
+      <div class="two" style="margin-top:20px">
+        <div class="card">
+          <h3>Kế toán</h3>
+          <p>Lập và sửa lệnh, đối soát cước, xuất bảng kê, tra cứu, xem dashboard / báo cáo theo quyền được cấp.</p>
+        </div>
+        <div class="card">
+          <h3>Quản lý / Giám đốc</h3>
+          <p>Toàn bộ dữ liệu, khóa lệnh và bảng giá, phân quyền người dùng, tham số hệ thống.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Kết quả mang lại</h2>
+      <ul class="feats">
+        <li><strong>Quản lý tập trung</strong> — lệnh, xe, tài xế đối tác, chuyến và cước trên một hệ thống.</li>
+        <li><strong>Giảm sai sót</strong> — hạn chế nhập trùng, thất lạc lệnh, nhầm xe / tài xế / tuyến / cước.</li>
+        <li><strong>Đối soát nhanh</strong> — chuyến gắn chứng từ và lịch sử sửa cước.</li>
+        <li><strong>Bảng kê tháng tự động</strong> — từ lệnh đã hoàn thành và đã đối soát, không gõ lại Excel.</li>
+      </ul>
+      <p class="note" style="margin-top:16px">
+        Phiên bản giới thiệu này là ứng dụng desktop (Windows). Thu tiền / chi tiền / hóa đơn VAT sẽ bổ sung ở giai đoạn sau, tái sử dụng cùng nền dữ liệu lệnh và bảng kê hiện có.
+      </p>
+    </section>
+  </div>
+  <footer>
+    Hà Minh Anh — Điều hành xe &amp; đối soát cước vận chuyển · Tài liệu chụp từ phần mềm đang chạy · 8/2026
+  </footer>
+</body>
+</html>

@@ -1,0 +1,15 @@
+---
+description: EF Core and SQL Server mapping for the Hma schema
+globs: src/Hma.Infrastructure.SqlServer/**/*.cs
+alwaysApply: false
+---
+
+# EF Core / SQL Server
+
+- `HmaDbContext` implements `IHmaDbContext`. Application code depends on the interface, not the context type.
+- Tables and columns: English PascalCase, singular table names, PK `Id`, FK `{Table}Id`, money `decimal(18,0)`, text `nvarchar`, dates `datetime2`.
+- Do not reintroduce legacy names (`nil`, `kh_ud`, `sopc_ud`) as production identifiers. Keep `LegacyId` only for ETL.
+- Configure mappings in `OnModelCreating` (or dedicated `IEntityTypeConfiguration<T>` in its own file). Do not use Plexis/`ui_engine_*` tables.
+- `Include` navigations the use case needs; no lazy loading. Paginate or `Take` list queries.
+- Schema changes: update `database/001_schema.sql` (and ETL if columns move), then the entity + DbContext together.
+- Auth: hash passwords (PBKDF2). Never persist plaintext. Seed and migrations must not copy `legacy` `[user].password` as-is into production login.
