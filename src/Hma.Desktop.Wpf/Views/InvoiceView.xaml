@@ -7,7 +7,6 @@
             <TextBlock DockPanel.Dock="Top" Text="Hóa đơn GTGT" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}"/>
-                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
                 <Button Content="Xuất Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}"/>
             </WrapPanel>
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
@@ -23,11 +22,11 @@
         <DockPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}" Margin="16">
             <TextBlock DockPanel.Dock="Top" Text="{Binding EditorTitle}" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <StackPanel DockPanel.Dock="Bottom" Style="{StaticResource EditorActions}">
-                <Button Content="Lưu" Command="{Binding SaveCommand}"/>
+                <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
                 <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
                 <Button Content="In HĐ" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}"/>
             </StackPanel>
-            <Grid>
+            <Grid IsEnabled="{Binding AreFieldsEnabled}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="16"/>

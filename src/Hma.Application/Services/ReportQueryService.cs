@@ -11,7 +11,8 @@ public class ReportQueryService(IHmaDbContext db)
             .Include(d => d.Customer)
             .Include(d => d.Driver)
             .Include(d => d.Vehicle)
-            .Include(d => d.DeliveryCity)
+            .Include(d => d.Stops)
+            .Include(d => d.Route)
             .Where(d => d.PickupAt.Date == day.Date)
             .OrderBy(d => d.Code)
             .ToListAsync(ct);
@@ -21,8 +22,10 @@ public class ReportQueryService(IHmaDbContext db)
         var q = db.DispatchOrders.AsNoTracking()
             .Include(d => d.Customer)
             .Include(d => d.Driver)
-            .Include(d => d.Vehicle)
-            .Include(d => d.DeliveryCity)
+            .Include(d => d.Vehicle).ThenInclude(v => v!.Partner)
+            .Include(d => d.Stops)
+            .Include(d => d.Route)
+            .Include(d => d.PaymentMethod)
             .Where(d => d.PickupAt >= from && d.PickupAt <= to);
         if (customerId is not null) q = q.Where(d => d.CustomerId == customerId);
         return q.OrderBy(d => d.PickupAt).ThenBy(d => d.Code).ToListAsync(ct);

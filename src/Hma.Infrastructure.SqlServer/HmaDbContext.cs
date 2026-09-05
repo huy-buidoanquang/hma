@@ -8,6 +8,12 @@ namespace Hma.Infrastructure.SqlServer;
 public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbContext(options), IHmaDbContext
 {
     public DbSet<City> Cities => Set<City>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<Route> Routes => Set<Route>();
+    public DbSet<RouteStop> RouteStops => Set<RouteStop>();
+    public DbSet<LocationAlias> LocationAliases => Set<LocationAlias>();
+    public DbSet<RouteAlias> RouteAliases => Set<RouteAlias>();
+    public DbSet<CustomerAlias> CustomerAliases => Set<CustomerAlias>();
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<JobTitle> JobTitles => Set<JobTitle>();
     public DbSet<VehicleType> VehicleTypes => Set<VehicleType>();
@@ -16,11 +22,13 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     public DbSet<Partner> Partners => Set<Partner>();
     public DbSet<Driver> Drivers => Set<Driver>();
     public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<VehicleAlias> VehicleAliases => Set<VehicleAlias>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<PriceListRevision> PriceListRevisions => Set<PriceListRevision>();
     public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
     public DbSet<DispatchOrder> DispatchOrders => Set<DispatchOrder>();
+    public DbSet<DispatchOrderStop> DispatchOrderStops => Set<DispatchOrderStop>();
     public DbSet<DispatchOrderLine> DispatchOrderLines => Set<DispatchOrderLine>();
     public DbSet<DispatchDocument> DispatchDocuments => Set<DispatchDocument>();
     public DbSet<FreightStatement> FreightStatements => Set<FreightStatement>();
@@ -38,6 +46,12 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     public DbSet<Company> Companies => Set<Company>();
 
     IQueryable<City> IHmaDbContext.Cities => Cities;
+    IQueryable<Location> IHmaDbContext.Locations => Locations;
+    IQueryable<Route> IHmaDbContext.Routes => Routes;
+    IQueryable<RouteStop> IHmaDbContext.RouteStops => RouteStops;
+    IQueryable<LocationAlias> IHmaDbContext.LocationAliases => LocationAliases;
+    IQueryable<RouteAlias> IHmaDbContext.RouteAliases => RouteAliases;
+    IQueryable<CustomerAlias> IHmaDbContext.CustomerAliases => CustomerAliases;
     IQueryable<Department> IHmaDbContext.Departments => Departments;
     IQueryable<JobTitle> IHmaDbContext.JobTitles => JobTitles;
     IQueryable<VehicleType> IHmaDbContext.VehicleTypes => VehicleTypes;
@@ -46,11 +60,13 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     IQueryable<Partner> IHmaDbContext.Partners => Partners;
     IQueryable<Driver> IHmaDbContext.Drivers => Drivers;
     IQueryable<Vehicle> IHmaDbContext.Vehicles => Vehicles;
+    IQueryable<VehicleAlias> IHmaDbContext.VehicleAliases => VehicleAliases;
     IQueryable<Customer> IHmaDbContext.Customers => Customers;
     IQueryable<PriceList> IHmaDbContext.PriceLists => PriceLists;
     IQueryable<PriceListRevision> IHmaDbContext.PriceListRevisions => PriceListRevisions;
     IQueryable<PriceListItem> IHmaDbContext.PriceListItems => PriceListItems;
     IQueryable<DispatchOrder> IHmaDbContext.DispatchOrders => DispatchOrders;
+    IQueryable<DispatchOrderStop> IHmaDbContext.DispatchOrderStops => DispatchOrderStops;
     IQueryable<DispatchOrderLine> IHmaDbContext.DispatchOrderLines => DispatchOrderLines;
     IQueryable<DispatchDocument> IHmaDbContext.DispatchDocuments => DispatchDocuments;
     IQueryable<FreightStatement> IHmaDbContext.FreightStatements => FreightStatements;
@@ -168,65 +184,15 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     Task<T?> IHmaDbContext.FindAsync<T>(int id, CancellationToken cancellationToken) where T : class =>
         Set<T>().FindAsync([id], cancellationToken).AsTask();
 
-    public async Task EnsureCreatedAndSeededAsync(CancellationToken cancellationToken = default)
-    {
-        var rebuild = false;
-        if (await Database.CanConnectAsync(cancellationToken))
-        {
-            rebuild = !await PartnerTableExistsAsync(cancellationToken)
-                      || !await ColumnExistsAsync("DispatchOrder", "SenderCustomerId", cancellationToken)
-                      || !await ColumnExistsAsync("DispatchOrder", "SenderName", cancellationToken)
-                      || !await ColumnExistsAsync("DispatchOrder", "RowVersion", cancellationToken)
-                      || !await ColumnExistsAsync("DispatchOrder", "IsDeleted", cancellationToken);
-            await Database.CloseConnectionAsync();
-        }
-
-        if (rebuild)
-            await Database.EnsureDeletedAsync(cancellationToken);
-
-        await Database.EnsureCreatedAsync(cancellationToken);
-        await DatabaseSeeder.SeedAsync(this, cancellationToken);
-    }
-
-    private async Task<bool> PartnerTableExistsAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var conn = Database.GetDbConnection();
-            if (conn.State != System.Data.ConnectionState.Open)
-                await Database.OpenConnectionAsync(cancellationToken);
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT CASE WHEN OBJECT_ID(N'dbo.Partner', N'U') IS NULL THEN 0 ELSE 1 END";
-            var result = await cmd.ExecuteScalarAsync(cancellationToken);
-            return Convert.ToInt32(result) == 1;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private async Task<bool> ColumnExistsAsync(string table, string column, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var conn = Database.GetDbConnection();
-            if (conn.State != System.Data.ConnectionState.Open)
-                await Database.OpenConnectionAsync(cancellationToken);
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = $"SELECT CASE WHEN COL_LENGTH(N'dbo.{table}', N'{column}') IS NULL THEN 0 ELSE 1 END";
-            var result = await cmd.ExecuteScalarAsync(cancellationToken);
-            return Convert.ToInt32(result) == 1;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<City>().ToTable("City");
+        modelBuilder.Entity<Location>().ToTable("Location");
+        modelBuilder.Entity<Route>().ToTable("Route");
+        modelBuilder.Entity<RouteStop>().ToTable("RouteStop");
+        modelBuilder.Entity<LocationAlias>().ToTable("LocationAlias");
+        modelBuilder.Entity<RouteAlias>().ToTable("RouteAlias");
+        modelBuilder.Entity<CustomerAlias>().ToTable("CustomerAlias");
         modelBuilder.Entity<Department>().ToTable("Department");
         modelBuilder.Entity<JobTitle>().ToTable("JobTitle");
         modelBuilder.Entity<VehicleType>().ToTable("VehicleType");
@@ -235,11 +201,13 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<Partner>().ToTable("Partner");
         modelBuilder.Entity<Driver>().ToTable("Driver");
         modelBuilder.Entity<Vehicle>().ToTable("Vehicle");
+        modelBuilder.Entity<VehicleAlias>().ToTable("VehicleAlias");
         modelBuilder.Entity<Customer>().ToTable("Customer");
         modelBuilder.Entity<PriceList>().ToTable("PriceList");
         modelBuilder.Entity<PriceListRevision>().ToTable("PriceListRevision");
         modelBuilder.Entity<PriceListItem>().ToTable("PriceListItem");
         modelBuilder.Entity<DispatchOrder>().ToTable("DispatchOrder");
+        modelBuilder.Entity<DispatchOrderStop>().ToTable("DispatchOrderStop");
         modelBuilder.Entity<DispatchOrderLine>().ToTable("DispatchOrderLine");
         modelBuilder.Entity<DispatchDocument>().ToTable("DispatchDocument");
         modelBuilder.Entity<FreightStatement>().ToTable("FreightStatement");
@@ -263,6 +231,28 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<FreightStatement>().Property(x => x.Year).HasColumnName("Year");
         modelBuilder.Entity<FreightStatement>().Property(x => x.Month).HasColumnName("Month");
 
+        modelBuilder.Entity<Location>().Property(x => x.Code).HasMaxLength(50);
+        modelBuilder.Entity<Location>().Property(x => x.Name).HasMaxLength(255);
+        modelBuilder.Entity<Location>().Property(x => x.Description).HasMaxLength(500);
+        modelBuilder.Entity<Route>().Property(x => x.Code).HasMaxLength(50);
+        modelBuilder.Entity<Route>().Property(x => x.Name).HasMaxLength(255);
+        modelBuilder.Entity<Route>().Property(x => x.Description).HasMaxLength(500);
+        modelBuilder.Entity<Route>().Property(x => x.Fingerprint).HasMaxLength(200);
+        modelBuilder.Entity<DispatchOrderStop>().Property(x => x.NameSnapshot).HasMaxLength(255);
+        modelBuilder.Entity<LocationAlias>().Property(x => x.Alias).HasMaxLength(100);
+        modelBuilder.Entity<RouteAlias>().Property(x => x.Alias).HasMaxLength(100);
+        modelBuilder.Entity<CustomerAlias>().Property(x => x.Alias).HasMaxLength(100);
+        modelBuilder.Entity<VehicleAlias>().Property(x => x.Alias).HasMaxLength(100);
+        modelBuilder.Entity<PriceList>().Property(x => x.HasPriceFluctuation).HasDefaultValue(false);
+        modelBuilder.Entity<LocationAlias>().HasIndex(x => x.Alias).IsUnique();
+        modelBuilder.Entity<RouteAlias>().HasIndex(x => x.Alias).IsUnique();
+        modelBuilder.Entity<CustomerAlias>().HasIndex(x => x.Alias).IsUnique();
+        modelBuilder.Entity<VehicleAlias>().HasIndex(x => x.Alias).IsUnique();
+        modelBuilder.Entity<Location>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<Route>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<Route>().HasIndex(x => x.Fingerprint).IsUnique();
+        modelBuilder.Entity<RouteStop>().HasIndex(x => new { x.RouteId, x.Sequence }).IsUnique();
+        modelBuilder.Entity<DispatchOrderStop>().HasIndex(x => new { x.DispatchOrderId, x.Sequence }).IsUnique();
         modelBuilder.Entity<Customer>().HasIndex(x => x.Code);
         modelBuilder.Entity<DispatchOrder>().HasIndex(x => x.Code);
         modelBuilder.Entity<Partner>().HasIndex(x => x.Code).IsUnique();
@@ -276,6 +266,7 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<FreightStatement>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<DocumentSequence>().Property(x => x.RowVersion).IsRowVersion();
 
+        modelBuilder.Entity<Partner>().Property(x => x.OperatingFeePercent).HasPrecision(9, 2);
         modelBuilder.Entity<VehicleType>().Property(x => x.Tonnage).HasPrecision(9, 2);
         modelBuilder.Entity<Vehicle>().Property(x => x.Tonnage).HasPrecision(9, 2);
         modelBuilder.Entity<PriceListItem>().Property(x => x.UnitPrice).HasPrecision(20, 2);
@@ -309,19 +300,37 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.ReceiverCustomer).WithMany().HasForeignKey(d => d.ReceiverCustomerId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
-            .HasOne(d => d.PickupCity).WithMany().HasForeignKey(d => d.PickupCityId).OnDelete(DeleteBehavior.Restrict);
-        modelBuilder.Entity<DispatchOrder>()
-            .HasOne(d => d.DeliveryCity).WithMany().HasForeignKey(d => d.DeliveryCityId).OnDelete(DeleteBehavior.Restrict);
+            .HasOne(d => d.Route).WithMany().HasForeignKey(d => d.RouteId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.CreatedByUser).WithMany().HasForeignKey(d => d.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.ReconciledByUser).WithMany().HasForeignKey(d => d.ReconciledByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.ConfirmedByUser).WithMany().HasForeignKey(d => d.ConfirmedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.PaymentMethod).WithMany().HasForeignKey(d => d.PaymentMethodId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.Employee).WithMany().HasForeignKey(d => d.EmployeeId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PriceListItem>()
-            .HasOne(i => i.PickupCity).WithMany().HasForeignKey(i => i.PickupCityId).OnDelete(DeleteBehavior.Restrict);
-        modelBuilder.Entity<PriceListItem>()
-            .HasOne(i => i.DeliveryCity).WithMany().HasForeignKey(i => i.DeliveryCityId).OnDelete(DeleteBehavior.Restrict);
+            .HasOne(i => i.Route).WithMany().HasForeignKey(i => i.RouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Location>()
+            .HasOne(l => l.City).WithMany().HasForeignKey(l => l.CityId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LocationAlias>()
+            .HasOne(a => a.Location).WithMany().HasForeignKey(a => a.LocationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<RouteAlias>()
+            .HasOne(a => a.Route).WithMany().HasForeignKey(a => a.RouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<RouteStop>()
+            .HasOne(s => s.Route).WithMany(r => r.Stops).HasForeignKey(s => s.RouteId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<RouteStop>()
+            .HasOne(s => s.Location).WithMany().HasForeignKey(s => s.LocationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrderStop>()
+            .HasOne(s => s.DispatchOrder).WithMany(d => d.Stops).HasForeignKey(s => s.DispatchOrderId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<DispatchOrderStop>()
+            .HasOne(s => s.Location).WithMany().HasForeignKey(s => s.LocationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CustomerAlias>()
+            .HasOne(a => a.Customer).WithMany().HasForeignKey(a => a.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<VehicleAlias>()
+            .HasOne(a => a.Vehicle).WithMany().HasForeignKey(a => a.VehicleId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Customer>()
             .HasOne(c => c.AccountantEmployee).WithMany().HasForeignKey(c => c.AccountantEmployeeId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<CashPayment>()
@@ -331,7 +340,11 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
 
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.HasDeliveryNote);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.RouteLabel);
+        modelBuilder.Entity<DispatchOrder>().Ignore(d => d.PickupLocationName);
+        modelBuilder.Entity<DispatchOrder>().Ignore(d => d.DeliveryLocationName);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.CanEdit);
+        modelBuilder.Entity<DispatchOrder>().Ignore(d => d.CustomerCodeName);
+        modelBuilder.Entity<Customer>().Ignore(c => c.CodeName);
         modelBuilder.Entity<DispatchOrder>().HasQueryFilter(d => !d.IsDeleted);
     }
 }

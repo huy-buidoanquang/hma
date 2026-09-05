@@ -18,18 +18,17 @@ public partial class PriceListWorkspaceViewModel(
     [ObservableProperty] private PriceList? selected;
     [ObservableProperty] private PriceListRevision? revision;
     [ObservableProperty] private PriceListItem? selectedItem;
-    [ObservableProperty] private int? selectedPickupCityId;
-    [ObservableProperty] private int? selectedDeliveryCityId;
+    [ObservableProperty] private int? selectedRouteId;
     [ObservableProperty] private int? selectedVehicleTypeId;
     [ObservableProperty] private decimal unitPrice;
     [ObservableProperty] private decimal surcharge;
     public ObservableCollection<PriceList> Items { get; } = [];
-    public ObservableCollection<City> Cities { get; } = [];
+    public ObservableCollection<Route> Routes { get; } = [];
     public ObservableCollection<Customer> Customers { get; } = [];
     public ObservableCollection<VehicleType> VehicleTypes { get; } = [];
     public ObservableCollection<PriceListItem> RevisionItems { get; } = [];
-    public bool IsEditorReadOnly => Editor.IsLocked;
-    public bool AreFieldsEnabled => !Editor.IsLocked;
+    public override bool IsEditorReadOnly => IsViewMode || Editor.IsLocked;
+    public override bool AreFieldsEnabled => !IsEditorReadOnly;
 
     public override async Task LoadAsync()
     {
@@ -37,8 +36,8 @@ public partial class PriceListWorkspaceViewModel(
         UsePrompt(prompt);
         Items.Clear();
         foreach (var p in await prices.ListAsync()) Items.Add(p);
-        Cities.Clear();
-        foreach (var c in await catalog.CitiesAsync()) Cities.Add(c);
+        Routes.Clear();
+        foreach (var r in await catalog.RoutesAsync()) Routes.Add(r);
         Customers.Clear();
         foreach (var c in await customers.SearchAsync(null, null, null, null))
             if (!c.IsWalkIn) Customers.Add(c);
@@ -56,7 +55,7 @@ public partial class PriceListWorkspaceViewModel(
         Revision = null;
         OnPropertyChanged(nameof(IsEditorReadOnly));
         OnPropertyChanged(nameof(AreFieldsEnabled));
-        EnterCreate("Thêm bảng giá");
+        EnterCreate("Thêm bảng giá", Editor, RevisionItems);
     }
 
     [RelayCommand]
@@ -64,7 +63,8 @@ public partial class PriceListWorkspaceViewModel(
     {
         if (Selected is null) return;
         await OpenAsync(Selected.Id);
-        EnterEdit($"Sửa bảng giá — {Editor.Code}");
+        EnterExisting($"Xem bảng giá — {Editor.Code}", $"Sửa bảng giá — {Editor.Code}",
+            CanEditExisting && !Editor.IsLocked, Editor, RevisionItems);
     }
 
     private async Task OpenAsync(int id)
@@ -79,6 +79,8 @@ public partial class PriceListWorkspaceViewModel(
         OnPropertyChanged(nameof(Editor));
         OnPropertyChanged(nameof(IsEditorReadOnly));
         OnPropertyChanged(nameof(AreFieldsEnabled));
+        if (!IsBrowsing)
+            RecaptureBaseline(Editor, RevisionItems);
     }
 
     [RelayCommand]
@@ -101,7 +103,7 @@ public partial class PriceListWorkspaceViewModel(
     private async Task AddRate()
     {
         if (!CanUpdate || Editor.IsLocked) { ShowToast(Editor.IsLocked ? "Bảng giá đã khóa." : "Không sửa được bảng giá.", isError: true); return; }
-        if (Editor.Id == 0 || SelectedDeliveryCityId is null || SelectedVehicleTypeId is null) return;
+        if (Editor.Id == 0 || SelectedRouteId is null || SelectedVehicleTypeId is null) return;
         await RunAsync(async () =>
         {
             if (Revision is null || Revision.Id == 0)
@@ -112,8 +114,7 @@ public partial class PriceListWorkspaceViewModel(
             await prices.AddItemAsync(new PriceListItem
             {
                 PriceListRevisionId = Revision.Id,
-                PickupCityId = SelectedPickupCityId,
-                DeliveryCityId = SelectedDeliveryCityId.Value,
+                RouteId = SelectedRouteId.Value,
                 VehicleTypeId = SelectedVehicleTypeId.Value,
                 UnitPrice = UnitPrice,
                 Surcharge = Surcharge

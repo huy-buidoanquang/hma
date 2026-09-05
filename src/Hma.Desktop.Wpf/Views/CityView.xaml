@@ -18,7 +18,6 @@
                     <Button Content="Làm lại" Style="{StaticResource SecondaryButton}" Command="{Binding ResetFiltersCommand}"/>
                     <Border Style="{StaticResource ToolbarSpacer}"/>
                     <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                    <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
                 </WrapPanel>
             </StackPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
@@ -36,6 +35,7 @@
         </DockPanel>
         <controls:EditorOverlay Visibility="{Binding IsBrowsing, Converter={StaticResource InverseBoolToVisibility}}">
             <StackPanel>
+                <StackPanel IsEnabled="{Binding AreFieldsEnabled}">
                 <Grid Style="{StaticResource FormRow}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
@@ -60,6 +60,7 @@
                     <Label Style="{StaticResource FormLabel}" Content="Mô tả"/>
                     <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Description}"/>
                 </Grid>
+                </StackPanel>
                 <StackPanel Style="{StaticResource EditorActions}">
                     <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
                     <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>

@@ -24,21 +24,17 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
         var vatRate = 10m;
         if (vatParam?.Value is not null && decimal.TryParse(vatParam.Value, out var parsed)) vatRate = parsed;
 
-        var start = new DateTime(year, month, 1);
-        var end = start.AddMonths(1);
         var orders = await db.DispatchOrders
             .AsNoTracking()
             .Include(d => d.Vehicle)
             .Include(d => d.Driver)
             .Include(d => d.VehicleType)
-            .Include(d => d.PickupCity)
-            .Include(d => d.DeliveryCity)
-            .Include(d => d.Documents)
+            .Include(d => d.Stops)
+            .Include(d => d.Route)
             .Where(d => d.CustomerId == customerId
-                        && d.PickupAt >= start && d.PickupAt < end
-                        && d.Status == DispatchStatus.Completed
-                        && d.ReconciliationStatus == ReconciliationStatus.Reconciled
-                        && d.Documents.Any(doc => doc.Kind == DispatchDocumentKind.DeliveryNote))
+                        && d.BillingYear == year && d.BillingMonth == month
+                        && (d.ReconciliationStatus == ReconciliationStatus.Reconciled
+                            || d.Status == DispatchStatus.Locked))
             .OrderBy(d => d.PickupAt)
             .ToListAsync(ct);
 

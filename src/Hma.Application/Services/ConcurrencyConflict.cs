@@ -21,5 +21,9 @@ public static class ConcurrencyConflict
         {
             Throw();
         }
+        catch (Exception ex)
+        {
+            throw PersistenceGuard.Translate(ex);
+        }
     }
 }

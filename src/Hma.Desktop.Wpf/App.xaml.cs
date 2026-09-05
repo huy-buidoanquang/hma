@@ -58,14 +58,20 @@ public partial class App : System.Windows.Application
                 services.AddScoped<DepartmentWorkspaceViewModel>();
                 services.AddScoped<JobTitleWorkspaceViewModel>();
                 services.AddScoped<CityWorkspaceViewModel>();
+                services.AddScoped<LocationWorkspaceViewModel>();
+                services.AddScoped<RouteWorkspaceViewModel>();
                 services.AddScoped<PriceListWorkspaceViewModel>();
                 services.AddScoped<DispatchWorkspaceViewModel>();
+                services.AddScoped<DispatchGridEditWorkspaceViewModel>();
                 services.AddScoped<ReconcileWorkspaceViewModel>();
                 services.AddScoped<StatementWorkspaceViewModel>();
                 services.AddScoped<LookupWorkspaceViewModel>();
                 services.AddScoped<DashboardWorkspaceViewModel>();
                 services.AddScoped<ReportWorkspaceViewModel>();
                 services.AddScoped<SettingsWorkspaceViewModel>();
+                services.AddScoped<LocationAliasWorkspaceViewModel>();
+                services.AddScoped<RouteAliasWorkspaceViewModel>();
+                services.AddScoped<CustomerAliasWorkspaceViewModel>();
                 services.AddScoped<UserWorkspaceViewModel>();
                 services.AddScoped<CashReceiptWorkspaceViewModel>();
                 services.AddScoped<CashPaymentWorkspaceViewModel>();
@@ -80,8 +86,8 @@ public partial class App : System.Windows.Application
         try
         {
             using var boot = _host.Services.CreateScope();
-            var db = boot.ServiceProvider.GetRequiredService<IHmaDbContext>();
-            await db.EnsureCreatedAndSeededAsync();
+            var db = boot.ServiceProvider.GetRequiredService<HmaDatabaseInitializer>();
+            await db.MigrateAndSeedAsync();
         }
         catch (Exception ex)
         {

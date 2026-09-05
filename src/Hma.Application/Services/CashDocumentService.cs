@@ -37,7 +37,7 @@ public class CashDocumentService(IHmaDbContext db, IDocumentNumberService number
         receipt.AmountInWords = AmountText.From(receipt.Amount);
         if (receipt.Id == 0) db.Add(receipt);
         else db.Update(receipt);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     public async Task SavePaymentAsync(CashPayment payment, CancellationToken ct = default)
@@ -46,20 +46,20 @@ public class CashDocumentService(IHmaDbContext db, IDocumentNumberService number
         payment.AmountInWords = AmountText.From(payment.Amount);
         if (payment.Id == 0) db.Add(payment);
         else db.Update(payment);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     public async Task DeleteReceiptAsync(int id, CancellationToken ct = default)
     {
         var entity = await db.FindAsync<CashReceipt>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy phiếu thu.");
         db.Remove(entity);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     public async Task DeletePaymentAsync(int id, CancellationToken ct = default)
     {
         var entity = await db.FindAsync<CashPayment>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy phiếu chi.");
         db.Remove(entity);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 }

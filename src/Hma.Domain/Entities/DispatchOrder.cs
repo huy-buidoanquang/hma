@@ -29,11 +29,9 @@ public class DispatchOrder : Entity
 
     public DateTime PickupAt { get; set; } = DateTime.Now;
     public string? PickupAddress { get; set; }
-    public int? PickupCityId { get; set; }
-    public City? PickupCity { get; set; }
     public string? DeliveryAddress { get; set; }
-    public int? DeliveryCityId { get; set; }
-    public City? DeliveryCity { get; set; }
+    public int? RouteId { get; set; }
+    public Route? Route { get; set; }
 
     public int? VehicleId { get; set; }
     public Vehicle? Vehicle { get; set; }
@@ -44,6 +42,15 @@ public class DispatchOrder : Entity
 
     public int? EmployeeId { get; set; }
     public Employee? Employee { get; set; }
+
+    public int? PaymentMethodId { get; set; }
+    public PaymentMethod? PaymentMethod { get; set; }
+    public int BillingYear { get; set; }
+    public int BillingMonth { get; set; }
+    public int? ConfirmedByUserId { get; set; }
+    public AppUser? ConfirmedByUser { get; set; }
+    public DateTime? ConfirmedAt { get; set; }
+    public string? ArNumber { get; set; }
 
     public decimal UnitPrice { get; set; }
     public decimal Surcharge { get; set; }
@@ -56,6 +63,7 @@ public class DispatchOrder : Entity
 
     public ICollection<DispatchOrderLine> Lines { get; set; } = new List<DispatchOrderLine>();
     public ICollection<DispatchDocument> Documents { get; set; } = new List<DispatchDocument>();
+    public ICollection<DispatchOrderStop> Stops { get; set; } = new List<DispatchOrderStop>();
 
     public bool HasDeliveryNote => Documents.Any(d => d.Kind == DispatchDocumentKind.DeliveryNote);
 
@@ -63,12 +71,21 @@ public class DispatchOrder : Entity
     {
         get
         {
-            var from = PickupCity?.Name ?? PickupAddress ?? "";
-            var to = DeliveryCity?.Name ?? DeliveryAddress ?? "";
-            if (string.IsNullOrWhiteSpace(from) && string.IsNullOrWhiteSpace(to)) return "";
-            return $"{from} → {to}";
+            var parts = Stops.OrderBy(s => s.Sequence)
+                .Select(s => s.NameSnapshot)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList();
+            if (parts.Count > 0)
+                return string.Join(" → ", parts);
+            return Route?.Name ?? "";
         }
     }
+
+    public string PickupLocationName =>
+        Stops.OrderBy(s => s.Sequence).Select(s => s.NameSnapshot).FirstOrDefault() ?? "";
+
+    public string DeliveryLocationName =>
+        Stops.OrderByDescending(s => s.Sequence).Select(s => s.NameSnapshot).FirstOrDefault() ?? "";
 
     public void RecalculateTotal()
     {
@@ -77,4 +94,23 @@ public class DispatchOrder : Entity
 
     public bool CanEdit =>
         !IsDeleted && Status is not DispatchStatus.Locked && ReconciliationStatus != ReconciliationStatus.Reconciled;
+
+    public string CustomerCodeName => Customer is null
+        ? ""
+        : string.IsNullOrWhiteSpace(Customer.Code) ? Customer.Name : $"{Customer.Code} — {Customer.Name}";
+
+    public void ReplaceStops(IReadOnlyList<(int LocationId, string Name)> stops)
+    {
+        Stops.Clear();
+        var sequence = 0;
+        foreach (var stop in stops)
+        {
+            Stops.Add(new DispatchOrderStop
+            {
+                Sequence = sequence++,
+                LocationId = stop.LocationId,
+                NameSnapshot = stop.Name
+            });
+        }
+    }
 }

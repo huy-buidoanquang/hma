@@ -8,7 +8,6 @@
             <TextBlock DockPanel.Dock="Top" Text="Chức vụ" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
             </WrapPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
@@ -24,6 +23,7 @@
         </DockPanel>
         <controls:EditorOverlay Visibility="{Binding IsBrowsing, Converter={StaticResource InverseBoolToVisibility}}">
             <StackPanel>
+                <StackPanel IsEnabled="{Binding AreFieldsEnabled}">
                 <Grid Style="{StaticResource FormRow}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
@@ -40,6 +40,7 @@
                     <Label Style="{StaticResource FormLabel}" Content="Tên"/>
                     <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Required"/>
                 </Grid>
+                </StackPanel>
                 <StackPanel Style="{StaticResource EditorActions}">
                     <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
                     <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>

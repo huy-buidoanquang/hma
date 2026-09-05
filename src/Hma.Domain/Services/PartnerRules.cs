@@ -11,5 +11,6 @@ public static class PartnerRules
         PhoneRules.EnsureOptional(partner.Phone);
         EmailRules.EnsureOptional(partner.Email);
         TaxCodeRules.EnsureOptional(partner.TaxCode);
+        PartnerFeeRules.EnsurePercent(partner.OperatingFeePercent);
     }
 }

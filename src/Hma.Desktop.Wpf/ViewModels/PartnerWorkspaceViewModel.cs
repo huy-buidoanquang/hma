@@ -1,13 +1,16 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hma.Application.Abstractions;
 using Hma.Application.Services;
 using Hma.Domain.Entities;
+using Hma.Reporting;
 
 namespace Hma.Desktop.Wpf.ViewModels;
 
-public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentUser user, IUserPrompt prompt) : WorkspaceBase
+public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentUser user, IUserPrompt prompt, IDocumentPrinter printer) : WorkspaceBase
 {
     [ObservableProperty] private string? filterCode;
     [ObservableProperty] private string? filterName;
@@ -43,7 +46,7 @@ public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentU
         if (!CanCreate) return;
         Selected = null;
         Editor = new Partner();
-        EnterCreate("Thêm đối tác");
+        EnterCreate("Thêm đối tác", Editor);
     }
 
     [RelayCommand]
@@ -53,9 +56,10 @@ public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentU
         Editor = new Partner
         {
             Id = Selected.Id, Code = Selected.Code, Name = Selected.Name, TaxCode = Selected.TaxCode,
-            Address = Selected.Address, ContactName = Selected.ContactName, Phone = Selected.Phone, Email = Selected.Email
+            Address = Selected.Address, ContactName = Selected.ContactName, Phone = Selected.Phone, Email = Selected.Email,
+            OperatingFeePercent = Selected.OperatingFeePercent
         };
-        EnterEdit($"Sửa đối tác — {Editor.Code}");
+        EnterExisting($"Xem đối tác — {Editor.Code}", $"Sửa đối tác — {Editor.Code}", Editor);
     }
 
     [RelayCommand]
@@ -79,5 +83,15 @@ public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentU
             await Search();
             LeaveEditor(discardWithoutConfirm: true);
         }, "Đã xóa.");
+    }
+
+    [RelayCommand]
+    private void ExportExcel()
+    {
+        if (!CanPrint) return;
+        var path = Path.Combine(Path.GetTempPath(), "DS-DOI-TAC.xlsx");
+        printer.ExportPartnersExcel(Items.ToList(), path);
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Status = "Đã xuất Excel đối tác.";
     }
 }

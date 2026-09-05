@@ -15,4 +15,6 @@ public class Customer : Entity
     public Employee? AccountantEmployee { get; set; }
     public bool IsWalkIn { get; set; }
     public DateTime? UpdatedAt { get; set; }
+
+    public string CodeName => string.IsNullOrWhiteSpace(Code) ? Name : $"{Code} — {Name}";
 }

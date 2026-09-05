@@ -35,6 +35,52 @@ public static class DemoDataSeeder
         var nb = City(db, "NB", "Ninh Bình", "TP Ninh Bình, Tam Điệp");
         await db.SaveChangesAsync(ct);
 
+        Location Loc(City city)
+        {
+            var row = new Location { Code = city.Code, Name = city.Name, Description = city.Description, CityId = city.Id };
+            db.Locations.Add(row);
+            return row;
+        }
+
+        var locByCityId = new Dictionary<int, Location>
+        {
+            [hn.Id] = Loc(hn),
+            [hp.Id] = Loc(hp),
+            [bn.Id] = Loc(bn),
+            [hd.Id] = Loc(hd),
+            [hy.Id] = Loc(hy),
+            [qn.Id] = Loc(qn),
+            [tn.Id] = Loc(tn),
+            [vp.Id] = Loc(vp),
+            [nd.Id] = Loc(nd),
+            [nb.Id] = Loc(nb)
+        };
+        await db.SaveChangesAsync(ct);
+
+        var routeCache = new Dictionary<string, Route>();
+        Route Pair(City from, City to)
+        {
+            var origin = locByCityId[from.Id];
+            var dest = locByCityId[to.Id];
+            var fingerprint = $"{origin.Id}-{dest.Id}";
+            if (routeCache.TryGetValue(fingerprint, out var existing))
+                return existing;
+            var suffix = routeCache.Count + 1;
+            var route = new Route
+            {
+                Code = $"{from.Code}-{to.Code}-{suffix}",
+                Name = $"{from.Name} → {to.Name}",
+                Fingerprint = fingerprint
+            };
+            db.Routes.Add(route);
+            db.SaveChanges();
+            db.RouteStops.Add(new RouteStop { RouteId = route.Id, Sequence = 0, LocationId = origin.Id });
+            db.RouteStops.Add(new RouteStop { RouteId = route.Id, Sequence = 1, LocationId = dest.Id });
+            db.SaveChanges();
+            routeCache[fingerprint] = route;
+            return route;
+        }
+
         var dieuPhoi = Dept(db, "DP", "Điều phối");
         var keToan = Dept(db, "KT", "Kế toán");
         var banGd = Dept(db, "BGĐ", "Ban giám đốc");
@@ -61,6 +107,7 @@ public static class DemoDataSeeder
         ketoan.DisplayName = "Nguyễn Thị Hoa";
         ketoan.EmployeeId = hoa.Id;
         await db.SaveChangesAsync(ct);
+        var creditPay = await db.PaymentMethods.FirstOrDefaultAsync(p => p.Code == PaymentMethodCodes.Credit, ct);
 
         var hongHa = Partner(db, "DT001", "Công ty TNHH Vận tải Hồng Hà", "0107788123",
             "Nguyễn Đức Thành", "024 3662 1188", "Km 5, đường Tam Trinh, Hoàng Mai, Hà Nội", "lienhe@vthongha.vn");
@@ -168,16 +215,18 @@ public static class DemoDataSeeder
         db.PriceListRevisions.AddRange(revChung, revThep);
         await db.SaveChangesAsync(ct);
 
-        void Item(PriceListRevision rev, City? pickup, City delivery, VehicleType type, decimal unit, decimal surcharge) =>
+        void Item(PriceListRevision rev, City pickup, City delivery, VehicleType type, decimal unit, decimal surcharge)
+        {
+            var route = Pair(pickup, delivery);
             db.PriceListItems.Add(new PriceListItem
             {
                 PriceListRevisionId = rev.Id,
-                PickupCityId = pickup?.Id,
-                DeliveryCityId = delivery.Id,
+                RouteId = route.Id,
                 VehicleTypeId = type.Id,
                 UnitPrice = unit,
                 Surcharge = surcharge
             });
+        }
 
         Item(revChung, hn, hp, t125, 1_800_000, 0);
         Item(revChung, hn, hp, t35, 2_500_000, 100_000);
@@ -201,7 +250,6 @@ public static class DemoDataSeeder
         Item(revChung, hn, nb, t5, 3_900_000, 150_000);
         Item(revChung, hn, nb, t8, 4_200_000, 200_000);
         Item(revChung, hn, hn, t125, 1_050_000, 0);
-        Item(revChung, null, hp, t35, 2_600_000, 120_000);
         Item(revChung, hp, hn, t35, 2_450_000, 100_000);
         Item(revChung, hp, hn, t5, 3_100_000, 150_000);
         Item(revChung, bn, hn, t35, 1_750_000, 50_000);
@@ -255,6 +303,9 @@ public static class DemoDataSeeder
             bool deliveryNote = false,
             bool invoice = false)
         {
+            var route = Pair(from, to);
+            var origin = locByCityId[from.Id];
+            var dest = locByCityId[to.Id];
             var order = new DispatchOrder
             {
                 Code = NextCode(),
@@ -277,15 +328,15 @@ public static class DemoDataSeeder
                 ReceiverTaxCode = receiver.TaxCode,
                 PickupAt = pickup,
                 PickupAddress = pickupAddr,
-                PickupCityId = from.Id,
-                PickupCity = from,
                 DeliveryAddress = deliveryAddr,
-                DeliveryCityId = to.Id,
-                DeliveryCity = to,
+                RouteId = route.Id,
                 VehicleId = vehicle.Id,
                 DriverId = driver.Id,
                 VehicleTypeId = type.Id,
                 EmployeeId = minh.Id,
+                PaymentMethodId = creditPay?.Id,
+                BillingYear = pickup.Year,
+                BillingMonth = pickup.Month,
                 UnitPrice = unit,
                 Surcharge = surcharge,
                 ExtraCost = extra,
@@ -293,6 +344,7 @@ public static class DemoDataSeeder
             };
             order.RecalculateTotal();
             order.AmountInWords = VietnameseAmountWords.ToWords(order.TotalAmount);
+            order.ReplaceStops([(origin.Id, origin.Name), (dest.Id, dest.Name)]);
             order.Lines.Add(new DispatchOrderLine
             {
                 LineNumber = 1,
@@ -505,7 +557,7 @@ public static class DemoDataSeeder
         var row = new Partner
         {
             Code = code, Name = name, TaxCode = tax, ContactName = contact,
-            Phone = phone, Address = address, Email = email
+            Phone = phone, Address = address, Email = email, OperatingFeePercent = 8
         };
         db.Partners.Add(row);
         return row;
@@ -619,8 +671,8 @@ public static class DemoDataSeeder
             .Include(d => d.Vehicle)
             .Include(d => d.Driver)
             .Include(d => d.VehicleType)
-            .Include(d => d.PickupCity)
-            .Include(d => d.DeliveryCity)
+            .Include(d => d.Stops)
+            .Include(d => d.Route)
             .Include(d => d.Documents)
             .Where(d => d.CustomerId == customer.Id
                         && d.PickupAt >= start && d.PickupAt < end

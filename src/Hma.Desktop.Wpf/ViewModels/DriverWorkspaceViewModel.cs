@@ -1,13 +1,16 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hma.Application.Abstractions;
 using Hma.Application.Services;
 using Hma.Domain.Entities;
+using Hma.Reporting;
 
 namespace Hma.Desktop.Wpf.ViewModels;
 
-public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUser user, IUserPrompt prompt) : WorkspaceBase
+public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUser user, IUserPrompt prompt, IDocumentPrinter printer) : WorkspaceBase
 {
     [ObservableProperty] private string? filterCode;
     [ObservableProperty] private string? filterName;
@@ -51,7 +54,7 @@ public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUs
         Selected = null;
         Editor = new Driver();
         Trips.Clear();
-        EnterCreate("Thêm tài xế");
+        EnterCreate("Thêm tài xế", Editor);
     }
 
     [RelayCommand]
@@ -65,7 +68,7 @@ public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUs
         };
         Trips.Clear();
         foreach (var t in await catalog.TripsByDriverAsync(Editor.Id)) Trips.Add(t);
-        EnterEdit($"Sửa tài xế — {Editor.Code}");
+        EnterExisting($"Xem tài xế — {Editor.Code}", $"Sửa tài xế — {Editor.Code}", Editor);
     }
 
     [RelayCommand]
@@ -89,5 +92,15 @@ public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUs
             await Search();
             LeaveEditor(discardWithoutConfirm: true);
         }, "Đã xóa.");
+    }
+
+    [RelayCommand]
+    private void ExportExcel()
+    {
+        if (!CanPrint) return;
+        var path = Path.Combine(Path.GetTempPath(), "DS-TAI-XE.xlsx");
+        printer.ExportDriversExcel(Items.ToList(), path);
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Status = "Đã xuất Excel tài xế.";
     }
 }

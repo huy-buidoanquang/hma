@@ -69,7 +69,7 @@ public partial class CustomerWorkspaceViewModel(
         if (!CanCreate) return;
         Selected = null;
         Editor = new Customer { UpdatedAt = DateTime.Today };
-        EnterCreate("Thêm khách hàng");
+        EnterCreate("Thêm khách hàng", Editor);
     }
 
     [RelayCommand]
@@ -90,7 +90,7 @@ public partial class CustomerWorkspaceViewModel(
             AccountantEmployeeId = Selected.AccountantEmployeeId,
             IsWalkIn = Selected.IsWalkIn
         };
-        EnterEdit($"Sửa khách hàng — {Editor.Code}");
+        EnterExisting($"Xem khách hàng — {Editor.Code}", $"Sửa khách hàng — {Editor.Code}", Editor);
     }
 
     [RelayCommand]

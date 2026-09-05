@@ -2,7 +2,7 @@
 
 Thiết kế vật lý của database **Hma** (SQL Server 2016+). Khớp với `database/001_schema.sql` và entity trong `Hma.Domain`. Mapping DHXE → Hma: [`schema-mapping.md`](schema-mapping.md). Cutover: [`etl-cutover.md`](etl-cutover.md). Kiến trúc ứng dụng: [`Architecture.md`](Architecture.md).
 
-**Nguồn sự thật schema:** [`database/001_schema.sql`](../database/001_schema.sql). Đổi cột/bảng: sửa file này **và** entity + `HmaDbContext` trong cùng một thay đổi. [`003_brief_schema.sql`](../database/003_brief_schema.sql) không migrate tại chỗ.
+**Nguồn sự thật schema (code-first):** entity trong `Hma.Domain` + `HmaDbContext.OnModelCreating` + thư mục `src/Hma.Infrastructure.SqlServer/Migrations`. App gọi `MigrateAndSeedAsync` lúc start. [`database/001_schema.sql`](../database/001_schema.sql) giữ cho cutover/ETL — đổi cột thì cập nhật **cùng** migration EF.
 
 ---
 
@@ -25,17 +25,17 @@ Thiết kế vật lý của database **Hma** (SQL Server 2016+). Khớp với `
 
 `001_schema.sql` **DROP toàn bộ bảng** theo thứ tự phụ thuộc rồi tạo lại. Không phải migration tăng dần. Production/cutover: backup trước, chạy schema trên DB trống (hoặc chấp nhận mất data).
 
-Dev app: `EnsureCreatedAndSeededAsync` — nếu thiếu `Partner`, cột `DispatchOrder.SenderCustomerId` / `SenderName` / `RowVersion` / `IsDeleted` thì **drop database** rồi tạo lại. Production: `001_schema.sql` (DB mới) hoặc [`004_concurrency.sql`](../database/004_concurrency.sql) + [`005_soft_delete.sql`](../database/005_soft_delete.sql) (DB đã có data).
+Dev app: `HmaDatabaseInitializer.MigrateAndSeedAsync` — `Database.Migrate`. DB cũ tạo bằng `EnsureCreated` (không có `__EFMigrationsHistory`) được bắt nhịp cột rồi ghi baseline `InitialCreate`, **không drop**. Production/cutover: migration EF hoặc `001_schema.sql` trên DB trống.
 
 ---
 
-## 2. Nhóm bảng (29 bảng)
+## 2. Nhóm bảng
 
 | Nhóm | Bảng | Phase 1 |
 |------|------|---------|
-| Catalog | `City`, `Department`, `JobTitle`, `VehicleType`, `PaymentMethod`, `Employee`, `Partner`, `Driver`, `Vehicle`, `Customer` | Dùng (`PaymentMethod` chưa có màn) |
+| Catalog | `City`, `Location`, `Route`, `RouteStop`, `LocationAlias`, `RouteAlias`, `CustomerAlias`, `VehicleAlias`, `Department`, `JobTitle`, `VehicleType`, `PaymentMethod`, `Employee`, `Partner`, `Driver`, `Vehicle`, `Customer` | Dùng (`PaymentMethod` chưa có màn) |
 | Giá | `PriceList`, `PriceListRevision`, `PriceListItem` | Dùng |
-| Lệnh | `DispatchOrder`, `DispatchOrderLine`, `DispatchDocument` | Dùng |
+| Lệnh | `DispatchOrder`, `DispatchOrderStop`, `DispatchOrderLine`, `DispatchDocument` | Dùng |
 | Bảng kê | `FreightStatement`, `FreightStatementLine` | Dùng |
 | Audit / hệ thống | `ChangeLog`, `DocumentSequence`, `SystemParameter`, `Company` | Dùng |
 | Bảo mật | `AppScreen`, `AppUser`, `UserPermission` | Dùng |
@@ -50,25 +50,32 @@ Dev app: `EnsureCreatedAndSeededAsync` — nếu thiếu `Partner`, cột `Dispa
 ```mermaid
 erDiagram
     City ||--o{ Customer : city
+    City ||--o{ Location : city
+    Location ||--o{ LocationAlias : aliases
+    Location ||--|{ RouteStop : stop
+    Route ||--|{ RouteStop : stops
+    Route ||--o{ RouteAlias : aliases
+    Customer ||--o{ CustomerAlias : aliases
     Department ||--o{ Employee : dept
     JobTitle ||--o{ Employee : title
     Partner ||--o{ Driver : has
     Partner ||--o{ Vehicle : has
+    Vehicle ||--o{ VehicleAlias : aliases
     VehicleType ||--o{ Vehicle : type
     Employee ||--o{ Customer : accountant
 
     Customer ||--o{ PriceList : optional
     PriceList ||--|{ PriceListRevision : revisions
     PriceListRevision ||--|{ PriceListItem : items
-    City ||--o{ PriceListItem : pickup
-    City ||--|{ PriceListItem : delivery
+    Route ||--|{ PriceListItem : route
     VehicleType ||--|{ PriceListItem : type
 
     Customer ||--o{ DispatchOrder : bill_to
     Customer ||--o{ DispatchOrder : sender
     Customer ||--o{ DispatchOrder : receiver
-    City ||--o{ DispatchOrder : pickup
-    City ||--o{ DispatchOrder : delivery
+    Route ||--o{ DispatchOrder : route
+    DispatchOrder ||--|{ DispatchOrderStop : stops
+    Location ||--o{ DispatchOrderStop : snapshot
     Vehicle ||--o{ DispatchOrder : vehicle
     Driver ||--o{ DispatchOrder : driver
     VehicleType ||--o{ DispatchOrder : type
@@ -126,7 +133,7 @@ Hầu hết bảng nghiệp vụ:
 | `Id` | `INT IDENTITY(1,1)` PK | Surrogate. ETL giữ Id cũ bằng `IDENTITY_INSERT`. |
 | `LegacyId` | `INT NULL` | Id nguồn DHXE; không dùng làm FK production. |
 
-Ngoại lệ **không** có `LegacyId` trong `001_schema.sql`: `VehicleType`, `PaymentMethod`, `AppScreen`, `UserPermission`, `ChangeLog`, `DocumentSequence`, `SystemParameter`, `Company`.
+Ngoại lệ **không** có `LegacyId` trong `001_schema.sql`: `VehicleType`, `PaymentMethod`, `AppScreen`, `UserPermission`, `ChangeLog`, `DocumentSequence`, `SystemParameter`, `Company`, `LocationAlias`, `RouteAlias`, `CustomerAlias`, `VehicleAlias`.
 
 Entity C# kế thừa `Entity` vẫn có property `LegacyId`. `EnsureCreated` của EF có thể tạo cột này trên những bảng trên; script SQL thì không. **Production theo `001_schema.sql`.**
 
@@ -166,6 +173,14 @@ Cột `Key` / `Value` / `Year` / `Month` là reserved word SQL — luôn quote `
 `CashReceipt.Kind`: `0` Dispatch, `1` Customer.  
 `CashPayment.Kind`: `1` Customer, `2` Driver.
 
+### `LocationAlias.Kind` — `LocationAliasKind`
+
+| Giá trị | Tên | Ý nghĩa |
+|--------:|-----|---------|
+| 0 | Both | Dùng cho cả điểm đi và điểm đến (mặc định) |
+| 1 | Pickup | Chỉ điểm đi |
+| 2 | Delivery | Chỉ điểm đến |
+
 ---
 
 ## 6. Catalog — cột
@@ -179,6 +194,45 @@ Cột `Key` / `Value` / `Year` / `Month` là reserved word SQL — luôn quote `
 | Name | NVARCHAR(255) | NOT NULL | |
 | Description | NVARCHAR(500) | NULL | |
 | LegacyId | INT | NULL | `thanhpho_id` |
+
+### `Location`
+
+Điểm lấy / giao / qua. `CityId` tùy chọn (địa chỉ hành chính), không dùng làm tuyến.
+
+| Cột | Kiểu | Null | Ghi chú |
+|-----|------|------|---------|
+| Id | INT IDENTITY | PK | |
+| Code | NVARCHAR(50) | NOT NULL unique | |
+| Name | NVARCHAR(255) | NOT NULL | |
+| Description | NVARCHAR(500) | NULL | |
+| CityId | INT | NULL → City Restrict | |
+| LegacyId | INT | NULL | |
+
+### `Route` / `RouteStop`
+
+Tuyến = ≥2 điểm có thứ tự. `Fingerprint` unique `"id1-id2-id3"`. `Name` ghép `A → B → C` lúc lưu.
+
+### `LocationAlias`
+
+Bí danh điểm (Excel) trỏ tới `Location`. Unique `Alias`. Kind: Both / Pickup / Delivery.
+
+Index `IX_LocationAlias_Location`. Application chặn trùng khóa với `RouteAlias` và mã/tên Location/Route.
+
+### `RouteAlias`
+
+Bí danh tuyến: khóa khớp cả ô «Tuyến đường». Unique `Alias` → một `Route`.
+
+### `CustomerAlias`
+
+Bí danh khách (`TEC`, `KMG`) trỏ tới `Customer`. Không ETL.
+
+| Cột | Kiểu | Null | Ghi chú |
+|-----|------|------|---------|
+| Id | INT IDENTITY | PK | |
+| Alias | NVARCHAR(100) | NOT NULL | `UQ_CustomerAlias_Alias` |
+| CustomerId | INT | NOT NULL | → `Customer` Restrict |
+
+Index `IX_CustomerAlias_Customer`. Application chặn bí danh trùng `Customer.Code` / `Customer.Name`.
 
 ### `Department` / `JobTitle`
 
@@ -255,6 +309,20 @@ Seed 8 loại (Id 1–8 khi chạy `002_seed.sql` với `IDENTITY_INSERT`): 1.25
 | Tonnage | DECIMAL(9,2) | | Có thể khác type |
 | LegacyId | INT | | |
 
+`PlateNumber` lưu dạng chuẩn `xxY-xxxx` hoặc `xxY-xxxxx` (ví dụ `29C-23456`). Khi thêm/sửa xe, app tự tạo bí danh không gạch (`29C23456`; `29c23456` khớp không phân biệt hoa/thường).
+
+### `VehicleAlias`
+
+Bí danh biển (file điều xe / import) trỏ tới `Vehicle`. Tự tạo khi lưu xe. Không ETL.
+
+| Cột | Kiểu | Null | Ghi chú |
+|-----|------|------|---------|
+| Id | INT IDENTITY | PK | |
+| Alias | NVARCHAR(100) | NOT NULL | `UQ_VehicleAlias_Alias` |
+| VehicleId | INT | NOT NULL | → `Vehicle` Cascade |
+
+Index `IX_VehicleAlias_Vehicle`. Import khớp biển thật hoặc bí danh.
+
 ### `Customer`
 
 | Cột | Kiểu | Null | Ghi chú |
@@ -281,7 +349,7 @@ Seed 8 loại (Id 1–8 khi chạy `002_seed.sql` với `IDENTITY_INSERT`): 1.25
 PriceList 1—n PriceListRevision 1—n PriceListItem
 ```
 
-Item = tuyến (điểm lấy **nullable** + điểm giao bắt buộc) × loại xe × đơn giá + phụ phí.
+Item = tuyến catalog × loại xe × đơn giá + phụ phí.
 
 ### `PriceList`
 
@@ -294,6 +362,7 @@ Item = tuyến (điểm lấy **nullable** + điểm giao bắt buộc) × loạ
 | CustomerId | INT NULL → Customer | NULL = bảng chung |
 | EffectiveFrom / EffectiveTo | DATE NULL | Lọc cước theo `DateTime.Today` |
 | CreatedAt | DATETIME2 | |
+| HasPriceFluctuation | BIT NOT NULL default 0 | Cả bảng; bậc chọn cước |
 | IsLocked | BIT NOT NULL default 0 | |
 | LockedAt | DATETIME2 | |
 | LockReason | NVARCHAR(255) | |
@@ -318,8 +387,7 @@ Không có `ON DELETE CASCADE` từ header → revision trong script (default NO
 |-----|------|---------|
 | Id | INT IDENTITY PK | |
 | PriceListRevisionId | INT NOT NULL → Revision | |
-| PickupCityId | INT NULL → City Restrict | NULL = mọi điểm lấy |
-| DeliveryCityId | INT NOT NULL → City Restrict | |
+| RouteId | INT NOT NULL → Route Restrict | |
 | VehicleTypeId | INT NOT NULL → VehicleType | |
 | UnitPrice | DECIMAL(20,2) NOT NULL default 0 | |
 | Surcharge | DECIMAL(20,2) NOT NULL default 0 | |
@@ -352,9 +420,8 @@ Một lệnh = dữ liệu gốc cho chuyến, cước, chứng từ, đối so�
 | ReceiverName / Phone / Address / TaxCode | snapshot | |
 | PickupAt | DATETIME2 NOT NULL | Ngày chạy; index `IX_DispatchOrder_PickupAt`. ETL: `ngaylap` + `gio` + `phut` |
 | PickupAddress | NVARCHAR(255) | |
-| PickupCityId | INT NULL → City Restrict | ETL: city người gửi |
 | DeliveryAddress | NVARCHAR(255) | |
-| DeliveryCityId | INT NULL → City Restrict | ETL: city người nhận hoặc `hanhtrinh_id` |
+| RouteId | INT NULL → Route Restrict | App bắt buộc lúc save; snapshot điểm ở `DispatchOrderStop` |
 | VehicleId | INT NULL → Vehicle | App bắt buộc lúc save |
 | DriverId | INT NULL → Driver | App bắt buộc lúc save |
 | VehicleTypeId | INT NULL → VehicleType | Có thể copy từ xe |
@@ -369,7 +436,7 @@ Một lệnh = dữ liệu gốc cho chuyến, cước, chứng từ, đối so�
 | IsDeleted | BIT NOT NULL default 0 | Soft-delete. Query filter ẩn khỏi search/bảng kê/dashboard |
 | RowVersion | ROWVERSION NOT NULL | `UPDATE … WHERE Id AND RowVersion`. Token lúc mở form phải gửi lại `OriginalValue` |
 
-EF **Ignore** (không cột): `HasDeliveryNote`, `RouteLabel`, `CanEdit`.
+EF **Ignore** (không cột): `HasDeliveryNote`, `RouteLabel`, `PickupLocationName`, `DeliveryLocationName`, `CanEdit`.
 
 Nhiều FK cùng `Customer` / `City` / `AppUser` → SQL + EF đều **Restrict** (không CASCADE), tránh multiple cascade paths.
 
@@ -576,6 +643,11 @@ Giống phiếu thu về tiền/chữ; `Kind`; `CustomerId`; `DriverEmployeeId` 
 | Constraint | Cột |
 |------------|-----|
 | `UQ_City_Code` | City.Code |
+| `UQ_Location_Code` | Location.Code |
+| `UQ_Route_Code` | Route.Code |
+| `UQ_Route_Fingerprint` | Route.Fingerprint |
+| `UQ_RouteStop_Route_Sequence` | RouteId, Sequence |
+| `UQ_DispatchOrderStop_Order_Sequence` | DispatchOrderId, Sequence |
 | `UQ_Department_Code` | Department.Code |
 | `UQ_JobTitle_Code` | JobTitle.Code |
 | `UQ_VehicleType_Code` | VehicleType.Code |
@@ -584,6 +656,7 @@ Giống phiếu thu về tiền/chữ; `Kind`; `CustomerId`; `DriverEmployeeId` 
 | `UQ_Partner_Code` | Partner.Code |
 | `UQ_Driver_Code` | Driver.Code |
 | `UQ_Vehicle_Plate` | Vehicle.PlateNumber |
+| `UQ_VehicleAlias_Alias` | VehicleAlias.Alias |
 | `UQ_PriceList_Code` | PriceList.Code |
 | `UQ_AppScreen_Key` | AppScreen.Key |
 | `UQ_AppUser_UserName` | AppUser.UserName |
@@ -591,6 +664,9 @@ Giống phiếu thu về tiền/chữ; `Kind`; `CustomerId`; `DriverEmployeeId` 
 | `UQ_FreightStatement_Customer_Period` | CustomerId, Year, Month |
 | `UQ_DocumentSequence_Key` | DocumentSequence.Key |
 | `UQ_SystemParameter_Key` | SystemParameter.Key |
+| `UQ_LocationAlias_Alias` | LocationAlias.Alias |
+| `UQ_RouteAlias_Alias` | RouteAlias.Alias |
+| `UQ_CustomerAlias_Alias` | CustomerAlias.Alias |
 
 **Không unique SQL (app enforce):** `Customer.Code`, `DispatchOrder.Code`.
 
@@ -603,14 +679,19 @@ Giống phiếu thu về tiền/chữ; `Kind`; `CustomerId`; `DriverEmployeeId` 
 | `IX_DispatchOrder_PickupAt` | Lọc ngày / tháng / bảng kê |
 | `IX_DispatchOrder_Customer` | Lệnh theo bill-to |
 | `IX_ChangeLog_Entity` | Lịch sử theo entity |
+| `IX_DispatchOrder_Route` | Lệnh theo tuyến |
+| `IX_LocationAlias_Location` | Bí danh theo điểm |
+| `IX_RouteAlias_Route` | Bí danh theo tuyến |
+| `IX_CustomerAlias_Customer` | Bí danh theo khách |
+| `IX_VehicleAlias_Vehicle` | Bí danh theo xe |
 
-EF thêm unique index trùng SQL cho Partner, Driver, Vehicle, UserPermission, FreightStatement kỳ; index thường cho Customer.Code và DispatchOrder.Code. EF **không** khai báo `IX_Customer_Name` / `IX_DispatchOrder_PickupAt` / `IX_DispatchOrder_Customer` / `IX_ChangeLog_Entity` — chúng chỉ có khi chạy `001_schema.sql`.
+EF thêm unique index trùng SQL cho Location, Route (Code + Fingerprint), Partner, Driver, Vehicle, UserPermission, FreightStatement kỳ, LocationAlias.Alias, RouteAlias.Alias, CustomerAlias.Alias, VehicleAlias.Alias; index thường cho Customer.Code và DispatchOrder.Code. EF **không** khai báo `IX_Customer_Name` / `IX_DispatchOrder_PickupAt` / `IX_DispatchOrder_Customer` / `IX_ChangeLog_Entity` / `IX_CustomerAlias_Customer` / `IX_VehicleAlias_Vehicle` — chúng chỉ có khi chạy `001_schema.sql` (EF vẫn có FK index mặc định).
 
 ### ON DELETE
 
 | Hành vi | Quan hệ |
 |---------|---------|
-| **CASCADE** | `DispatchOrderLine` ← Order; `DispatchDocument` ← Order; `UserPermission` ← AppUser; `FreightStatementLine` ← Statement; `VatInvoiceLine` ← Invoice |
+| **CASCADE** | `RouteStop` ← Route; `DispatchOrderStop` ← Order; `DispatchOrderLine` ← Order; `DispatchDocument` ← Order; `UserPermission` ← AppUser; `FreightStatementLine` ← Statement; `VatInvoiceLine` ← Invoice |
 | **Restrict / NO ACTION** | Mọi FK còn lại (nhiều nhánh Customer/City/User trên lệnh; ChangeLog.User; dòng bảng kê → lệnh; …) |
 
 Xóa khách/xe/tài xế khi còn lệnh sẽ fail ở SQL; Application bắt `DbUpdateException` → câu tiếng Việt. Xóa lệnh là **soft-delete** (`IsDeleted = 1`); không DROP hàng nên `FreightStatementLine` / chứng từ vẫn còn. App vẫn chặn xóa lệnh Locked/Reconciled.
@@ -624,6 +705,8 @@ Không CHECK constraint cho Status, Kind, VAT 0–100, hay TotalAmount = tổng 
 | Rule | Nơi thực thi |
 |------|----------------|
 | Mã khách / đối tác / tài xế / biển số trùng | Service + một phần unique SQL (trừ khách) |
+| Bí danh điểm / tuyến / khách trùng hoặc trùng mã-tên catalog | `LocationAliasRules` / `RouteAliasRules` / `AliasDictionaryRules` + unique SQL |
+| Biển số dạng `xxY-xxxx(x)`; bí danh không gạch | `VehiclePlateRules` + `VehicleAlias` unique SQL |
 | Lệnh phải có Customer, Vehicle, Driver | `DispatchOrderService.SaveAsync` |
 | Không đổi cước sau Reconciled | SaveAsync so sánh bản cũ |
 | Không xóa lệnh Locked / Reconciled | DeleteAsync |
@@ -642,7 +725,7 @@ Không CHECK constraint cho Status, Kind, VAT 0–100, hay TotalAmount = tổng 
 | Nguồn | Khi nào |
 |-------|---------|
 | `database/002_seed.sql` | Cutover / DB tạo bằng script — **chỉ catalog**, không lệnh diễn tập |
-| `DatabaseSeeder` | `EnsureCreated` lúc start WPF |
+| `DatabaseSeeder` | `MigrateAndSeedAsync` lúc start WPF |
 | `DemoDataSeeder` | Chỉ khi **chưa có khách** (DB trống). Không đè ETL/production |
 
 Cùng nội dung catalog: 8 `VehicleType`, `UNASSIGNED`, 17 `AppScreen`, 6 sequence, 3 parameter, 1 `Company`.
@@ -670,26 +753,26 @@ Chi tiết cột DHXE: [`schema-mapping.md`](schema-mapping.md).
 
 ---
 
-## 17. SQL script vs EF `EnsureCreated`
+## 17. SQL script vs EF migrations
 
-| Hạng mục | `001_schema.sql` | EF `EnsureCreated` |
-|----------|------------------|-------------------|
-| Unique/index catalog | Đủ UQ + IX liệt kê mục 13 | Một phần (thiếu IX PickupAt, Customer Name, ChangeLog, …) |
-| `LegacyId` trên VehicleType / AppScreen / … | Không có cột | Có thể có (entity : `Entity`) |
+| Hạng mục | `001_schema.sql` | EF `Migrate` (code-first) |
+|----------|------------------|---------------------------|
+| Unique/index catalog | Đủ UQ + IX liệt kê mục 13 | Theo `OnModelCreating` + file trong `Migrations/` |
+| `LegacyId` | Script có thể bỏ một số catalog | Có nếu entity kế thừa `Entity` |
 | Default Status/Recon/tiền | CONSTRAINT DF_* | CLR default khi insert qua app |
 | Tên cột Key/Year | `[Key]`, `[Year]` | Map explicit trong `OnModelCreating` |
 
-**Cutover và production:** chạy `001_schema.sql` + `002_seed.sql`. Không coi model EF là DDL chính.
+**Dev:** mở app — `Migrate` + seed. **Cutover SQL:** `001_schema.sql` + `002_seed.sql` trên DB trống, rồi baseline migration (cùng cơ chế DB EnsureCreated: có `Partner`, chưa có history).
 
 ---
 
 ## 18. Cách đổi schema
 
-1. Sửa [`database/001_schema.sql`](../database/001_schema.sql) (và ETL nếu cột di chuyển). Script additive: `004_concurrency.sql`, `005_soft_delete.sql`.  
-2. Sửa entity trong `Hma.Domain/Entities` (một type / file).  
-3. Sửa `HmaDbContext.OnModelCreating` (precision, FK Restrict, Ignore).  
+1. Sửa entity trong `Hma.Domain/Entities` (một type / file) và `HmaDbContext.OnModelCreating`.  
+2. `dotnet tool restore` rồi `dotnet ef migrations add <Tên> --project src/Hma.Infrastructure.SqlServer --output-dir Migrations`.  
+3. Cập nhật [`database/001_schema.sql`](../database/001_schema.sql) (và ETL nếu cột di chuyển) cho cutover.  
 4. Sửa seed / `DatabaseSeeder` nếu Key hoặc loại xe đổi.  
-5. Dev LocalDB: drop DB hoặc để app tự rebuild khi thiếu cột then chốt.  
+5. Mở app: `MigrateAndSeedAsync` áp dụng migration chưa chạy.  
 6. Cập nhật file này và [`schema-mapping.md`](schema-mapping.md) nếu đụng legacy.
 
-Không thêm repository. Application chỉ qua `IHmaDbContext`.
+Không thêm repository. Application chỉ qua `IHmaDbContext`. Không `EnsureCreated`, không `ALTER` rời trong DbContext.

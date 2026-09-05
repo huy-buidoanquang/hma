@@ -44,7 +44,7 @@ public partial class CashPaymentWorkspaceViewModel(
     {
         Editor = await cash.NewPaymentAsync();
         Selected = null;
-        EnterCreate("Thêm phiếu chi");
+        EnterCreate("Thêm phiếu chi", Editor);
     }
 
     [RelayCommand]
@@ -52,7 +52,7 @@ public partial class CashPaymentWorkspaceViewModel(
     {
         if (Selected is null) return;
         Editor = Selected;
-        EnterEdit($"Sửa phiếu chi — {Editor.Code}");
+        EnterExisting($"Xem phiếu chi — {Editor.Code}", $"Sửa phiếu chi — {Editor.Code}", Editor);
     }
 
     [RelayCommand]

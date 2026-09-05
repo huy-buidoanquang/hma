@@ -28,6 +28,10 @@ public class DocumentNumberService(IHmaDbContext db) : IDocumentNumberService
             {
                 throw new InvalidOperationException(ConcurrencyConflict.Message);
             }
+            catch (Exception ex)
+            {
+                throw PersistenceGuard.Translate(ex);
+            }
         }
 
         throw new InvalidOperationException(ConcurrencyConflict.Message);

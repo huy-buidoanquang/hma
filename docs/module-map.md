@@ -14,14 +14,17 @@ Pattern: **Tìm → lưới → Xem / double-click → form chi tiết**. Catalo
 | `employees` | EmployeeView | Nhân viên; combo phòng ban / chức vụ |
 | `departments` | DepartmentView | Danh mục phòng ban (nhập cho combo NV) |
 | `job-titles` | JobTitleView | Danh mục chức vụ |
-| `cities` | CityView | Thành phố lấy/giao |
-| `price-lists` | PriceListView | Hiệu lực từ–đến; khóa + lý do; sửa/xóa dòng giá; tuyến × loại xe |
-| `dispatch-orders` | DispatchView | Find: số LDX, từ–đến, KH, biển, loại xe, TP giao, TT lệnh, TT đối soát, khoảng tiền. Chi tiết: người gửi/nhận (VL-), giờ lấy, người tạo, lưới hàng, auto cước, in 1 lệnh / ngày / tháng / theo khách, Excel danh sách cước |
+| `cities` | CityView | Thành phố (địa chỉ khách) |
+| `locations` | LocationView | Điểm lấy/giao/qua |
+| `routes` | RouteView | Tuyến = dãy điểm có thứ tự (≥2) |
+| `price-lists` | PriceListView | Hiệu lực từ–đến; biến động giá; khóa + lý do; dòng giá tuyến × loại xe |
+| `dispatch-orders` | DispatchView | Find: số LDX, từ–đến, KH, biển, loại xe, điểm đi/đến (first/last stop), TT lệnh, TT đối soát, khoảng tiền. Chi tiết: người gửi/nhận (VL-), giờ lấy, người tạo, combo tuyến, auto cước, in 1 lệnh / ngày / tháng / theo khách, Excel danh sách cước |
+| `dispatch-grid-edit` | DispatchGridEditView | Sửa nhiều lệnh theo khách: combo tuyến, xe; không tra cước |
 | `lookup` | LookupView | Ô số lệnh hoặc biển số → lịch sử chuyến, mở lệnh |
 | `reconcile` | ReconcileView | Checklist; mở lệnh từ lưới; Pending → Reconciled; audit ChangeLog |
 | `statements` | StatementView | Bảng kê tháng; cột tải/phát sinh/ghi chú; tổng cước / phụ phí / phát sinh / trước–sau VAT |
 | `reports` | ReportView | In ngày; preset tuần / quý / năm; số chuyến + tổng cước theo khách/xe |
-| `settings` | SettingsView | VatRate, DocumentStorePath, số đếm `dispatch-order` / `freight-statement` |
+| `settings` | SettingsView | Hub Cấu hình: VAT / chứng từ / số đếm; công ty; từ điển điểm (`LocationAlias`); từ điển tuyến (`RouteAlias`); từ điển khách (`CustomerAlias`). Chỉ quản lý |
 | `users` | UserView | Manager-only |
 
 Frozen (no nav): `cash-receipts`, `cash-payments`, `vat-invoices`.

@@ -13,14 +13,22 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current)
     public Task<PriceList?> GetAsync(int id, CancellationToken ct = default) =>
         db.PriceLists
             .Include(p => p.Customer)
-            .Include(p => p.Revisions).ThenInclude(r => r.Items).ThenInclude(i => i.DeliveryCity)
-            .Include(p => p.Revisions).ThenInclude(r => r.Items).ThenInclude(i => i.PickupCity)
+            .Include(p => p.Revisions).ThenInclude(r => r.Items).ThenInclude(i => i.Route)
             .Include(p => p.Revisions).ThenInclude(r => r.Items).ThenInclude(i => i.VehicleType)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
     public async Task SaveAsync(PriceList list, CancellationToken ct = default)
     {
         PermissionGuard.RequireSave(current, ScreenKeys.PriceLists, list.Id == 0);
+        PriceListDomainService.EnsureCanSave(list);
+        if (await db.PriceLists.AnyAsync(p => p.Code == list.Code && p.Id != list.Id, ct))
+            throw new InvalidOperationException("Mã bảng giá đã tồn tại.");
+        if (list.CustomerId is int customerId
+            && !await db.Customers.AnyAsync(c => c.Id == customerId, ct))
+            throw new InvalidOperationException("Khách hàng không tồn tại.");
+        var keepCustomerId = list.CustomerId;
+        list.Customer = null;
+        list.CustomerId = keepCustomerId;
         if (list.Id == 0)
         {
             list.CreatedAt = DateTime.Today;
@@ -38,21 +46,38 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current)
     public async Task SaveRevisionAsync(PriceListRevision revision, CancellationToken ct = default)
     {
         PermissionGuard.RequireSave(current, ScreenKeys.PriceLists, revision.Id == 0);
+        var keepPriceListId = revision.PriceListId;
+        var keepEmployeeId = revision.EmployeeId;
+        revision.PriceList = null;
+        revision.Employee = null;
+        revision.PriceListId = keepPriceListId;
+        revision.EmployeeId = keepEmployeeId;
         if (revision.Id == 0)
         {
             revision.CreatedAt = DateTime.Today;
             db.Add(revision);
         }
         else db.Update(revision);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     public async Task AddItemAsync(PriceListItem item, CancellationToken ct = default)
     {
         PermissionGuard.Require(current, ScreenKeys.PriceLists, PermissionAction.Update);
         PriceListItemRules.EnsureCanSave(item);
+        if (!await db.Routes.AnyAsync(r => r.Id == item.RouteId, ct))
+            throw new InvalidOperationException("Tuyến không tồn tại.");
+        var keepRevisionId = item.PriceListRevisionId;
+        var routeId = item.RouteId;
+        var vehicleType = item.VehicleTypeId;
+        item.Route = null;
+        item.VehicleType = null;
+        item.PriceListRevision = null;
+        item.PriceListRevisionId = keepRevisionId;
+        item.RouteId = routeId;
+        item.VehicleTypeId = vehicleType;
         db.Add(item);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     public async Task DeleteItemAsync(int id, CancellationToken ct = default)
@@ -60,44 +85,24 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current)
         PermissionGuard.Require(current, ScreenKeys.PriceLists, PermissionAction.Delete);
         var item = await db.FindAsync<PriceListItem>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy dòng giá.");
         db.Remove(item);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
-    public async Task<(decimal UnitPrice, decimal Surcharge)?> GetFreightAsync(
-        int? customerId, int? pickupCityId, int? deliveryCityId, int? vehicleTypeId, CancellationToken ct = default)
+    public async Task<FreightQuote?> GetFreightAsync(
+        int? customerId, int? routeId, int? vehicleTypeId, DateTime asOf,
+        CancellationToken ct = default)
     {
-        if (deliveryCityId is null || vehicleTypeId is null) return null;
+        if (routeId is null or <= 0 || vehicleTypeId is null) return null;
 
         var items = await db.PriceListItems
             .AsNoTracking()
-            .Include(i => i.PriceListRevision).ThenInclude(r => r!.PriceList)
-            .Where(i => i.DeliveryCityId == deliveryCityId
-                        && i.VehicleTypeId == vehicleTypeId)
+            .Include(i => i.Route)
+            .Include(i => i.VehicleType)
+            .Include(i => i.PriceListRevision).ThenInclude(r => r!.PriceList)!.ThenInclude(p => p!.Customer)
+            .Where(i => i.RouteId == routeId && i.VehicleTypeId == vehicleTypeId)
             .ToListAsync(ct);
 
-        var today = DateTime.Today;
-        items = items.Where(i =>
-        {
-            var list = i.PriceListRevision!.PriceList!;
-            if (list.EffectiveFrom is { } from && from > today) return false;
-            if (list.EffectiveTo is { } to && to < today) return false;
-            return true;
-        }).ToList();
-
-        PriceListItem? Match(int? wantedCustomer, bool requirePickupExact)
-        {
-            var subset = items.Where(i => i.PriceListRevision!.PriceList!.CustomerId == wantedCustomer);
-            if (requirePickupExact)
-                subset = subset.Where(i => i.PickupCityId == pickupCityId);
-            else
-                subset = subset.Where(i => i.PickupCityId == null);
-            return subset.OrderByDescending(i => i.PriceListRevision!.CreatedAt).FirstOrDefault();
-        }
-
-        var hit = Match(customerId, true)
-                  ?? Match(customerId, false)
-                  ?? Match(null, true)
-                  ?? Match(null, false);
-        return hit is null ? null : (hit.UnitPrice, hit.Surcharge);
+        var hit = PriceListMatchRules.Pick(items, customerId, asOf);
+        return hit is null ? null : PriceListMatchRules.ToQuote(hit);
     }
 }

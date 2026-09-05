@@ -28,7 +28,7 @@ public partial class DepartmentWorkspaceViewModel(CatalogService catalog, ICurre
         if (!CanCreate) return;
         Selected = null;
         Editor = new Department();
-        EnterCreate("Thêm phòng ban");
+        EnterCreate("Thêm phòng ban", Editor);
     }
 
     [RelayCommand]
@@ -36,7 +36,7 @@ public partial class DepartmentWorkspaceViewModel(CatalogService catalog, ICurre
     {
         if (Selected is null) return;
         Editor = new Department { Id = Selected.Id, Code = Selected.Code, Name = Selected.Name };
-        EnterEdit($"Sửa phòng ban — {Editor.Code}");
+        EnterExisting($"Xem phòng ban — {Editor.Code}", $"Sửa phòng ban — {Editor.Code}", Editor);
     }
 
     [RelayCommand]

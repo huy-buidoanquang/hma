@@ -23,11 +23,16 @@ public class DispatchOrderService(
         int? month,
         int? year,
         int? vehicleTypeId = null,
-        int? deliveryCityId = null,
+        int? deliveryLocationId = null,
         decimal? amountFrom = null,
         decimal? amountTo = null,
         int? vehicleId = null,
         int? driverId = null,
+        int? pickupLocationId = null,
+        string? customerCode = null,
+        decimal? tonnage = null,
+        int? billingYear = null,
+        int? billingMonth = null,
         CancellationToken ct = default)
     {
         var q = db.DispatchOrders
@@ -36,17 +41,20 @@ public class DispatchOrderService(
             .Include(d => d.SenderCustomer)
             .Include(d => d.ReceiverCustomer)
             .Include(d => d.Driver)
-            .Include(d => d.Vehicle)
+            .Include(d => d.Vehicle).ThenInclude(v => v!.Partner)
             .Include(d => d.VehicleType)
-            .Include(d => d.PickupCity)
-            .Include(d => d.DeliveryCity)
+            .Include(d => d.Route)
+            .Include(d => d.Stops)
             .Include(d => d.CreatedByUser)
+            .Include(d => d.PaymentMethod)
             .Include(d => d.Documents)
             .AsQueryable();
         if (!string.IsNullOrWhiteSpace(code)) q = q.Where(d => d.Code.Contains(code));
         if (from is not null) q = q.Where(d => d.PickupAt >= from);
         if (to is not null) q = q.Where(d => d.PickupAt <= to.Value.Date.AddDays(1).AddTicks(-1));
         if (customerId is not null) q = q.Where(d => d.CustomerId == customerId || d.SenderCustomerId == customerId || d.ReceiverCustomerId == customerId);
+        if (!string.IsNullOrWhiteSpace(customerCode))
+            q = q.Where(d => d.Customer != null && d.Customer.Code.Contains(customerCode));
         if (!string.IsNullOrWhiteSpace(plate))
             q = q.Where(d => d.Vehicle != null && d.Vehicle.PlateNumber.Contains(plate));
         if (status is not null) q = q.Where(d => (int)d.Status == status);
@@ -54,11 +62,20 @@ public class DispatchOrderService(
         if (month is not null) q = q.Where(d => d.PickupAt.Month == month);
         if (year is not null) q = q.Where(d => d.PickupAt.Year == year);
         if (vehicleTypeId is not null) q = q.Where(d => d.VehicleTypeId == vehicleTypeId);
-        if (deliveryCityId is not null) q = q.Where(d => d.DeliveryCityId == deliveryCityId);
+        if (deliveryLocationId is not null)
+            q = q.Where(d => d.Stops.Any(s => s.LocationId == deliveryLocationId
+                                              && s.Sequence == d.Stops.Max(x => x.Sequence)));
+        if (pickupLocationId is not null)
+            q = q.Where(d => d.Stops.Any(s => s.LocationId == pickupLocationId && s.Sequence == 0));
         if (amountFrom is not null) q = q.Where(d => d.TotalAmount >= amountFrom);
         if (amountTo is not null) q = q.Where(d => d.TotalAmount <= amountTo);
         if (vehicleId is not null) q = q.Where(d => d.VehicleId == vehicleId);
         if (driverId is not null) q = q.Where(d => d.DriverId == driverId);
+        if (tonnage is not null)
+            q = q.Where(d => (d.Vehicle != null && d.Vehicle.Tonnage == tonnage)
+                             || (d.VehicleType != null && d.VehicleType.Tonnage == tonnage));
+        if (billingYear is not null) q = q.Where(d => d.BillingYear == billingYear);
+        if (billingMonth is not null) q = q.Where(d => d.BillingMonth == billingMonth);
         return q.OrderByDescending(d => d.PickupAt).ThenByDescending(d => d.Id).Take(500).ToListAsync(ct);
     }
 
@@ -70,46 +87,55 @@ public class DispatchOrderService(
             .Include(d => d.SenderCustomer)
             .Include(d => d.ReceiverCustomer)
             .Include(d => d.Driver)
-            .Include(d => d.Vehicle)
+            .Include(d => d.Vehicle).ThenInclude(v => v!.VehicleType)
+            .Include(d => d.Vehicle).ThenInclude(v => v!.Partner)
             .Include(d => d.VehicleType)
-            .Include(d => d.PickupCity)
-            .Include(d => d.DeliveryCity)
+            .Include(d => d.Route)
+            .Include(d => d.Stops)
             .Include(d => d.CreatedByUser)
+            .Include(d => d.PaymentMethod)
+            .Include(d => d.ConfirmedByUser)
+            .Include(d => d.Customer).ThenInclude(c => c!.AccountantEmployee)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
     public async Task<DispatchOrder> CreateNewAsync(CancellationToken ct = default)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Create);
+        var credit = await db.PaymentMethods.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Code == PaymentMethodCodes.Credit, ct);
+        var now = DateTime.Now;
         return new DispatchOrder
         {
             Code = "",
-            CreatedAt = DateTime.Now,
-            PickupAt = DateTime.Now,
+            CreatedAt = now,
+            PickupAt = now,
+            BillingYear = now.Year,
+            BillingMonth = now.Month,
+            PaymentMethodId = credit?.Id,
             CreatedByUserId = current.User?.Id,
-            Status = DispatchStatus.Issued,
-            Lines = { new DispatchOrderLine { LineNumber = 1 } }
+            Status = DispatchStatus.Issued
         };
     }
 
-    public async Task ApplyFreightAsync(DispatchOrder order, CancellationToken ct = default)
+    public async Task<FreightQuote?> ApplyFreightAsync(DispatchOrder order, CancellationToken ct = default)
     {
-        var rate = await prices.GetFreightAsync(order.CustomerId, order.PickupCityId, order.DeliveryCityId, order.VehicleTypeId, ct);
+        var rate = await prices.GetFreightAsync(
+            order.CustomerId, order.RouteId, order.VehicleTypeId, order.PickupAt, ct);
         if (rate is not null)
         {
-            order.UnitPrice = rate.Value.UnitPrice;
-            order.Surcharge = rate.Value.Surcharge;
+            order.UnitPrice = rate.UnitPrice;
+            order.Surcharge = rate.Surcharge;
         }
         order.RecalculateTotal();
         order.AmountInWords = AmountText.From(order.TotalAmount);
+        return rate;
     }
 
     public async Task SaveAsync(DispatchOrder order, CancellationToken ct = default)
     {
         PermissionGuard.RequireSave(current, ScreenKeys.DispatchOrders, order.Id == 0);
         if (order.CustomerId is null)
-            order.CustomerId = order.SenderCustomerId;
-        if (order.CustomerId is null)
-            throw new InvalidOperationException("Cần chọn khách hàng (người gửi / khách thanh toán).");
+            throw new InvalidOperationException("Cần chọn khách hàng theo mã đã tạo.");
         if (order.VehicleId is null || order.DriverId is null)
             throw new InvalidOperationException("Cần chọn xe và tài xế.");
 
@@ -136,17 +162,21 @@ public class DispatchOrderService(
             }
         }
 
+        await ApplyRouteStopsAsync(order, ct);
         DispatchOrderRules.EnsureCanSave(order);
+        await EnsureDispatchFksAsync(order, ct);
 
         if (order.Id != 0)
         {
-            var existing = await db.DispatchOrders.AsNoTracking().FirstOrDefaultAsync(d => d.Id == order.Id, ct);
+            var existing = await db.DispatchOrders.AsNoTracking()
+                .Include(d => d.Customer)
+                .FirstOrDefaultAsync(d => d.Id == order.Id, ct);
             if (existing is not null)
             {
-                if (existing.Status == DispatchStatus.Locked && current.User?.IsManager != true)
-                    throw new InvalidOperationException("Lệnh đã khóa. Chỉ quản lý mới được sửa.");
+                DispatchConfirmRules.EnsureCanSave(existing, current.User, existing.Customer);
                 if (existing.ReconciliationStatus == ReconciliationStatus.Reconciled
-                    && (existing.UnitPrice != order.UnitPrice || existing.Surcharge != order.Surcharge || existing.ExtraCost != order.ExtraCost))
+                    && (existing.UnitPrice != order.UnitPrice || existing.Surcharge != order.Surcharge || existing.ExtraCost != order.ExtraCost)
+                    && current.User?.IsManager != true && !DispatchConfirmRules.IsPic(current.User, existing.Customer))
                     throw new InvalidOperationException("Không được đổi cước sau khi đã đối soát.");
             }
         }
@@ -167,16 +197,20 @@ public class DispatchOrderService(
 
         var incomingLines = order.Lines.ToList();
         order.Lines.Clear();
+        var incomingStops = order.Stops.ToList();
+        order.Stops.Clear();
 
         var before = order.Id == 0 ? null : await db.DispatchOrders.AsNoTracking()
             .Where(d => d.Id == order.Id)
             .Select(d => new
             {
                 d.UnitPrice, d.Surcharge, d.ExtraCost, d.TotalAmount,
-                d.VehicleId, d.DriverId, d.PickupCityId, d.DeliveryCityId,
+                d.VehicleId, d.DriverId, d.RouteId,
                 d.PickupAddress, d.DeliveryAddress, d.Status
             })
             .FirstOrDefaultAsync(ct);
+
+        DetachReferences(order);
 
         if (order.Id == 0) db.Add(order);
         else
@@ -185,6 +219,19 @@ public class DispatchOrderService(
             db.ApplyOriginalRowVersion(order, originalVersion);
         }
         await ConcurrencyConflict.SaveAsync(db, ct);
+
+        var oldStops = await db.DispatchOrderStops.Where(s => s.DispatchOrderId == order.Id).ToListAsync(ct);
+        foreach (var stop in oldStops) db.Remove(stop);
+        foreach (var stop in incomingStops)
+        {
+            db.Add(new DispatchOrderStop
+            {
+                DispatchOrderId = order.Id,
+                Sequence = stop.Sequence,
+                LocationId = stop.LocationId,
+                NameSnapshot = stop.NameSnapshot
+            });
+        }
 
         var oldLines = await db.DispatchOrderLines.Where(l => l.DispatchOrderId == order.Id).ToListAsync(ct);
         foreach (var line in oldLines) db.Remove(line);
@@ -227,13 +274,13 @@ public class DispatchOrderService(
                     $"Xe {before.VehicleId}→{order.VehicleId}, tài xế {before.DriverId}→{order.DriverId}",
                     new { before.VehicleId, before.DriverId }, new { order.VehicleId, order.DriverId }, ct);
             }
-            if (before.PickupCityId != order.PickupCityId || before.DeliveryCityId != order.DeliveryCityId
+            if (before.RouteId != order.RouteId
                 || before.PickupAddress != order.PickupAddress || before.DeliveryAddress != order.DeliveryAddress)
             {
                 await log.RecordAsync("DispatchOrder", order.Id, "UpdateRoute",
                     "Đổi tuyến / địa điểm lấy-giao",
-                    new { before.PickupCityId, before.DeliveryCityId, before.PickupAddress, before.DeliveryAddress },
-                    new { order.PickupCityId, order.DeliveryCityId, order.PickupAddress, order.DeliveryAddress }, ct);
+                    new { before.RouteId, before.PickupAddress, before.DeliveryAddress },
+                    new { order.RouteId, order.PickupAddress, order.DeliveryAddress }, ct);
             }
             if (before.Status != order.Status)
             {
@@ -259,25 +306,50 @@ public class DispatchOrderService(
         await log.RecordAsync("DispatchOrder", id, "Delete", $"Ẩn lệnh {entity.Code}", null, null, ct);
     }
 
-    public async Task LockAsync(int id, CancellationToken ct = default)
+    public async Task LockAsync(int id, string? arNumber = null, CancellationToken ct = default)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
-        if (current.User?.IsManager != true)
-            throw new InvalidOperationException("Chỉ quản lý được khóa lệnh.");
-        var entity = await db.FindAsync<DispatchOrder>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
+        var entity = await db.DispatchOrders
+            .Include(d => d.Customer)
+            .FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
+        DispatchConfirmRules.EnsureCanConfirm(current.User, entity.Customer);
         entity.Status = DispatchStatus.Locked;
+        entity.ConfirmedByUserId = current.User?.Id;
+        entity.ConfirmedAt = DateTime.Now;
+        if (!string.IsNullOrWhiteSpace(arNumber))
+            entity.ArNumber = arNumber.Trim();
         db.Update(entity);
         db.ApplyOriginalRowVersion(entity, entity.RowVersion);
         await ConcurrencyConflict.SaveAsync(db, ct);
-        await log.RecordAsync("DispatchOrder", id, "Lock", "Khóa lệnh", null, null, ct);
+        var ar = string.IsNullOrWhiteSpace(entity.ArNumber) ? "" : $" AR {entity.ArNumber}";
+        await log.RecordAsync("DispatchOrder", id, "Lock", $"Chốt lệnh{ar}", null, entity.ArNumber, ct);
+    }
+
+    public async Task UnlockAsync(int id, CancellationToken ct = default)
+    {
+        PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
+        var entity = await db.DispatchOrders
+            .Include(d => d.Customer)
+            .FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
+        DispatchConfirmRules.EnsureCanUnlock(current.User, entity.Customer);
+        entity.Status = DispatchStatus.Issued;
+        entity.ConfirmedByUserId = null;
+        entity.ConfirmedAt = null;
+        db.Update(entity);
+        db.ApplyOriginalRowVersion(entity, entity.RowVersion);
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        await log.RecordAsync("DispatchOrder", id, "Unlock", "Bỏ chốt lệnh", null, null, ct);
     }
 
     public async Task SetStatusAsync(int id, DispatchStatus status, CancellationToken ct = default)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
         var entity = await db.FindAsync<DispatchOrder>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
-        if (entity.Status == DispatchStatus.Locked && current.User?.IsManager != true)
-            throw new InvalidOperationException("Lệnh đã khóa.");
+        if (entity.Status == DispatchStatus.Locked)
+        {
+            var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == entity.CustomerId, ct);
+            DispatchConfirmRules.EnsureCanSave(entity, current.User, customer);
+        }
         var previous = entity.Status;
         entity.Status = status;
         db.Update(entity);
@@ -293,8 +365,6 @@ public class DispatchOrderService(
         var order = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
         if (order.Status != DispatchStatus.Completed)
             throw new InvalidOperationException("Chỉ đối soát lệnh đã hoàn thành chuyến.");
-        if (!order.Documents.Any(d => d.Kind == DispatchDocumentKind.DeliveryNote))
-            throw new InvalidOperationException("Thiếu biên bản giao hàng — không đối soát được.");
         if (order.ReconciliationStatus == ReconciliationStatus.Reconciled)
             return;
 
@@ -346,7 +416,154 @@ public class DispatchOrderService(
             UpdatedAt = DateTime.Now
         };
         db.Add(customer);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
         return customer;
+    }
+
+    public async Task ShiftBillingPeriodAsync(IReadOnlyList<int> ids, CancellationToken ct = default)
+    {
+        RequireDispatchEdit();
+        var skipped = 0;
+        var moved = 0;
+        foreach (var id in ids.Distinct())
+        {
+            var entity = await db.DispatchOrders
+                .Include(d => d.Customer)
+                .FirstOrDefaultAsync(d => d.Id == id, ct)
+                ?? throw new InvalidOperationException($"Không tìm thấy lệnh #{id}.");
+            if (entity.Status == DispatchStatus.Locked)
+            {
+                skipped++;
+                continue;
+            }
+            BillingPeriodRules.ApplyDefault(entity);
+            var next = BillingPeriodRules.Next(entity.BillingYear, entity.BillingMonth);
+            entity.BillingYear = next.Year;
+            entity.BillingMonth = next.Month;
+            db.Update(entity);
+            db.ApplyOriginalRowVersion(entity, entity.RowVersion);
+            await ConcurrencyConflict.SaveAsync(db, ct);
+            await log.RecordAsync("DispatchOrder", id, "ShiftBilling",
+                $"Kỳ kế toán → {entity.BillingMonth:00}/{entity.BillingYear}", null, null, ct);
+            moved++;
+        }
+        if (moved == 0 && skipped > 0)
+            throw new InvalidOperationException("Không chuyển được: các lệnh đã chốt.");
+    }
+
+    public async Task SaveGridRowAsync(
+        int id,
+        decimal unitPrice,
+        decimal extraCost,
+        string? notes,
+        int billingYear,
+        int billingMonth,
+        int? routeId,
+        int? vehicleId,
+        CancellationToken ct = default)
+    {
+        RequireDispatchEdit();
+        var entity = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
+        DispatchConfirmRules.EnsureCanSave(entity, current.User, entity.Customer);
+        entity.UnitPrice = unitPrice;
+        entity.ExtraCost = extraCost;
+        entity.Notes = notes;
+        entity.BillingYear = billingYear;
+        entity.BillingMonth = billingMonth;
+        if (routeId is not null) entity.RouteId = routeId;
+        if (vehicleId is not null)
+        {
+            entity.VehicleId = vehicleId;
+            var vehicle = await db.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vehicleId, ct);
+            entity.VehicleTypeId = vehicle?.VehicleTypeId;
+        }
+        await SaveAsync(entity, ct);
+    }
+
+    private void RequireDispatchEdit()
+    {
+        if (current.Can(ScreenKeys.DispatchGridEdit, PermissionAction.Update)
+            || current.Can(ScreenKeys.DispatchOrders, PermissionAction.Update))
+            return;
+        throw new InvalidOperationException("Bạn không có quyền thực hiện thao tác này.");
+    }
+
+    private async Task EnsureDispatchFksAsync(DispatchOrder order, CancellationToken ct)
+    {
+        await EnsureExistsAsync(db.Customers, order.CustomerId, "Khách hàng không tồn tại.", ct);
+        await EnsureExistsAsync(db.Customers, order.SenderCustomerId, "Khách gửi không tồn tại.", ct);
+        await EnsureExistsAsync(db.Customers, order.ReceiverCustomerId, "Khách nhận không tồn tại.", ct);
+        await EnsureExistsAsync(db.Routes, order.RouteId, "Tuyến không tồn tại.", ct);
+        await EnsureExistsAsync(db.Vehicles, order.VehicleId, "Xe không tồn tại.", ct);
+        await EnsureExistsAsync(db.Drivers, order.DriverId, "Tài xế không tồn tại.", ct);
+        await EnsureExistsAsync(db.VehicleTypes, order.VehicleTypeId, "Loại xe không tồn tại.", ct);
+        await EnsureExistsAsync(db.PaymentMethods, order.PaymentMethodId, "Hình thức thanh toán không tồn tại.", ct);
+        await EnsureExistsAsync(db.Employees, order.EmployeeId, "Nhân viên không tồn tại.", ct);
+    }
+
+    private static async Task EnsureExistsAsync<T>(IQueryable<T> set, int? id, string message, CancellationToken ct)
+        where T : Entity
+    {
+        if (id is null) return;
+        if (!await set.AnyAsync(x => x.Id == id, ct))
+            throw new InvalidOperationException(message);
+    }
+
+    private static void DetachReferences(DispatchOrder order)
+    {
+        var customerId = order.CustomerId;
+        var senderId = order.SenderCustomerId;
+        var receiverId = order.ReceiverCustomerId;
+        var routeId = order.RouteId;
+        var vehicleId = order.VehicleId;
+        var driverId = order.DriverId;
+        var vehicleTypeId = order.VehicleTypeId;
+        var employeeId = order.EmployeeId;
+        var paymentMethodId = order.PaymentMethodId;
+        var createdBy = order.CreatedByUserId;
+        var confirmedBy = order.ConfirmedByUserId;
+        var reconciledBy = order.ReconciledByUserId;
+
+        order.Customer = null;
+        order.SenderCustomer = null;
+        order.ReceiverCustomer = null;
+        order.Route = null;
+        order.Vehicle = null;
+        order.Driver = null;
+        order.VehicleType = null;
+        order.Employee = null;
+        order.PaymentMethod = null;
+        order.CreatedByUser = null;
+        order.ConfirmedByUser = null;
+        order.ReconciledByUser = null;
+
+        order.CustomerId = customerId;
+        order.SenderCustomerId = senderId;
+        order.ReceiverCustomerId = receiverId;
+        order.RouteId = routeId;
+        order.VehicleId = vehicleId;
+        order.DriverId = driverId;
+        order.VehicleTypeId = vehicleTypeId;
+        order.EmployeeId = employeeId;
+        order.PaymentMethodId = paymentMethodId;
+        order.CreatedByUserId = createdBy;
+        order.ConfirmedByUserId = confirmedBy;
+        order.ReconciledByUserId = reconciledBy;
+    }
+
+    private async Task ApplyRouteStopsAsync(DispatchOrder order, CancellationToken ct)
+    {
+        if (order.RouteId is not int routeId || routeId <= 0)
+            return;
+        var route = await db.Routes.AsNoTracking()
+            .Include(r => r.Stops).ThenInclude(s => s.Location)
+            .FirstOrDefaultAsync(r => r.Id == routeId, ct);
+        if (route is null)
+            return;
+        var stops = route.Stops
+            .OrderBy(s => s.Sequence)
+            .Select(s => (s.LocationId, s.Location?.Name ?? ""))
+            .ToList();
+        order.ReplaceStops(stops);
     }
 }

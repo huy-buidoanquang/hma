@@ -29,18 +29,32 @@ BEGIN
         (N'drivers', N'Tài xế'),
         (N'vehicles', N'Xe'),
         (N'employees', N'Nhân viên'),
-        (N'cities', N'Thành phố / hành trình'),
+        (N'cities', N'Thành phố'),
+        (N'locations', N'Điểm'),
+        (N'routes', N'Tuyến'),
         (N'departments', N'Phòng ban'),
         (N'job-titles', N'Chức vụ'),
         (N'price-lists', N'Bảng giá'),
         (N'dispatch-orders', N'Lệnh điều xe'),
+        (N'dispatch-grid-edit', N'Sửa lệnh theo khách'),
         (N'reconcile', N'Đối soát'),
         (N'statements', N'Bảng kê tháng'),
         (N'lookup', N'Tra cứu chuyến'),
         (N'dashboard', N'Dashboard'),
         (N'reports', N'Báo cáo'),
         (N'users', N'Người dùng'),
-        (N'settings', N'Tham số hệ thống');
+        (N'settings', N'Cấu hình');
+END
+ELSE
+BEGIN
+    UPDATE dbo.AppScreen SET Name = N'Cấu hình' WHERE [Key] = N'settings' AND Name <> N'Cấu hình';
+    UPDATE dbo.AppScreen SET Name = N'Thành phố' WHERE [Key] = N'cities' AND Name <> N'Thành phố';
+    IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen WHERE [Key] = N'locations')
+        INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'locations', N'Điểm');
+    IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen WHERE [Key] = N'routes')
+        INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'routes', N'Tuyến');
+    IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen WHERE [Key] = N'dispatch-grid-edit')
+        INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'dispatch-grid-edit', N'Sửa lệnh theo khách');
 END
 
 IF NOT EXISTS (SELECT 1 FROM dbo.DocumentSequence)

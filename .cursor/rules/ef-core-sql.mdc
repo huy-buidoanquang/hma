@@ -11,5 +11,7 @@ alwaysApply: false
 - Do not reintroduce legacy names (`nil`, `kh_ud`, `sopc_ud`) as production identifiers. Keep `LegacyId` only for ETL.
 - Configure mappings in `OnModelCreating` (or dedicated `IEntityTypeConfiguration<T>` in its own file). Do not use Plexis/`ui_engine_*` tables.
 - `Include` navigations the use case needs; no lazy loading. Paginate or `Take` list queries.
-- Schema changes: update `database/001_schema.sql` (and ETL if columns move), then the entity + DbContext together.
+- Schema changes are **code-first**: entity + `OnModelCreating`, then `dotnet ef migrations add <Name> --project src/Hma.Infrastructure.SqlServer`. App startup runs `HmaDatabaseInitializer.MigrateAndSeedAsync` (`Database.Migrate`). Do not add ad-hoc `ALTER` in `PatchSchema` / `EnsureCreated`. Keep `database/001_schema.sql` aligned for ETL/cutover.
+- New migration command (repo root, after `dotnet tool restore`):
+  `dotnet ef migrations add <Name> --project src/Hma.Infrastructure.SqlServer --output-dir Migrations`
 - Auth: hash passwords (PBKDF2). Never persist plaintext. Seed and migrations must not copy `legacy` `[user].password` as-is into production login.

@@ -34,7 +34,7 @@ public class DispatchDocumentService(IHmaDbContext db, ICurrentUser current, IFi
             UploadedByUserId = current.User?.Id
         };
         db.Add(doc);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
         return doc;
     }
 
@@ -43,7 +43,7 @@ public class DispatchDocumentService(IHmaDbContext db, ICurrentUser current, IFi
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Delete);
         var entity = await db.FindAsync<DispatchDocument>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy chứng từ.");
         db.Remove(entity);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
         await files.DeleteAsync(entity.StoredPath, ct);
     }
 

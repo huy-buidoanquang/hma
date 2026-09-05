@@ -1,5 +1,8 @@
+using Hma.Application.Abstractions;
 using Hma.Application.Services;
 using Hma.Domain.Entities;
+using Hma.Domain.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Infrastructure.SqlServer;
 
@@ -30,18 +33,21 @@ public static class DatabaseSeeder
             ("drivers", "Tài xế"),
             ("vehicles", "Xe"),
             ("employees", "Nhân viên"),
-            ("cities", "Thành phố / hành trình"),
+            ("cities", "Thành phố"),
+            ("locations", "Điểm"),
+            ("routes", "Tuyến"),
             ("departments", "Phòng ban"),
             ("job-titles", "Chức vụ"),
             ("price-lists", "Bảng giá"),
             ("dispatch-orders", "Lệnh điều xe"),
+            ("dispatch-grid-edit", "Sửa lệnh theo khách"),
             ("reconcile", "Đối soát"),
             ("statements", "Bảng kê tháng"),
             ("lookup", "Tra cứu chuyến"),
             ("dashboard", "Dashboard"),
             ("reports", "Báo cáo"),
             ("users", "Người dùng"),
-            ("settings", "Tham số hệ thống")
+            ("settings", "Cấu hình")
         };
         var existingKeys = db.Screens.Select(s => s.Key).ToList();
         foreach (var (key, name) in screens)
@@ -50,6 +56,13 @@ public static class DatabaseSeeder
                 db.Screens.Add(new AppScreen { Key = key, Name = name });
         }
         await db.SaveChangesAsync(ct);
+
+        var settingsScreen = db.Screens.FirstOrDefault(s => s.Key == ScreenKeys.Settings);
+        if (settingsScreen is not null && settingsScreen.Name != "Cấu hình")
+            settingsScreen.Name = "Cấu hình";
+        var cityScreen = db.Screens.FirstOrDefault(s => s.Key == ScreenKeys.Cities);
+        if (cityScreen is not null && cityScreen.Name != "Thành phố")
+            cityScreen.Name = "Thành phố";
 
         if (!await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(db.Sequences, ct))
         {
@@ -76,6 +89,14 @@ public static class DatabaseSeeder
             {
                 Name = "Công ty TNHH dịch vụ vận tải và thương mại Hà Minh Anh"
             });
+        }
+
+        if (!await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(db.PaymentMethods, ct))
+        {
+            db.PaymentMethods.AddRange(
+                new PaymentMethod { Code = PaymentMethodCodes.Credit, Name = "Trả sau" },
+                new PaymentMethod { Code = PaymentMethodCodes.DriverCollect, Name = "Lái xe thu" });
+            await db.SaveChangesAsync(ct);
         }
 
         await db.SaveChangesAsync(ct);
@@ -108,8 +129,8 @@ public static class DatabaseSeeder
             db.Users.Add(accountant);
             await db.SaveChangesAsync(ct);
 
-            var keys = new[] { "customers", "partners", "drivers", "vehicles", "employees", "cities", "departments", "job-titles",
-                "price-lists", "dispatch-orders", "reconcile", "statements", "lookup", "dashboard", "reports" };
+            var keys = new[] { "customers", "partners", "drivers", "vehicles", "employees", "cities", "locations", "routes", "departments", "job-titles",
+                "price-lists", "dispatch-orders", "dispatch-grid-edit", "reconcile", "statements", "lookup", "dashboard", "reports" };
             var granted = db.Screens.Where(s => keys.Contains(s.Key)).ToList();
             foreach (var screen in granted)
             {
@@ -127,6 +148,59 @@ public static class DatabaseSeeder
             await db.SaveChangesAsync(ct);
         }
 
+        var accountantUser = db.Users.FirstOrDefault(u => u.UserName == "ketoan");
+        await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.DispatchGridEdit, ct);
+        await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.Locations, ct);
+        await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.Routes, ct);
+
         await DemoDataSeeder.SeedIfEmptyAsync(db, ct);
+        await EnsureVehicleAliasesAsync(db, ct);
+    }
+
+    private static async Task GrantAccountantScreenAsync(
+        HmaDbContext db, AppUser? accountant, string screenKey, CancellationToken ct)
+    {
+        if (accountant is null)
+            return;
+        var screen = db.Screens.FirstOrDefault(s => s.Key == screenKey);
+        if (screen is null || db.UserPermissions.Any(p => p.AppUserId == accountant.Id && p.AppScreenId == screen.Id))
+            return;
+        db.UserPermissions.Add(new UserPermission
+        {
+            AppUserId = accountant.Id,
+            AppScreenId = screen.Id,
+            CanView = true,
+            CanCreate = true,
+            CanUpdate = true,
+            CanDelete = false,
+            CanPrint = true
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureVehicleAliasesAsync(HmaDbContext db, CancellationToken ct)
+    {
+        var vehicles = await db.Vehicles.AsNoTracking().ToListAsync(ct);
+        if (vehicles.Count == 0)
+            return;
+        var existing = await db.VehicleAliases.AsNoTracking().Select(a => a.Alias).ToListAsync(ct);
+        var added = false;
+        foreach (var vehicle in vehicles)
+        {
+            if (!VehiclePlateRules.TryCanonicalize(vehicle.PlateNumber, out var canonical))
+                continue;
+            foreach (var form in VehiclePlateRules.DictionaryForms(canonical)
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (existing.Any(a => AliasText.EqualsNormalized(a, form)))
+                    continue;
+                db.VehicleAliases.Add(new VehicleAlias { Alias = form, VehicleId = vehicle.Id });
+                existing.Add(form);
+                added = true;
+            }
+        }
+
+        if (added)
+            await db.SaveChangesAsync(ct);
     }
 }

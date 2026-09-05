@@ -7,7 +7,6 @@
             <TextBlock DockPanel.Dock="Top" Text="Nhân viên" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
             </WrapPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
@@ -33,7 +32,7 @@
                 <Button Content="Xóa" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteCommand}"
                         IsEnabled="{Binding CanDelete}" Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
-            <Border Style="{StaticResource EditorCard}">
+            <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
                 <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True">
                     <StackPanel>
                         <Grid Style="{StaticResource FormRow}">

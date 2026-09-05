@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<CatalogService>();
         services.AddScoped<PriceListService>();
         services.AddScoped<DispatchOrderService>();
+        services.AddScoped<DispatchImportService>();
         services.AddScoped<DispatchDocumentService>();
         services.AddScoped<FreightStatementService>();
         services.AddScoped<DashboardQueryService>();
@@ -27,6 +28,11 @@ public static class DependencyInjection
         services.AddScoped<ReportQueryService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<CompanyService>();
+        services.AddScoped<LocationService>();
+        services.AddScoped<RouteService>();
+        services.AddScoped<LocationAliasService>();
+        services.AddScoped<RouteAliasService>();
+        services.AddScoped<CustomerAliasService>();
         return services;
     }
 }

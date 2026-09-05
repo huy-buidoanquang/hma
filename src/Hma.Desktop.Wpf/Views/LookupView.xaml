@@ -1,7 +1,8 @@
 <UserControl x:Class="Hma.Desktop.Wpf.Views.LookupView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors">
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors"
+             xmlns:controls="clr-namespace:Hma.Desktop.Wpf.Controls">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" Text="Tra cứu chuyến" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
         <StackPanel DockPanel.Dock="Top">
@@ -13,7 +14,6 @@
             </WrapPanel>
             <WrapPanel Style="{StaticResource ActionBar}">
                 <Button Content="Tìm" Command="{Binding SearchCommand}"/>
-                <Button Content="Mở lệnh" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
             </WrapPanel>
         </StackPanel>
         <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
@@ -30,7 +30,20 @@
                 <DataGridTextColumn Header="Biển" Binding="{Binding Vehicle.PlateNumber}" Width="100" ElementStyle="{StaticResource TabularCell}"/>
                 <DataGridTextColumn Header="Tài xế" Binding="{Binding Driver.Name}" Width="130"/>
                 <DataGridTextColumn Header="Tổng" Binding="{Binding TotalAmount, Converter={StaticResource VndMoney}}" Width="100" ElementStyle="{StaticResource TabularMoneyCell}"/>
-                <DataGridTextColumn Header="Đối soát" Binding="{Binding ReconciliationStatus}" Width="100"/>
+                <DataGridTemplateColumn Header="Trạng thái" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <controls:StatusBadge OrderStatus="{Binding Status}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Đối soát" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <controls:StatusBadge ReconStatus="{Binding ReconciliationStatus}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
     </DockPanel>

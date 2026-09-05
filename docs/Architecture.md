@@ -133,7 +133,10 @@ Mọi entity nghiệp vụ kế thừa `Entity` (`Id`, `LegacyId`), trừ `Chang
 
 | Entity                   | Vai trò                                                                 |
 | ------------------------ | ----------------------------------------------------------------------- |
-| `City`                   | Điểm lấy / giao                                                         |
+| `City`                   | Tỉnh/thành — địa chỉ khách (`Customer.CityId`)                         |
+| `Location`               | Điểm lấy / giao / qua                                                  |
+| `Route` + `RouteStop`    | Tuyến = ≥2 điểm có thứ tự; `Fingerprint` unique                        |
+| `LocationAlias` / `RouteAlias` | Từ điển Excel: một khóa một đích                                  |
 | `Department`, `JobTitle` | Combo nhân viên văn phòng                                               |
 | `Employee`               | Nhân viên / kế toán phụ trách khách                                     |
 | `Partner`                | Công ty xe. Seed bắt buộc `UNASSIGNED`                                  |
@@ -150,21 +153,21 @@ Tách so với legacy: `nhanvien` có biển số → `Driver` + `Vehicle`, gán
 ### 5.2 Bảng giá
 
 ```
-PriceList (optional CustomerId, EffectiveFrom/To, IsLocked)
+PriceList (optional CustomerId, EffectiveFrom/To, HasPriceFluctuation, IsLocked)
   └── PriceListRevision
-        └── PriceListItem (PickupCity nullable, DeliveryCity, VehicleType, UnitPrice, Surcharge)
+        └── PriceListItem (Route, VehicleType, UnitPrice, Surcharge)
 ```
 
-Bảng giá **chung** (`CustomerId` null) hoặc **theo khách**. Khóa bảng giá: `IsLocked` + `LockedAt` + `LockReason` (UI; quản lý).
+Bảng giá **chung** (`CustomerId` null) hoặc **theo khách**. Cờ `HasPriceFluctuation` trên cả bảng. Khóa: `IsLocked` + `LockedAt` + `LockReason`.
 
-Tra cước `PriceListService.GetFreightAsync` — ưu tiên, chỉ item còn hiệu lực theo ngày hôm nay, revision mới nhất:
+Tra cước `PriceListService.GetFreightAsync(customer, routeId, vehicleType, asOf)` — item còn hiệu lực, revision mới nhất trong cùng bậc:
 
-1. Đúng khách + đúng điểm lấy
-2. Đúng khách + điểm lấy null
-3. Bảng chung + đúng điểm lấy
-4. Bảng chung + điểm lấy null
+1. Đúng khách + không biến động
+2. Đúng khách + có biến động
+3. Bảng chung (ưu tiên không biến động rồi revision mới)
+4. Không khớp → cước tay
 
-Cần `DeliveryCityId` và `VehicleTypeId`; thiếu thì không auto.
+Cần `RouteId` và `VehicleTypeId`. Khớp cả tuyến (A→B→C), không cộng từng chặng.
 
 ### 5.3 Lệnh điều xe (trung tâm)
 
@@ -172,7 +175,7 @@ Cần `DeliveryCityId` và `VehicleTypeId`; thiếu thì không auto.
 
 - **Khách thanh toán** `CustomerId` (mặc định = người gửi).
 - **Người gửi / người nhận:** FK + snapshot tên, SĐT, địa chỉ, MST (ổn định khi in/bảng kê dù danh mục đổi).
-- **Tuyến:** `PickupAt`, địa chỉ, `PickupCityId`, `DeliveryCityId`.
+- **Tuyến:** `PickupAt`, địa chỉ, `RouteId` + snapshot `DispatchOrderStop`.
 - **Xe / tài xế / loại xe.**
 - **Cước:** `UnitPrice + Surcharge + ExtraCost = TotalAmount`; `AmountInWords`.
 - **Dòng hàng** `DispatchOrderLine` (tên hàng, kiện, hành trình, km).
@@ -284,11 +287,13 @@ Lịch sử chuyến cũng có trên màn tài xế / xe (`CatalogService.TripsB
 | `ChangeLogService`                          | Ghi/đọc audit                                                 |
 | `DocumentNumberService`                     | Tăng `LastValue`                                              |
 | `SettingsService`                           | VAT, đường chứng từ, số đếm LDX/bảng kê                       |
-| `CompanyService`                            | Header in                                                     |
+| `CompanyService`                            | Header in; Save thông tin công ty (quyền `settings`)          |
+| `LocationService` / `RouteService` | Catalog điểm / tuyến |
+| `LocationAliasService` / `RouteAliasService` / `CustomerAliasService` | Từ điển điểm / tuyến / khách trong hub Cấu hình |
 | `CashDocumentService` / `VatInvoiceService` | Có code; **không** gắn nav Phase 1                            |
 
 
-`IHmaDbContext`: `IQueryable<T>` cho từng DbSet, `Add`/`Update`/`Remove`/`FindAsync`/`SaveChangesAsync`, `EnsureCreatedAndSeededAsync`.
+`IHmaDbContext`: `IQueryable<T>` cho từng DbSet, `Add`/`Update`/`Remove`/`FindAsync`/`SaveChangesAsync`. Schema: `HmaDatabaseInitializer.MigrateAndSeedAsync` (Infrastructure).
 
 Lỗi nghiệp vụ: `InvalidOperationException` với câu tiếng Việt. Không dùng exception làm luồng bình thường.
 
@@ -304,7 +309,7 @@ Lỗi nghiệp vụ: `InvalidOperationException` với câu tiếng Việt. Khô
 
 Chi tiết cột, FK, index, enum, snapshot, và khác biệt SQL/EF: [`Database.md`](Database.md).
 
-Nguồn sự thật SQL: [`database/001_schema.sql`](../database/001_schema.sql) (database `Hma`). Seed SQL: [`002_seed.sql`](../database/002_seed.sql). [`003_brief_schema.sql`](../database/003_brief_schema.sql) chỉ cảnh báo schema cũ; **không** migrate tại chỗ.
+Nguồn sự thật schema: code-first — entity + `OnModelCreating` + `Migrations/`. [`database/001_schema.sql`](../database/001_schema.sql) cho cutover/ETL. Seed SQL: [`002_seed.sql`](../database/002_seed.sql). [`003_brief_schema.sql`](../database/003_brief_schema.sql) chỉ cảnh báo schema cũ; **không** migrate tại chỗ.
 
 EF: `HmaDbContext` map 1–1 tên bảng PascalCase, precision tiền, unique index (Partner.Code, Driver.Code, Vehicle.PlateNumber, UserPermission, FreightStatement kỳ), `DeleteBehavior.Restrict` trên FK nhiều nhánh Customer/City/User của lệnh. `RowVersion` (`IsRowVersion`) trên lệnh, bảng giá, bảng kê, dãy số. `IHmaDbContext.ApplyOriginalRowVersion` gắn token lúc mở form khi `Update` từ ViewModel.
 
@@ -348,7 +353,7 @@ Mô hình port từ `user_form` / `Return_PQ`:
 
 Screen keys (`ScreenKeys` / `AppScreen.Key`) phải trùng nav:
 
-`dashboard`, `customers`, `partners`, `drivers`, `vehicles`, `employees`, `departments`, `job-titles`, `cities`, `price-lists`, `dispatch-orders`, `lookup`, `reconcile`, `statements`, `reports`, `settings`, `users`.
+`dashboard`, `customers`, `partners`, `drivers`, `vehicles`, `employees`, `departments`, `job-titles`, `cities`, `locations`, `routes`, `price-lists`, `dispatch-orders`, `dispatch-grid-edit`, `lookup`, `reconcile`, `statements`, `reports`, `settings`, `users`.
 
 Đóng băng (có view/VM, **không** thêm vào `MainViewModel.Items`): phiếu thu, phiếu chi, HĐ GTGT.
 
@@ -366,7 +371,7 @@ Screen keys (`ScreenKeys` / `AppScreen.Key`) phải trùng nav:
 
 1. `Host` + `appsettings.json`
 2. `AddHmaApplication` / `AddHmaInfrastructure` / `AddHmaReporting`
-3. `EnsureCreatedAndSeededAsync`
+3. `HmaDatabaseInitializer.MigrateAndSeedAsync`
 4. `LoginWindow` (scope riêng)
 5. Scope phiên → `MainWindow`
 6. `ICurrentUser` **singleton** sống suốt process sau login
@@ -489,13 +494,16 @@ Thứ tự script:
 | `departments`     | DepartmentView                  | DepartmentWorkspaceViewModel | CatalogService                                |
 | `job-titles`      | JobTitleView                    | JobTitleWorkspaceViewModel   | CatalogService                                |
 | `cities`          | CityView                        | CityWorkspaceViewModel       | CatalogService                                |
+| `locations`       | LocationView                    | LocationWorkspaceViewModel   | LocationService                               |
+| `routes`          | RouteView                       | RouteWorkspaceViewModel      | RouteService                                  |
 | `price-lists`     | PriceListView                   | PriceListWorkspaceViewModel  | PriceListService                              |
 | `dispatch-orders` | DispatchView                    | DispatchWorkspaceViewModel   | DispatchOrderService, DispatchDocumentService |
+| `dispatch-grid-edit` | DispatchGridEditView         | DispatchGridEditWorkspaceViewModel | DispatchOrderService                    |
 | `lookup`          | LookupView                      | LookupWorkspaceViewModel     | DispatchOrderService                          |
 | `reconcile`       | ReconcileView                   | ReconcileWorkspaceViewModel  | DispatchOrderService, ChangeLogService        |
 | `statements`      | StatementView                   | StatementWorkspaceViewModel  | FreightStatementService                       |
 | `reports`         | ReportView                      | ReportWorkspaceViewModel     | ReportQueryService, DashboardQueryService     |
-| `settings`        | SettingsView                    | SettingsWorkspaceViewModel   | SettingsService                               |
+| `settings`        | SettingsView                    | SettingsWorkspaceViewModel   | SettingsService, CompanyService, LocationAliasService, RouteAliasService, CustomerAliasService |
 | `users`           | UserView                        | UserWorkspaceViewModel       | UserAdminService                              |
 | *(đóng băng)*     | CashReceipt/Payment/InvoiceView | *WorkspaceViewModel          | CashDocumentService, VatInvoiceService        |
 

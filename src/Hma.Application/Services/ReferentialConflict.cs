@@ -30,5 +30,9 @@ public static class ReferentialConflict
         {
             throw new InvalidOperationException(Message, ex);
         }
+        catch (Exception ex)
+        {
+            throw PersistenceGuard.Translate(ex);
+        }
     }
 }

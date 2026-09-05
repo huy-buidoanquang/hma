@@ -5,6 +5,12 @@ namespace Hma.Application.Abstractions;
 public interface IHmaDbContext
 {
     IQueryable<City> Cities { get; }
+    IQueryable<Location> Locations { get; }
+    IQueryable<Route> Routes { get; }
+    IQueryable<RouteStop> RouteStops { get; }
+    IQueryable<LocationAlias> LocationAliases { get; }
+    IQueryable<RouteAlias> RouteAliases { get; }
+    IQueryable<CustomerAlias> CustomerAliases { get; }
     IQueryable<Department> Departments { get; }
     IQueryable<JobTitle> JobTitles { get; }
     IQueryable<VehicleType> VehicleTypes { get; }
@@ -13,11 +19,13 @@ public interface IHmaDbContext
     IQueryable<Partner> Partners { get; }
     IQueryable<Driver> Drivers { get; }
     IQueryable<Vehicle> Vehicles { get; }
+    IQueryable<VehicleAlias> VehicleAliases { get; }
     IQueryable<Customer> Customers { get; }
     IQueryable<PriceList> PriceLists { get; }
     IQueryable<PriceListRevision> PriceListRevisions { get; }
     IQueryable<PriceListItem> PriceListItems { get; }
     IQueryable<DispatchOrder> DispatchOrders { get; }
+    IQueryable<DispatchOrderStop> DispatchOrderStops { get; }
     IQueryable<DispatchOrderLine> DispatchOrderLines { get; }
     IQueryable<DispatchDocument> DispatchDocuments { get; }
     IQueryable<FreightStatement> FreightStatements { get; }
@@ -41,5 +49,4 @@ public interface IHmaDbContext
     Task ReloadAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class;
     Task<T?> FindAsync<T>(int id, CancellationToken cancellationToken = default) where T : class;
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-    Task EnsureCreatedAndSeededAsync(CancellationToken cancellationToken = default);
 }

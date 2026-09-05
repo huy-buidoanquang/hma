@@ -9,6 +9,7 @@ public class Partner : Entity
     public string? ContactName { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }
+    public decimal OperatingFeePercent { get; set; }
     public ICollection<Driver> Drivers { get; set; } = new List<Driver>();
     public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 }

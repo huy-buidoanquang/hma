@@ -6,4 +6,5 @@
   <Project Path="Hma.Desktop.Wpf/Hma.Desktop.Wpf.csproj" />
   <Project Path="Hma.Domain.Tests/Hma.Domain.Tests.csproj" />
   <Project Path="Hma.Application.Tests/Hma.Application.Tests.csproj" />
+  <Project Path="Hma.Reporting.Tests/Hma.Reporting.Tests.csproj" />
 </Solution>

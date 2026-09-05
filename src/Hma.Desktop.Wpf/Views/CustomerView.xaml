@@ -37,7 +37,6 @@
                     <Button Content="Làm lại" Style="{StaticResource SecondaryButton}" Command="{Binding ResetFiltersCommand}"/>
                     <Border Style="{StaticResource ToolbarSpacer}"/>
                     <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                    <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
                     <Button Content="Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
                 </WrapPanel>
             </StackPanel>
@@ -71,7 +70,7 @@
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
             </Border>
-            <Border Style="{StaticResource EditorCard}">
+            <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
                 <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True">
                     <StackPanel>
                         <Grid Style="{StaticResource FormRow}">
@@ -146,6 +145,8 @@
                             <Label Style="{StaticResource FormLabel}" Content="Kế toán phụ trách"/>
                             <ComboBox Grid.Column="1" Margin="0" ItemsSource="{Binding Accountants}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding Editor.AccountantEmployeeId}"/>
                         </Grid>
+                        <TextBlock Text="Khách mới dùng giá công bố nếu chưa có bảng giá riêng."
+                                   TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{DynamicResource InkSecondaryBrush}"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>

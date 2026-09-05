@@ -28,7 +28,7 @@ public partial class JobTitleWorkspaceViewModel(CatalogService catalog, ICurrent
         if (!CanCreate) return;
         Selected = null;
         Editor = new JobTitle();
-        EnterCreate("Thêm chức vụ");
+        EnterCreate("Thêm chức vụ", Editor);
     }
 
     [RelayCommand]
@@ -36,7 +36,7 @@ public partial class JobTitleWorkspaceViewModel(CatalogService catalog, ICurrent
     {
         if (Selected is null) return;
         Editor = new JobTitle { Id = Selected.Id, Code = Selected.Code, Name = Selected.Name };
-        EnterEdit($"Sửa chức vụ — {Editor.Code}");
+        EnterExisting($"Xem chức vụ — {Editor.Code}", $"Sửa chức vụ — {Editor.Code}", Editor);
     }
 
     [RelayCommand]

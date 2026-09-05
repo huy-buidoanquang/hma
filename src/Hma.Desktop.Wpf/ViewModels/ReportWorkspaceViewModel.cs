@@ -73,6 +73,17 @@ public partial class ReportWorkspaceViewModel(ReportQueryService reports, Dashbo
     }
 
     [RelayCommand]
+    private async Task ExportPeriodExcel()
+    {
+        if (!CanPrint) return;
+        var orders = await reports.PeriodDispatchAsync(From, To);
+        var path = Path.Combine(Path.GetTempPath(), $"TONG-KY-{From:yyyyMMdd}-{To:yyyyMMdd}.xlsx");
+        printer.ExportPeriodSummaryExcel(orders, From, To, path);
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Status = $"Đã xuất Excel {orders.Count} lệnh.";
+    }
+
+    [RelayCommand]
     private async Task LoadPeriod()
     {
         CustomerRows.Clear();

@@ -1,0 +1,118 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.DispatchGridEditView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Hma.Desktop.Wpf.Controls">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="Sửa lệnh theo khách" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+        <StackPanel DockPanel.Dock="Top">
+            <WrapPanel>
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Khách hàng"/>
+                    <ComboBox Style="{StaticResource FilterCombo}" Width="260" ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding CustomerId}"/>
+                </StackPanel>
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Kỳ kế toán"/>
+                    <controls:MonthYearPicker Style="{StaticResource FilterMonthYear}" Month="{Binding Month}" Year="{Binding Year}"/>
+                </StackPanel>
+            </WrapPanel>
+            <WrapPanel Style="{StaticResource ActionBar}">
+                <Button Content="Tải lệnh" Command="{Binding SearchCommand}"/>
+                <Button Content="Lưu lưới" Command="{Binding SaveGridCommand}" IsEnabled="{Binding CanUpdate}"/>
+                <Button Content="Chuyển sang tháng sau" Style="{StaticResource SecondaryButton}" Command="{Binding ShiftNextMonthCommand}" IsEnabled="{Binding CanUpdate}"/>
+            </WrapPanel>
+            <TextBlock Text="Chọn khách và kỳ kế toán. Không đổi ngày chạy. Lệnh đã chốt không sửa trên lưới (vào form lệnh nếu là PIC hoặc quản lý)."
+                       TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource InkSecondaryBrush}"/>
+        </StackPanel>
+        <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
+                Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
+        </Border>
+        <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                  AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Width="48">
+                    <DataGridTemplateColumn.Header>
+                        <CheckBox Style="{StaticResource GridCheckBox}"
+                                  IsThreeState="True"
+                                  ToolTip="Chọn tất cả lệnh chưa chốt"
+                                  IsChecked="{Binding DataContext.AllSelected, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </DataGridTemplateColumn.Header>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox Style="{StaticResource GridCheckBox}"
+                                      IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Số LDX" Binding="{Binding Code}" Width="80" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Trạng thái" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <controls:StatusBadge OrderStatus="{Binding Status}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Đối soát" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <controls:StatusBadge ReconStatus="{Binding ReconciliationStatus}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Ngày chạy" Binding="{Binding PickupAt, StringFormat=dd/MM/yyyy}" Width="90" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Tuyến" Width="200">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding DataContext.Routes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding RouteId, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Biển" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding DataContext.Vehicles, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      DisplayMemberPath="PlateNumber" SelectedValuePath="Id" SelectedValue="{Binding VehicleId, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Cước" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Style="{StaticResource MoneyField}" Text="{Binding UnitPrice, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Phát sinh" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Style="{StaticResource MoneyField}" Text="{Binding ExtraCost, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Ghi chú" Width="140">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Kỳ KT" Width="148">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <controls:MonthYearPicker Margin="0" Width="140" Height="28"
+                                                      Month="{Binding BillingMonth, UpdateSourceTrigger=PropertyChanged}"
+                                                      Year="{Binding BillingYear, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsEnabled="{Binding CanEditRow}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</UserControl>

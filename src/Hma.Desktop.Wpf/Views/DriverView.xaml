@@ -21,7 +21,7 @@
                     <Button Content="Làm lại" Style="{StaticResource SecondaryButton}" Command="{Binding ResetFiltersCommand}"/>
                     <Border Style="{StaticResource ToolbarSpacer}"/>
                     <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                    <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
+                    <Button Content="Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
                 </WrapPanel>
             </StackPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
@@ -48,7 +48,7 @@
                 <Button Content="Xóa" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteCommand}"
                         IsEnabled="{Binding CanDelete}" Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
-            <Border Style="{StaticResource EditorCard}">
+            <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <Grid Style="{StaticResource FormRow}">

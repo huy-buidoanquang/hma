@@ -45,7 +45,7 @@ public partial class CityWorkspaceViewModel(CatalogService catalog, ICurrentUser
         if (!CanCreate) return;
         Selected = null;
         Editor = new City();
-        EnterCreate("Thêm thành phố");
+        EnterCreate("Thêm thành phố", Editor);
     }
 
     [RelayCommand]
@@ -53,7 +53,7 @@ public partial class CityWorkspaceViewModel(CatalogService catalog, ICurrentUser
     {
         if (Selected is null) return;
         Editor = new City { Id = Selected.Id, Code = Selected.Code, Name = Selected.Name, Description = Selected.Description };
-        EnterEdit($"Sửa thành phố — {Editor.Code}");
+        EnterExisting($"Xem thành phố — {Editor.Code}", $"Sửa thành phố — {Editor.Code}", Editor);
     }
 
     [RelayCommand]

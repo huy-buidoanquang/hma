@@ -38,7 +38,7 @@ public partial class InvoiceWorkspaceViewModel(
         Editor = await invoices.CreateNewAsync();
         await RefreshAvailable();
         Selected = null;
-        EnterCreate("Thêm hóa đơn");
+        EnterCreate("Thêm hóa đơn", Editor, Editor.Lines);
     }
 
     [RelayCommand]
@@ -64,7 +64,7 @@ public partial class InvoiceWorkspaceViewModel(
     {
         if (Selected is null) return;
         await Open(Selected.Id);
-        EnterEdit($"Sửa hóa đơn — {Editor.Code}");
+        EnterExisting($"Xem hóa đơn — {Editor.Code}", $"Sửa hóa đơn — {Editor.Code}", Editor, Editor.Lines);
     }
 
     private async Task Open(int id)

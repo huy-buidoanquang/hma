@@ -1,0 +1,47 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Controls.MonthYearPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="32" MinHeight="32" MinWidth="140" Focusable="True">
+    <Grid>
+        <Border x:Name="Chrome"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource BorderDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                SnapsToDevicePixels="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="Caption"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource InkBrush}"/>
+                <Button x:Name="OpenButton"
+                        Grid.Column="1"
+                        Style="{StaticResource DatePickerCalendarButton}"
+                        Click="OnToggle"/>
+            </Grid>
+        </Border>
+        <Popup x:Name="DropDown"
+               Placement="Bottom"
+               PlacementTarget="{Binding ElementName=Chrome}"
+               StaysOpen="False"
+               AllowsTransparency="True">
+            <Border Margin="0,4,0,0"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource BorderDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4">
+                <Calendar x:Name="Cal"
+                          Style="{StaticResource HmaCalendar}"
+                          BorderThickness="0"
+                          Background="Transparent"
+                          SelectionMode="SingleDate"
+                          DisplayModeChanged="OnDisplayModeChanged"/>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

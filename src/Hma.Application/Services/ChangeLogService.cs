@@ -20,7 +20,7 @@ public class ChangeLogService(IHmaDbContext db, ICurrentUser current) : IChangeL
             UserId = current.User?.Id,
             ChangedAt = DateTime.Now
         });
-        await db.SaveChangesAsync(cancellationToken);
+        await PersistenceGuard.SaveAsync(db, cancellationToken);
     }
 
     public Task<List<ChangeLog>> ForEntityAsync(string entityName, int entityId, CancellationToken ct = default) =>

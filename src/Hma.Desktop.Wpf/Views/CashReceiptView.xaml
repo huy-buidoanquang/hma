@@ -8,7 +8,6 @@
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Tìm" Command="{Binding SearchCommand}"/>
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}"/>
-                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
             </WrapPanel>
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
@@ -22,11 +21,11 @@
         <DockPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}" Margin="16">
             <TextBlock DockPanel.Dock="Top" Text="{Binding EditorTitle}" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <StackPanel DockPanel.Dock="Bottom" Style="{StaticResource EditorActions}">
-                <Button Content="Lưu" Command="{Binding SaveCommand}"/>
+                <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
                 <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
                 <Button Content="In" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}"/>
             </StackPanel>
-            <Border Style="{StaticResource EditorCard}">
+            <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
                 <StackPanel>
                     <Grid Style="{StaticResource FormRow}">
                         <Grid.ColumnDefinitions>

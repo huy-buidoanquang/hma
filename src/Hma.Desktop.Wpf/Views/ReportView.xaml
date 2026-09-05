@@ -27,6 +27,7 @@
                 <Button Content="Năm nay" Style="{StaticResource SecondaryButton}" Command="{Binding ThisYearCommand}" VerticalAlignment="Bottom" Margin="4,16"/>
                 <Button Content="Tải báo cáo" Command="{Binding LoadPeriodCommand}" VerticalAlignment="Bottom" Margin="4,16"/>
                 <Button Content="In kỳ" Style="{StaticResource SecondaryButton}" Command="{Binding PrintPeriodCommand}" IsEnabled="{Binding CanPrint}" VerticalAlignment="Bottom" Margin="4,16"/>
+                <Button Content="Excel kỳ" Style="{StaticResource SecondaryButton}" Command="{Binding ExportPeriodExcelCommand}" IsEnabled="{Binding CanPrint}" VerticalAlignment="Bottom" Margin="4,16"/>
             </WrapPanel>
             <Border Style="{StaticResource StatusBanner}" Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>

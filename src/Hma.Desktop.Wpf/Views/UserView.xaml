@@ -7,7 +7,6 @@
             <TextBlock DockPanel.Dock="Top" Text="Người dùng" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ActionBar}">
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
             </WrapPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
@@ -18,7 +17,16 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Login" Binding="{Binding UserName}" Width="120"/>
                     <DataGridTextColumn Header="Tên" Binding="{Binding DisplayName}" Width="*"/>
-                    <DataGridCheckBoxColumn Header="QL" Binding="{Binding IsManager}" Width="48"/>
+                    <DataGridTextColumn Header="Nhân viên" Binding="{Binding Employee.Name}" Width="160"/>
+                    <DataGridTemplateColumn Header="QL" Width="48">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox Style="{StaticResource GridCheckBox}"
+                                          IsChecked="{Binding IsManager}"
+                                          IsEnabled="False"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
@@ -28,7 +36,7 @@
                 <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
                 <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
             </StackPanel>
-            <Border Style="{StaticResource EditorCard}">
+            <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
                         <Grid Style="{StaticResource FormRow}">
@@ -52,10 +60,20 @@
                                 <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
+                            <Label Style="{StaticResource FormLabel}" Content="Nhân viên (PIC)"/>
+                            <ComboBox Grid.Column="1" Margin="0" ItemsSource="{Binding Employees}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding Editor.EmployeeId}"/>
+                        </Grid>
+                        <Grid Style="{StaticResource FormRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
                             <Label Style="{StaticResource FormLabel}" Content="Mật khẩu mới (trống = giữ)"/>
                             <TextBox Grid.Column="1" Margin="0" Text="{Binding NewPassword}"/>
                         </Grid>
-                        <CheckBox Content="Quản lý / Giám đốc (toàn quyền, khóa lệnh)"
+                        <CheckBox Style="{StaticResource GridCheckBox}"
+                                  HorizontalAlignment="Left"
+                                  Content="Quản lý / Giám đốc (toàn quyền, khóa lệnh)"
                                   IsChecked="{Binding Editor.IsManager, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         <TextBlock Text="Quyền kế toán theo màn hình" Style="{StaticResource SectionTitle}" Margin="0,8,0,8"/>
                     </StackPanel>

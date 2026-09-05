@@ -26,8 +26,11 @@ public partial class MainViewModel : ObservableObject
         DepartmentWorkspaceViewModel departments,
         JobTitleWorkspaceViewModel jobTitles,
         CityWorkspaceViewModel cities,
+        LocationWorkspaceViewModel locations,
+        RouteWorkspaceViewModel routes,
         PriceListWorkspaceViewModel prices,
         DispatchWorkspaceViewModel dispatch,
+        DispatchGridEditWorkspaceViewModel dispatchGrid,
         ReconcileWorkspaceViewModel reconcile,
         StatementWorkspaceViewModel statements,
         LookupWorkspaceViewModel lookup,
@@ -61,8 +64,11 @@ public partial class MainViewModel : ObservableObject
             [ScreenKeys.Departments] = departments,
             [ScreenKeys.JobTitles] = jobTitles,
             [ScreenKeys.Cities] = cities,
+            [ScreenKeys.Locations] = locations,
+            [ScreenKeys.Routes] = routes,
             [ScreenKeys.PriceLists] = prices,
             [ScreenKeys.DispatchOrders] = dispatch,
+            [ScreenKeys.DispatchGridEdit] = dispatchGrid,
             [ScreenKeys.Reconcile] = reconcile,
             [ScreenKeys.Statements] = statements,
             [ScreenKeys.Lookup] = lookup,
@@ -82,13 +88,16 @@ public partial class MainViewModel : ObservableObject
                      (ScreenKeys.Departments, "Phòng ban"),
                      (ScreenKeys.JobTitles, "Chức vụ"),
                      (ScreenKeys.Cities, "Thành phố"),
+                     (ScreenKeys.Locations, "Điểm"),
+                     (ScreenKeys.Routes, "Tuyến"),
                      (ScreenKeys.PriceLists, "Bảng giá"),
                      (ScreenKeys.DispatchOrders, "Lệnh điều xe"),
+                     (ScreenKeys.DispatchGridEdit, "Sửa lệnh theo khách"),
                      (ScreenKeys.Lookup, "Tra cứu"),
                      (ScreenKeys.Reconcile, "Đối soát"),
                      (ScreenKeys.Statements, "Bảng kê tháng"),
                      (ScreenKeys.Reports, "Báo cáo"),
-                     (ScreenKeys.Settings, "Tham số"),
+                     (ScreenKeys.Settings, "Cấu hình"),
                      (ScreenKeys.Users, "Người dùng")
                  })
         {
@@ -112,7 +121,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void Logout()
     {
-        var message = Current is WorkspaceBase { IsEditing: true }
+        var message = Current is WorkspaceBase { HasUnsavedChanges: true }
             ? "Bỏ thay đổi chưa lưu và đăng xuất?"
             : "Đăng xuất khỏi phiên này?";
         if (!_prompt.Confirm(message, "Đăng xuất"))
@@ -126,6 +135,18 @@ public partial class MainViewModel : ObservableObject
         if (value is null) return;
         Current = _workspaces[value.Key];
         if (Current is ILoadableWorkspace loadable)
-            _ = loadable.LoadAsync();
+            _ = LoadWorkspaceAsync(loadable);
+    }
+
+    private static async Task LoadWorkspaceAsync(ILoadableWorkspace loadable)
+    {
+        try
+        {
+            await loadable.LoadAsync();
+        }
+        catch (Exception)
+        {
+            // WorkspaceBase.RunAsync already toasts; this swallows unobserved fire-and-forget faults.
+        }
     }
 }

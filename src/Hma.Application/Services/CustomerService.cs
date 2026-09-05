@@ -32,11 +32,23 @@ public class CustomerService(IHmaDbContext db, ICurrentUser current)
         var duplicate = await db.Customers.AnyAsync(c => c.Code == customer.Code && c.Id != customer.Id, ct);
         if (duplicate)
             throw new InvalidOperationException("Mã khách hàng này đã tồn tại.");
+        if (customer.CityId is int cityId
+            && !await db.Cities.AnyAsync(c => c.Id == cityId, ct))
+            throw new InvalidOperationException("Thành phố không tồn tại.");
+        if (customer.AccountantEmployeeId is int accountantId
+            && !await db.Employees.AnyAsync(e => e.Id == accountantId, ct))
+            throw new InvalidOperationException("Nhân viên kế toán không tồn tại.");
 
         customer.UpdatedAt = DateTime.Now;
+        var keepCityId = customer.CityId;
+        var keepAccountantId = customer.AccountantEmployeeId;
+        customer.City = null;
+        customer.AccountantEmployee = null;
+        customer.CityId = keepCityId;
+        customer.AccountantEmployeeId = keepAccountantId;
         if (customer.Id == 0) db.Add(customer);
         else db.Update(customer);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
         return customer;
     }
 

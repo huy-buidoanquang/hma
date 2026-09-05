@@ -15,6 +15,7 @@ IF OBJECT_ID(N'dbo.VatInvoiceLine', N'U') IS NOT NULL DROP TABLE dbo.VatInvoiceL
 IF OBJECT_ID(N'dbo.VatInvoice', N'U') IS NOT NULL DROP TABLE dbo.VatInvoice;
 IF OBJECT_ID(N'dbo.CashPayment', N'U') IS NOT NULL DROP TABLE dbo.CashPayment;
 IF OBJECT_ID(N'dbo.CashReceipt', N'U') IS NOT NULL DROP TABLE dbo.CashReceipt;
+IF OBJECT_ID(N'dbo.DispatchOrderStop', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrderStop;
 IF OBJECT_ID(N'dbo.DispatchOrderLine', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrderLine;
 IF OBJECT_ID(N'dbo.DispatchOrder', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrder;
 IF OBJECT_ID(N'dbo.PriceListItem', N'U') IS NOT NULL DROP TABLE dbo.PriceListItem;
@@ -22,7 +23,14 @@ IF OBJECT_ID(N'dbo.PriceListRevision', N'U') IS NOT NULL DROP TABLE dbo.PriceLis
 IF OBJECT_ID(N'dbo.PriceList', N'U') IS NOT NULL DROP TABLE dbo.PriceList;
 IF OBJECT_ID(N'dbo.UserPermission', N'U') IS NOT NULL DROP TABLE dbo.UserPermission;
 IF OBJECT_ID(N'dbo.AppUser', N'U') IS NOT NULL DROP TABLE dbo.AppUser;
+IF OBJECT_ID(N'dbo.CustomerAlias', N'U') IS NOT NULL DROP TABLE dbo.CustomerAlias;
+IF OBJECT_ID(N'dbo.LocationAlias', N'U') IS NOT NULL DROP TABLE dbo.LocationAlias;
+IF OBJECT_ID(N'dbo.RouteAlias', N'U') IS NOT NULL DROP TABLE dbo.RouteAlias;
+IF OBJECT_ID(N'dbo.RouteStop', N'U') IS NOT NULL DROP TABLE dbo.RouteStop;
+IF OBJECT_ID(N'dbo.Route', N'U') IS NOT NULL DROP TABLE dbo.Route;
+IF OBJECT_ID(N'dbo.Location', N'U') IS NOT NULL DROP TABLE dbo.Location;
 IF OBJECT_ID(N'dbo.Customer', N'U') IS NOT NULL DROP TABLE dbo.Customer;
+IF OBJECT_ID(N'dbo.VehicleAlias', N'U') IS NOT NULL DROP TABLE dbo.VehicleAlias;
 IF OBJECT_ID(N'dbo.Vehicle', N'U') IS NOT NULL DROP TABLE dbo.Vehicle;
 IF OBJECT_ID(N'dbo.Driver', N'U') IS NOT NULL DROP TABLE dbo.Driver;
 IF OBJECT_ID(N'dbo.Partner', N'U') IS NOT NULL DROP TABLE dbo.Partner;
@@ -46,6 +54,55 @@ CREATE TABLE dbo.City (
     LegacyId INT NULL,
     CONSTRAINT UQ_City_Code UNIQUE (Code)
 );
+
+CREATE TABLE dbo.Location (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Location PRIMARY KEY,
+    Code NVARCHAR(50) NOT NULL,
+    Name NVARCHAR(255) NOT NULL,
+    Description NVARCHAR(500) NULL,
+    CityId INT NULL CONSTRAINT FK_Location_City REFERENCES dbo.City (Id),
+    LegacyId INT NULL,
+    CONSTRAINT UQ_Location_Code UNIQUE (Code)
+);
+CREATE INDEX IX_Location_City ON dbo.Location (CityId);
+
+CREATE TABLE dbo.Route (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Route PRIMARY KEY,
+    Code NVARCHAR(50) NOT NULL,
+    Name NVARCHAR(255) NOT NULL,
+    Fingerprint NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(500) NULL,
+    LegacyId INT NULL,
+    CONSTRAINT UQ_Route_Code UNIQUE (Code),
+    CONSTRAINT UQ_Route_Fingerprint UNIQUE (Fingerprint)
+);
+
+CREATE TABLE dbo.RouteStop (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_RouteStop PRIMARY KEY,
+    RouteId INT NOT NULL CONSTRAINT FK_RouteStop_Route REFERENCES dbo.Route (Id) ON DELETE CASCADE,
+    Sequence INT NOT NULL,
+    LocationId INT NOT NULL CONSTRAINT FK_RouteStop_Location REFERENCES dbo.Location (Id),
+    LegacyId INT NULL,
+    CONSTRAINT UQ_RouteStop_Route_Sequence UNIQUE (RouteId, Sequence)
+);
+CREATE INDEX IX_RouteStop_Location ON dbo.RouteStop (LocationId);
+
+CREATE TABLE dbo.LocationAlias (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LocationAlias PRIMARY KEY,
+    Alias NVARCHAR(100) NOT NULL,
+    LocationId INT NOT NULL CONSTRAINT FK_LocationAlias_Location REFERENCES dbo.Location (Id),
+    Kind INT NOT NULL CONSTRAINT DF_LocationAlias_Kind DEFAULT (0),
+    CONSTRAINT UQ_LocationAlias_Alias UNIQUE (Alias)
+);
+CREATE INDEX IX_LocationAlias_Location ON dbo.LocationAlias (LocationId);
+
+CREATE TABLE dbo.RouteAlias (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_RouteAlias PRIMARY KEY,
+    Alias NVARCHAR(100) NOT NULL,
+    RouteId INT NOT NULL CONSTRAINT FK_RouteAlias_Route REFERENCES dbo.Route (Id),
+    CONSTRAINT UQ_RouteAlias_Alias UNIQUE (Alias)
+);
+CREATE INDEX IX_RouteAlias_Route ON dbo.RouteAlias (RouteId);
 
 CREATE TABLE dbo.Department (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Department PRIMARY KEY,
@@ -104,6 +161,7 @@ CREATE TABLE dbo.Partner (
     ContactName NVARCHAR(255) NULL,
     Phone NVARCHAR(50) NULL,
     Email NVARCHAR(255) NULL,
+    OperatingFeePercent DECIMAL(9,2) NOT NULL CONSTRAINT DF_Partner_OpFee DEFAULT (0),
     LegacyId INT NULL,
     CONSTRAINT UQ_Partner_Code UNIQUE (Code)
 );
@@ -130,6 +188,14 @@ CREATE TABLE dbo.Vehicle (
     CONSTRAINT UQ_Vehicle_Plate UNIQUE (PlateNumber)
 );
 
+CREATE TABLE dbo.VehicleAlias (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_VehicleAlias PRIMARY KEY,
+    Alias NVARCHAR(100) NOT NULL,
+    VehicleId INT NOT NULL CONSTRAINT FK_VehicleAlias_Vehicle REFERENCES dbo.Vehicle (Id) ON DELETE CASCADE,
+    CONSTRAINT UQ_VehicleAlias_Alias UNIQUE (Alias)
+);
+CREATE INDEX IX_VehicleAlias_Vehicle ON dbo.VehicleAlias (VehicleId);
+
 CREATE TABLE dbo.Customer (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Customer PRIMARY KEY,
     Code NVARCHAR(50) NOT NULL,
@@ -149,6 +215,14 @@ CREATE TABLE dbo.Customer (
 CREATE INDEX IX_Customer_Code ON dbo.Customer (Code);
 CREATE INDEX IX_Customer_Name ON dbo.Customer (Name);
 
+CREATE TABLE dbo.CustomerAlias (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CustomerAlias PRIMARY KEY,
+    Alias NVARCHAR(100) NOT NULL,
+    CustomerId INT NOT NULL CONSTRAINT FK_CustomerAlias_Customer REFERENCES dbo.Customer (Id),
+    CONSTRAINT UQ_CustomerAlias_Alias UNIQUE (Alias)
+);
+CREATE INDEX IX_CustomerAlias_Customer ON dbo.CustomerAlias (CustomerId);
+
 CREATE TABLE dbo.PriceList (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PriceList PRIMARY KEY,
     Code NVARCHAR(50) NOT NULL,
@@ -158,6 +232,7 @@ CREATE TABLE dbo.PriceList (
     EffectiveFrom DATE NULL,
     EffectiveTo DATE NULL,
     CreatedAt DATETIME2 NULL,
+    HasPriceFluctuation BIT NOT NULL CONSTRAINT DF_PriceList_Fluctuation DEFAULT (0),
     IsLocked BIT NOT NULL CONSTRAINT DF_PriceList_IsLocked DEFAULT (0),
     LockedAt DATETIME2 NULL,
     LockReason NVARCHAR(255) NULL,
@@ -177,8 +252,7 @@ CREATE TABLE dbo.PriceListRevision (
 CREATE TABLE dbo.PriceListItem (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PriceListItem PRIMARY KEY,
     PriceListRevisionId INT NOT NULL CONSTRAINT FK_PriceListItem_Revision REFERENCES dbo.PriceListRevision (Id),
-    PickupCityId INT NULL CONSTRAINT FK_PriceListItem_PickupCity REFERENCES dbo.City (Id),
-    DeliveryCityId INT NOT NULL CONSTRAINT FK_PriceListItem_DeliveryCity REFERENCES dbo.City (Id),
+    RouteId INT NOT NULL CONSTRAINT FK_PriceListItem_Route REFERENCES dbo.Route (Id),
     VehicleTypeId INT NOT NULL CONSTRAINT FK_PriceListItem_VehicleType REFERENCES dbo.VehicleType (Id),
     UnitPrice DECIMAL(20,2) NOT NULL CONSTRAINT DF_PriceListItem_Unit DEFAULT (0),
     Surcharge DECIMAL(20,2) NOT NULL CONSTRAINT DF_PriceListItem_Surcharge DEFAULT (0),
@@ -239,13 +313,18 @@ CREATE TABLE dbo.DispatchOrder (
     ReceiverTaxCode NVARCHAR(50) NULL,
     PickupAt DATETIME2 NOT NULL,
     PickupAddress NVARCHAR(255) NULL,
-    PickupCityId INT NULL CONSTRAINT FK_DispatchOrder_PickupCity REFERENCES dbo.City (Id),
     DeliveryAddress NVARCHAR(255) NULL,
-    DeliveryCityId INT NULL CONSTRAINT FK_DispatchOrder_DeliveryCity REFERENCES dbo.City (Id),
+    RouteId INT NULL CONSTRAINT FK_DispatchOrder_Route REFERENCES dbo.Route (Id),
     VehicleId INT NULL CONSTRAINT FK_DispatchOrder_Vehicle REFERENCES dbo.Vehicle (Id),
     DriverId INT NULL CONSTRAINT FK_DispatchOrder_Driver REFERENCES dbo.Driver (Id),
     VehicleTypeId INT NULL CONSTRAINT FK_DispatchOrder_VehicleType REFERENCES dbo.VehicleType (Id),
     EmployeeId INT NULL CONSTRAINT FK_DispatchOrder_Employee REFERENCES dbo.Employee (Id),
+    PaymentMethodId INT NULL CONSTRAINT FK_DispatchOrder_Payment REFERENCES dbo.PaymentMethod (Id),
+    BillingYear INT NOT NULL CONSTRAINT DF_DispatchOrder_BillYear DEFAULT (0),
+    BillingMonth INT NOT NULL CONSTRAINT DF_DispatchOrder_BillMonth DEFAULT (0),
+    ConfirmedByUserId INT NULL CONSTRAINT FK_DispatchOrder_ConfirmedBy REFERENCES dbo.AppUser (Id),
+    ConfirmedAt DATETIME2 NULL,
+    ArNumber NVARCHAR(50) NULL,
     UnitPrice DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Unit DEFAULT (0),
     Surcharge DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Surcharge DEFAULT (0),
     ExtraCost DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Extra DEFAULT (0),
@@ -260,6 +339,18 @@ CREATE TABLE dbo.DispatchOrder (
 CREATE INDEX IX_DispatchOrder_Code ON dbo.DispatchOrder (Code);
 CREATE INDEX IX_DispatchOrder_PickupAt ON dbo.DispatchOrder (PickupAt);
 CREATE INDEX IX_DispatchOrder_Customer ON dbo.DispatchOrder (CustomerId);
+CREATE INDEX IX_DispatchOrder_Route ON dbo.DispatchOrder (RouteId);
+
+CREATE TABLE dbo.DispatchOrderStop (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DispatchOrderStop PRIMARY KEY,
+    DispatchOrderId INT NOT NULL CONSTRAINT FK_DispatchOrderStop_Order REFERENCES dbo.DispatchOrder (Id) ON DELETE CASCADE,
+    Sequence INT NOT NULL,
+    LocationId INT NOT NULL CONSTRAINT FK_DispatchOrderStop_Location REFERENCES dbo.Location (Id),
+    NameSnapshot NVARCHAR(255) NOT NULL,
+    LegacyId INT NULL,
+    CONSTRAINT UQ_DispatchOrderStop_Order_Sequence UNIQUE (DispatchOrderId, Sequence)
+);
+CREATE INDEX IX_DispatchOrderStop_Location ON dbo.DispatchOrderStop (LocationId);
 
 CREATE TABLE dbo.DispatchOrderLine (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DispatchOrderLine PRIMARY KEY,

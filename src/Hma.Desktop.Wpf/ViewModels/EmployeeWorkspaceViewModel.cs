@@ -37,7 +37,7 @@ public partial class EmployeeWorkspaceViewModel(CatalogService catalog, ICurrent
         if (!CanCreate) return;
         Selected = null;
         Editor = new Employee();
-        EnterCreate("Thêm nhân viên");
+        EnterCreate("Thêm nhân viên", Editor);
     }
 
     [RelayCommand]
@@ -51,7 +51,7 @@ public partial class EmployeeWorkspaceViewModel(CatalogService catalog, ICurrent
             IdentityNumber = Selected.IdentityNumber, VehiclePlate = Selected.VehiclePlate,
             DepartmentId = Selected.DepartmentId, JobTitleId = Selected.JobTitleId
         };
-        EnterEdit($"Sửa nhân viên — {Editor.Code}");
+        EnterExisting($"Xem nhân viên — {Editor.Code}", $"Sửa nhân viên — {Editor.Code}", Editor);
     }
 
     [RelayCommand]

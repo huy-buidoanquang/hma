@@ -7,7 +7,6 @@
             <TextBlock DockPanel.Dock="Top" Text="Bảng giá" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                <Button Content="Xem" Style="{StaticResource SecondaryButton}" Command="{Binding ViewItemCommand}"/>
             </WrapPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
@@ -21,7 +20,15 @@
                     <DataGridTextColumn Header="Khách hàng" Binding="{Binding Customer.Name}" Width="140"/>
                     <DataGridTextColumn Header="Hiệu lực từ" Binding="{Binding EffectiveFrom, StringFormat=dd/MM/yyyy}" Width="90"/>
                     <DataGridTextColumn Header="Đến" Binding="{Binding EffectiveTo, StringFormat=dd/MM/yyyy}" Width="90"/>
-                    <DataGridCheckBoxColumn Header="Khóa" Binding="{Binding IsLocked}" Width="50"/>
+                    <DataGridTemplateColumn Header="Khóa" Width="50">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox Style="{StaticResource GridCheckBox}"
+                                          IsChecked="{Binding IsLocked}"
+                                          IsEnabled="False"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
@@ -36,7 +43,7 @@
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
             </Border>
-            <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True">
+            <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True" IsEnabled="{Binding AreFieldsEnabled}">
                 <StackPanel>
                     <Border Style="{StaticResource EditorCard}" Margin="0,0,0,16">
                         <StackPanel>
@@ -61,7 +68,7 @@
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Label Style="{StaticResource FormLabel}" Content="Khách (trống = bảng chung)"/>
+                                <Label Style="{StaticResource FormLabel}" Content="Khách (trống = giá công bố)"/>
                                 <ComboBox Grid.Column="1" Margin="0" ItemsSource="{Binding Customers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding Editor.CustomerId}" IsEnabled="{Binding AreFieldsEnabled}"/>
                             </Grid>
                             <Grid Style="{StaticResource FormRow}">
@@ -85,20 +92,27 @@
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
+                                <Label Style="{StaticResource FormLabel}" Content="Biến động giá"/>
+                                <CheckBox Grid.Column="1" Margin="0" VerticalAlignment="Center"
+                                          IsChecked="{Binding Editor.HasPriceFluctuation}"
+                                          Content="Bảng có biến động giá"
+                                          IsEnabled="{Binding AreFieldsEnabled}"/>
+                            </Grid>
+                            <Grid Style="{StaticResource FormRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
                                 <Label Style="{StaticResource FormLabel}" Content="Lý do khóa"/>
                                 <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.LockReason}" IsReadOnly="{Binding IsEditorReadOnly}"/>
                             </Grid>
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="Dòng giá: điểm lấy (trống = mọi điểm) → điểm giao × loại xe" Style="{StaticResource BodyText}" Margin="0,0,0,8"/>
+                    <TextBlock Text="Dòng giá: tuyến × loại xe" Style="{StaticResource BodyText}" Margin="0,0,0,8"/>
                     <WrapPanel Style="{StaticResource ToolbarPanel}">
                         <StackPanel Style="{StaticResource FilterCluster}">
-                            <Label Style="{StaticResource FilterLabel}" Content="Điểm lấy"/>
-                            <ComboBox Style="{StaticResource FilterCombo}" Width="160" ItemsSource="{Binding Cities}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedPickupCityId}"/>
-                        </StackPanel>
-                        <StackPanel Style="{StaticResource FilterCluster}">
-                            <Label Style="{StaticResource FilterLabel}" Content="Điểm giao"/>
-                            <ComboBox Style="{StaticResource FilterCombo}" Width="160" ItemsSource="{Binding Cities}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeliveryCityId}"/>
+                            <Label Style="{StaticResource FilterLabel}" Content="Tuyến"/>
+                            <ComboBox Style="{StaticResource FilterCombo}" Width="220" ItemsSource="{Binding Routes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedRouteId}"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource FilterCluster}">
                             <Label Style="{StaticResource FilterLabel}" Content="Loại xe"/>
@@ -117,8 +131,7 @@
                     </WrapPanel>
                     <DataGrid ItemsSource="{Binding RevisionItems}" SelectedItem="{Binding SelectedItem}" MinHeight="200">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Điểm lấy" Binding="{Binding PickupCity.Name}" Width="140"/>
-                            <DataGridTextColumn Header="Điểm giao" Binding="{Binding DeliveryCity.Name}" Width="140"/>
+                            <DataGridTextColumn Header="Tuyến" Binding="{Binding Route.Name}" Width="*"/>
                             <DataGridTextColumn Header="Loại xe" Binding="{Binding VehicleType.Name}" Width="*"/>
                             <DataGridTextColumn Header="Đơn giá" Binding="{Binding UnitPrice, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
                             <DataGridTextColumn Header="Phụ phí" Binding="{Binding Surcharge, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>

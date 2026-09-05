@@ -35,8 +35,7 @@ Dropped: Plexis `ui_*`, `business_object`, `gio`, `phut`, `trongluong`, `Recover
 | `nil_ud` | `Code` |
 | `ngaylap` + `gio` + `phut` | `CreatedAt` / `PickupAt` |
 | `nguoigui_id` | `CustomerId` |
-| city of receiver / `hanhtrinh_id` | `DeliveryCityId` |
-| city of sender | `PickupCityId` |
+| city of sender / receiver / `hanhtrinh_id` | Location (từ City) → Route 2 điểm + `DispatchOrderStop` |
 | `bienso_id` | `DriverId` + plate → `VehicleId` |
 | `loaixe_id` | `VehicleTypeId` |
 | `cuocdv` | `UnitPrice` |

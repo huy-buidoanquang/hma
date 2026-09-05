@@ -15,4 +15,8 @@ public interface IDocumentPrinter
     string ExportFreightStatementExcel(FreightStatement statement, string path);
     string ExportCustomersExcel(IReadOnlyList<Customer> customers, string path);
     string ExportDispatchExcel(IReadOnlyList<DispatchOrder> orders, string path);
+    string ExportVehiclesExcel(IReadOnlyList<Vehicle> vehicles, string path);
+    string ExportPartnersExcel(IReadOnlyList<Partner> partners, string path);
+    string ExportDriversExcel(IReadOnlyList<Driver> drivers, string path);
+    string ExportPeriodSummaryExcel(IReadOnlyList<DispatchOrder> orders, DateTime from, DateTime to, string path);
 }

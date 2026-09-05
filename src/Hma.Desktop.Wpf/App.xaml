@@ -18,6 +18,7 @@
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
             <conv:StringToVisibilityConverter x:Key="StringToVisibility"/>
             <conv:VndMoneyConverter x:Key="VndMoney"/>
+            <conv:LocationAliasKindConverter x:Key="LocationAliasKind"/>
             <Style TargetType="Window">
                 <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
                 <Setter Property="FontSize" Value="13"/>

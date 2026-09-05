@@ -35,7 +35,7 @@ public class SettingsService(IHmaDbContext db, ICurrentUser current)
         await UpsertParameterAsync("DocumentStorePath", model.DocumentStorePath?.Trim() ?? "", ct);
         await UpsertSequenceAsync("dispatch-order", model.DispatchOrderLastValue, ct);
         await UpsertSequenceAsync("freight-statement", model.FreightStatementLastValue, ct);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     private async Task UpsertParameterAsync(string key, string value, CancellationToken ct)

@@ -1,13 +1,16 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hma.Application.Abstractions;
 using Hma.Application.Services;
 using Hma.Domain.Entities;
+using Hma.Reporting;
 
 namespace Hma.Desktop.Wpf.ViewModels;
 
-public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentUser user, IUserPrompt prompt) : WorkspaceBase
+public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentUser user, IUserPrompt prompt, IDocumentPrinter printer) : WorkspaceBase
 {
     [ObservableProperty] private string? filterPlate;
     [ObservableProperty] private Vehicle? selected;
@@ -53,7 +56,7 @@ public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentU
         Selected = null;
         Editor = new Vehicle();
         Trips.Clear();
-        EnterCreate("Thêm xe");
+        EnterCreate("Thêm xe", Editor);
     }
 
     [RelayCommand]
@@ -67,7 +70,7 @@ public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentU
         };
         Trips.Clear();
         foreach (var t in await catalog.TripsByVehicleAsync(Editor.Id)) Trips.Add(t);
-        EnterEdit($"Sửa xe — {Editor.PlateNumber}");
+        EnterExisting($"Xem xe — {Editor.PlateNumber}", $"Sửa xe — {Editor.PlateNumber}", Editor);
     }
 
     [RelayCommand]
@@ -91,5 +94,15 @@ public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentU
             await Search();
             LeaveEditor(discardWithoutConfirm: true);
         }, "Đã xóa.");
+    }
+
+    [RelayCommand]
+    private void ExportExcel()
+    {
+        if (!CanPrint) return;
+        var path = Path.Combine(Path.GetTempPath(), "DS-XE.xlsx");
+        printer.ExportVehiclesExcel(Items.ToList(), path);
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Status = "Đã xuất Excel xe.";
     }
 }

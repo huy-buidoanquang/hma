@@ -20,7 +20,7 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderService orders, Ch
         {
             if (Selected is null) return "";
             var hasDoc = Selected.Documents.Any(d => d.Kind == DispatchDocumentKind.DeliveryNote);
-            return $"Biên bản giao hàng: {(hasDoc ? "Có" : "THIẾU")}\n"
+            return $"Biên bản giao hàng: {(hasDoc ? "Có" : "Không bắt buộc")}\n"
                    + $"Tuyến: {Selected.RouteLabel}\n"
                    + $"Đơn giá: {Selected.UnitPrice:N0}\n"
                    + $"Phụ phí: {Selected.Surcharge:N0}\n"
@@ -52,15 +52,25 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderService orders, Ch
     partial void OnSelectedChanged(DispatchOrder? value)
     {
         OnPropertyChanged(nameof(Checklist));
-        _ = LoadHistory();
+        _ = LoadHistoryAsync();
     }
 
-    private async Task LoadHistory()
+    private async Task LoadHistoryAsync()
     {
-        History.Clear();
-        if (Selected is null) return;
-        foreach (var h in await logs.ForEntityAsync("DispatchOrder", Selected.Id))
-            History.Add(h);
+        try
+        {
+            await SessionDbGate.RunAsync(async () =>
+            {
+                History.Clear();
+                if (Selected is null) return;
+                foreach (var h in await logs.ForEntityAsync("DispatchOrder", Selected.Id))
+                    History.Add(h);
+            });
+        }
+        catch (Exception ex)
+        {
+            ShowToast(PersistenceGuard.Translate(ex).Message, isError: true);
+        }
     }
 
     [RelayCommand]

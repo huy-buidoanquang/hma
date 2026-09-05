@@ -39,7 +39,7 @@ public class DashboardQueryService(IHmaDbContext db)
 
     public async Task<List<VehicleReportRow>> ByVehicleAsync(DateTime from, DateTime to, CancellationToken ct = default)
     {
-        var orders = await db.DispatchOrders.AsNoTracking().Include(d => d.Vehicle).Include(d => d.DeliveryCity)
+        var orders = await db.DispatchOrders.AsNoTracking().Include(d => d.Vehicle).Include(d => d.Stops)
             .Where(d => d.PickupAt >= from && d.PickupAt <= to)
             .ToListAsync(ct);
         return orders.GroupBy(o => o.Vehicle?.PlateNumber ?? "(chưa gán)")
@@ -47,7 +47,7 @@ public class DashboardQueryService(IHmaDbContext db)
                 g.Key,
                 g.Count(),
                 g.Sum(x => x.TotalAmount),
-                string.Join(", ", g.Select(x => x.DeliveryCity?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())))
+                string.Join(", ", g.Select(x => x.DeliveryLocationName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())))
             .OrderByDescending(r => r.Freight)
             .ToList();
     }

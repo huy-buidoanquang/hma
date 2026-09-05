@@ -10,6 +10,7 @@ public class PriceList : Entity
     public DateTime? EffectiveFrom { get; set; }
     public DateTime? EffectiveTo { get; set; }
     public DateTime? CreatedAt { get; set; }
+    public bool HasPriceFluctuation { get; set; }
     public bool IsLocked { get; set; }
     public DateTime? LockedAt { get; set; }
     public string? LockReason { get; set; }

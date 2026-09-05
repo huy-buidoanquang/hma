@@ -57,13 +57,13 @@ public class VatInvoiceService(IHmaDbContext db, IDocumentNumberService numbers)
         invoice.AmountInWords = AmountText.From(invoice.TotalAmount);
         if (invoice.Id == 0) db.Add(invoice);
         else db.Update(invoice);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         var entity = await db.FindAsync<VatInvoice>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy hóa đơn.");
         db.Remove(entity);
-        await db.SaveChangesAsync(ct);
+        await PersistenceGuard.SaveAsync(db, ct);
     }
 }

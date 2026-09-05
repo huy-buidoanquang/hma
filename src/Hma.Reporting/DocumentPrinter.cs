@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using Hma.Domain.Entities;
+using Hma.Domain.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -196,23 +197,33 @@ public sealed class DocumentPrinter : IDocumentPrinter
     {
         using var wb = new XLWorkbook();
         var ws = wb.AddWorksheet("Cuoc");
-        var headers = new[] { "Ngày", "Mã", "Tuyến", "Biển", "Tải", "Tài xế", "Cước", "Phụ phí", "Phát sinh", "Tổng", "Đối soát" };
+        var headers = new[] { "Ngày", "Mã", "Mã KH", "Khách", "Tuyến", "Biển", "Tải", "Tài xế", "Hình thức TT", "Cước", "Phụ phí", "Phát sinh", "Tổng", "Phí ĐH", "Còn trả ĐT", "Kỳ KT", "Đối soát", "TT", "AR" };
         for (var c = 0; c < headers.Length; c++)
             ws.Cell(1, c + 1).Value = headers[c];
         var row = 2;
         foreach (var o in orders)
         {
+            var feePct = o.Vehicle?.Partner?.OperatingFeePercent ?? 0;
+            var payable = PartnerFeeRules.RemainderPayable(o.TotalAmount, feePct);
             ws.Cell(row, 1).Value = o.PickupAt;
             ws.Cell(row, 2).Value = o.Code;
-            ws.Cell(row, 3).Value = o.RouteLabel;
-            ws.Cell(row, 4).Value = o.Vehicle?.PlateNumber;
-            ws.Cell(row, 5).Value = o.VehicleType?.Name ?? o.Vehicle?.Tonnage?.ToString();
-            ws.Cell(row, 6).Value = o.Driver?.Name;
-            ws.Cell(row, 7).Value = o.UnitPrice;
-            ws.Cell(row, 8).Value = o.Surcharge;
-            ws.Cell(row, 9).Value = o.ExtraCost;
-            ws.Cell(row, 10).Value = o.TotalAmount;
-            ws.Cell(row, 11).Value = o.ReconciliationStatus.ToString();
+            ws.Cell(row, 3).Value = o.Customer?.Code;
+            ws.Cell(row, 4).Value = o.Customer?.Name;
+            ws.Cell(row, 5).Value = o.RouteLabel;
+            ws.Cell(row, 6).Value = o.Vehicle?.PlateNumber;
+            ws.Cell(row, 7).Value = o.VehicleType?.Name ?? o.Vehicle?.Tonnage?.ToString();
+            ws.Cell(row, 8).Value = o.Driver?.Name;
+            ws.Cell(row, 9).Value = o.PaymentMethod?.Name;
+            ws.Cell(row, 10).Value = o.UnitPrice;
+            ws.Cell(row, 11).Value = o.Surcharge;
+            ws.Cell(row, 12).Value = o.ExtraCost;
+            ws.Cell(row, 13).Value = o.TotalAmount;
+            ws.Cell(row, 14).Value = feePct;
+            ws.Cell(row, 15).Value = payable;
+            ws.Cell(row, 16).Value = o.BillingMonth > 0 ? $"{o.BillingMonth:00}/{o.BillingYear}" : "";
+            ws.Cell(row, 17).Value = o.ReconciliationStatus.ToString();
+            ws.Cell(row, 18).Value = o.Status.ToString();
+            ws.Cell(row, 19).Value = o.ArNumber;
             row++;
         }
         ws.Columns().AdjustToContents();
@@ -384,6 +395,108 @@ public sealed class DocumentPrinter : IDocumentPrinter
                 });
             });
         }).GeneratePdf(path);
+        return path;
+    }
+
+    public string ExportVehiclesExcel(IReadOnlyList<Vehicle> vehicles, string path)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Xe");
+        var headers = new[] { "Biển số", "Loại xe", "Tải trọng", "Đối tác", "Phí ĐH %" };
+        for (var c = 0; c < headers.Length; c++)
+            ws.Cell(1, c + 1).Value = headers[c];
+        var row = 2;
+        foreach (var v in vehicles)
+        {
+            ws.Cell(row, 1).Value = v.PlateNumber;
+            ws.Cell(row, 2).Value = v.VehicleType?.Name;
+            ws.Cell(row, 3).Value = v.Tonnage;
+            ws.Cell(row, 4).Value = v.Partner?.Name;
+            ws.Cell(row, 5).Value = v.Partner?.OperatingFeePercent;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(path);
+        return path;
+    }
+
+    public string ExportPartnersExcel(IReadOnlyList<Partner> partners, string path)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Doi tac");
+        var headers = new[] { "Mã", "Tên", "MST", "Địa chỉ", "Liên hệ", "ĐT", "Email", "Phí điều hành %" };
+        for (var c = 0; c < headers.Length; c++)
+            ws.Cell(1, c + 1).Value = headers[c];
+        var row = 2;
+        foreach (var p in partners)
+        {
+            ws.Cell(row, 1).Value = p.Code;
+            ws.Cell(row, 2).Value = p.Name;
+            ws.Cell(row, 3).Value = p.TaxCode;
+            ws.Cell(row, 4).Value = p.Address;
+            ws.Cell(row, 5).Value = p.ContactName;
+            ws.Cell(row, 6).Value = p.Phone;
+            ws.Cell(row, 7).Value = p.Email;
+            ws.Cell(row, 8).Value = p.OperatingFeePercent;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(path);
+        return path;
+    }
+
+    public string ExportDriversExcel(IReadOnlyList<Driver> drivers, string path)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Tai xe");
+        var headers = new[] { "Mã", "Họ tên", "ĐT", "CCCD", "Ngày sinh", "Đối tác", "Phí ĐH %" };
+        for (var c = 0; c < headers.Length; c++)
+            ws.Cell(1, c + 1).Value = headers[c];
+        var row = 2;
+        foreach (var d in drivers)
+        {
+            ws.Cell(row, 1).Value = d.Code;
+            ws.Cell(row, 2).Value = d.Name;
+            ws.Cell(row, 3).Value = d.Phone;
+            ws.Cell(row, 4).Value = d.IdentityNumber;
+            ws.Cell(row, 5).Value = d.BirthDate;
+            ws.Cell(row, 6).Value = d.Partner?.Name;
+            ws.Cell(row, 7).Value = d.Partner?.OperatingFeePercent;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(path);
+        return path;
+    }
+
+    public string ExportPeriodSummaryExcel(IReadOnlyList<DispatchOrder> orders, DateTime from, DateTime to, string path)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Tong hop");
+        ws.Cell(1, 1).Value = $"Bảng tổng {from:dd/MM/yyyy} – {to:dd/MM/yyyy}";
+        var headers = new[] { "Ngày", "Mã", "Khách", "Tuyến", "Biển", "Đối tác", "Cước", "Phát sinh", "Tổng", "Phí ĐH %", "Còn trả đối tác" };
+        for (var c = 0; c < headers.Length; c++)
+            ws.Cell(2, c + 1).Value = headers[c];
+        var row = 3;
+        foreach (var o in orders)
+        {
+            var feePct = o.Vehicle?.Partner?.OperatingFeePercent ?? 0;
+            ws.Cell(row, 1).Value = o.PickupAt;
+            ws.Cell(row, 2).Value = o.Code;
+            ws.Cell(row, 3).Value = o.Customer?.Name;
+            ws.Cell(row, 4).Value = o.RouteLabel;
+            ws.Cell(row, 5).Value = o.Vehicle?.PlateNumber;
+            ws.Cell(row, 6).Value = o.Vehicle?.Partner?.Name;
+            ws.Cell(row, 7).Value = o.UnitPrice;
+            ws.Cell(row, 8).Value = o.ExtraCost;
+            ws.Cell(row, 9).Value = o.TotalAmount;
+            ws.Cell(row, 10).Value = feePct;
+            ws.Cell(row, 11).Value = PartnerFeeRules.RemainderPayable(o.TotalAmount, feePct);
+            row++;
+        }
+        ws.Cell(row, 9).Value = orders.Sum(o => o.TotalAmount);
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(path);
         return path;
     }
 }

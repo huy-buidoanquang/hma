@@ -7,18 +7,21 @@ using Hma.Domain.Entities;
 
 namespace Hma.Desktop.Wpf.ViewModels;
 
-public partial class UserWorkspaceViewModel(UserAdminService users, ICurrentUser user, IUserPrompt prompt) : WorkspaceBase
+public partial class UserWorkspaceViewModel(UserAdminService users, CatalogService catalog, ICurrentUser user, IUserPrompt prompt) : WorkspaceBase
 {
     [ObservableProperty] private AppUser editor = new();
     [ObservableProperty] private AppUser? selected;
     [ObservableProperty] private string newPassword = "";
     public ObservableCollection<AppUser> Items { get; } = [];
     public ObservableCollection<PermissionRow> PermissionRows { get; } = [];
+    public ObservableCollection<Employee> Employees { get; } = [];
 
     public override async Task LoadAsync()
     {
         UsePermissions(user, ScreenKeys.Users);
         UsePrompt(prompt);
+        Employees.Clear();
+        foreach (var e in await catalog.EmployeesAsync()) Employees.Add(e);
         Items.Clear();
         foreach (var u in await users.ListAsync()) Items.Add(u);
         var screens = await users.ScreensAsync();
@@ -36,7 +39,7 @@ public partial class UserWorkspaceViewModel(UserAdminService users, ICurrentUser
         NewPassword = "";
         foreach (var row in PermissionRows)
             row.CanView = row.CanCreate = row.CanUpdate = row.CanDelete = row.CanPrint = false;
-        EnterCreate("Thêm người dùng");
+        EnterCreate("Thêm người dùng", Editor, new LiveValue(() => NewPassword), PermissionRows);
     }
 
     [RelayCommand]
@@ -44,7 +47,8 @@ public partial class UserWorkspaceViewModel(UserAdminService users, ICurrentUser
     {
         if (Selected is null) return;
         ApplyUser(Selected);
-        EnterEdit($"Sửa người dùng — {Editor.UserName}");
+        EnterExisting($"Xem người dùng — {Editor.UserName}", $"Sửa người dùng — {Editor.UserName}",
+            Editor, new LiveValue(() => NewPassword), PermissionRows);
     }
 
     partial void OnSelectedChanged(AppUser? value)
@@ -57,7 +61,7 @@ public partial class UserWorkspaceViewModel(UserAdminService users, ICurrentUser
         Editor = new AppUser
         {
             Id = value.Id, UserName = value.UserName, DisplayName = value.DisplayName,
-            IsManager = value.IsManager, PasswordHash = value.PasswordHash
+            IsManager = value.IsManager, PasswordHash = value.PasswordHash, EmployeeId = value.EmployeeId
         };
         NewPassword = "";
         foreach (var row in PermissionRows)
