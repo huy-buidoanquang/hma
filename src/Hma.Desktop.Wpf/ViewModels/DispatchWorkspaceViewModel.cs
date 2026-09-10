@@ -1,6 +1,3 @@
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hma.Application.Abstractions;
@@ -9,14 +6,15 @@ using Hma.Domain.Entities;
 using Hma.Domain.Services;
 using Hma.Reporting;
 using Microsoft.Win32;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 
 namespace Hma.Desktop.Wpf.ViewModels;
 
 public partial class DispatchWorkspaceViewModel(
     DispatchOrderService orders,
     DispatchDocumentService documents,
-    DispatchImportService importer,
-    IDispatchImportParser parser,
     CatalogService catalog,
     CustomerService customers,
     CompanyService company,
@@ -137,7 +135,7 @@ public partial class DispatchWorkspaceViewModel(
         }
     }
 
-        public int? EditorCustomerId
+    public int? EditorCustomerId
     {
         get => Editor.CustomerId;
         set
@@ -697,106 +695,6 @@ public partial class DispatchWorkspaceViewModel(
         printer.ExportDispatchExcel(Items.ToList(), path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         Status = "Đã xuất danh sách cước.";
-    }
-
-    [RelayCommand]
-    private void DownloadTemplate()
-    {
-        if (!CanCreate) return;
-        var dlg = new SaveFileDialog
-        {
-            Title = "Lưu mẫu nhập lệnh",
-            Filter = "Excel|*.xlsx",
-            FileName = "Bang-dieu-xe.xlsx"
-        };
-        if (dlg.ShowDialog() != true) return;
-        using var stream = File.Create(dlg.FileName);
-        parser.WriteTemplate(stream);
-        Process.Start(new ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
-        Status = "Đã tải mẫu Excel.";
-    }
-
-    [RelayCommand]
-    private async Task CheckExcel()
-    {
-        if (!CanCreate) return;
-        var open = new OpenFileDialog
-        {
-            Title = "Kiểm tra file nhập lệnh",
-            Filter = "Excel|*.xlsx;*.xls"
-        };
-        if (open.ShowDialog() != true) return;
-        var save = new SaveFileDialog
-        {
-            Title = "Lưu kết quả kiểm tra",
-            Filter = "Excel|*.xlsx",
-            FileName = Path.GetFileNameWithoutExtension(open.FileName) + "-kiem-tra.xlsx"
-        };
-        if (save.ShowDialog() != true) return;
-        await RunAsync(async () =>
-        {
-            await using var input = File.OpenRead(open.FileName);
-            var rows = parser.Parse(input);
-            var result = await importer.CheckAsync(rows);
-            await using var source = File.OpenRead(open.FileName);
-            await using var output = File.Create(save.FileName);
-            parser.WriteCheck(source, result.Rows, result.FileError, output);
-            Process.Start(new ProcessStartInfo(save.FileName) { UseShellExecute = true });
-            var message = result.FileError
-                ?? $"Đúng {result.ValidCount} chuyến, lỗi {result.ErrorCount} chuyến. Đã lưu file kiểm tra.";
-            Status = message;
-            ShowToast(message, isError: result.ErrorCount > 0 || result.FileError is not null);
-        });
-    }
-
-    [RelayCommand]
-    private async Task ImportExcel()
-    {
-        if (!CanCreate) return;
-        var dlg = new OpenFileDialog
-        {
-            Title = "Nhập lệnh từ Excel",
-            Filter = "Excel|*.xlsx;*.xls"
-        };
-        if (dlg.ShowDialog() != true) return;
-        DispatchImportResult? imported = null;
-        await RunAsync(async () =>
-        {
-            await using var stream = File.OpenRead(dlg.FileName);
-            var rows = parser.Parse(stream);
-            imported = await importer.ImportAsync(rows);
-            await SearchCore();
-        });
-        if (imported is null)
-            return;
-        if (imported.Errors.Count > 0)
-        {
-            var save = new SaveFileDialog
-            {
-                Title = "Lưu các chuyến lỗi để sửa",
-                Filter = "Excel|*.xlsx",
-                FileName = Path.GetFileNameWithoutExtension(dlg.FileName) + "-kiem-tra.xlsx"
-            };
-            if (save.ShowDialog() == true)
-            {
-                await using var source = File.OpenRead(dlg.FileName);
-                await using var output = File.Create(save.FileName);
-                var failed = imported.Checks.Where(c => !c.IsValid).ToList();
-                var fileError = failed.Count == 0 ? imported.Errors[0].Message : null;
-                parser.WriteCheck(source, failed, fileError, output);
-                Process.Start(new ProcessStartInfo(save.FileName) { UseShellExecute = true });
-            }
-        }
-
-        if (imported.Errors.Count == 0)
-        {
-            Status = $"Đã nhập {imported.Saved} lệnh.";
-            ShowToast(Status);
-            return;
-        }
-
-        Status = $"Đã lưu {imported.Saved} lệnh. Bỏ qua {imported.Errors.Count} chuyến lỗi.";
-        ShowToast(Status, isError: true);
     }
 
     private async Task OpenSummaryAsync(List<DispatchOrder> list, string title)

@@ -321,14 +321,14 @@ Mapping legacy → mới: [`schema-mapping.md`](schema-mapping.md).
 
 ### 8.2 Seed runtime (`DatabaseSeeder`)
 
-- 8 `VehicleType`  
+- 9 `VehicleType` (gồm `1.5T`; giữ `1.45T` cho ETL)  
 - Partner `UNASSIGNED`  
 - 17 `AppScreen` (không gồm cash/VAT)  
 - Sequences + `VatRate=10`, `DocumentStorePath=""`, `SchemaVersion=legacy-ux-1`  
 - Company Hà Minh Anh  
 - User `admin` / `admin123` (`IsManager`)  
 - User `ketoan` / `ketoan123`: View/Create/Update/Print trên catalog + lệnh + đối soát + bảng kê + tra cứu; dashboard/reports chỉ View+Print; không Delete; không `users`/`settings`
-- `DemoDataSeeder`: nếu **chưa có khách hàng** thì nạp kịch bản diễn tập Bắc Bộ (danh mục, đối tác/xe/tài xế, bảng giá, ~30 lệnh, chứng từ placeholder, bảng kê tháng trước). Không chạy khi DB đã có khách (ETL/production).
+- `DemoDataSeeder`: nếu **chưa có khách hàng** thì nạp danh mục từ bảng điều xe 11/08/2026 (khách, tài xế, xe, điểm, tuyến, bí danh). Không seed lệnh / bảng giá / bảng kê. Không chạy khi DB đã có khách (ETL/production). Xóa khách hoặc CSDL rồi mở app để nạp lại.
 
 Chuỗi kết nối: `Hma.Desktop.Wpf/appsettings.json` → `ConnectionStrings:Hma`.
 
@@ -347,13 +347,13 @@ Mô hình port từ `user_form` / `Return_PQ`:
 
 | Vai trò | Nav                                                           | Ghi chú                                  |
 | ------- | ------------------------------------------------------------- | ---------------------------------------- |
-| Kế toán | Catalog, lệnh, tra cứu, đối soát, bảng kê, dashboard, báo cáo | Seed không cho xóa; không users/settings |
+| Kế toán | Catalog, lệnh, tra cứu, đối soát, bảng kê, dashboard, báo cáo | Seed không cho xóa; không users; Cấu hình hiện nếu có `cities` hoặc `settings` |
 | Quản lý | Tất cả trên + users + settings                                | Khóa lệnh, khóa bảng giá, hủy đối soát   |
 
 
-Screen keys (`ScreenKeys` / `AppScreen.Key`) phải trùng nav:
+`AppScreen.Key` / `ScreenKeys` không đổi: `dashboard`, `customers`, `partners`, `drivers`, `vehicles`, `employees`, `departments`, `job-titles`, `cities`, `locations`, `routes`, `price-lists`, `dispatch-orders`, `dispatch-grid-edit`, `lookup`, `reconcile`, `statements`, `reports`, `settings`, `users`.
 
-`dashboard`, `customers`, `partners`, `drivers`, `vehicles`, `employees`, `departments`, `job-titles`, `cities`, `locations`, `routes`, `price-lists`, `dispatch-orders`, `dispatch-grid-edit`, `lookup`, `reconcile`, `statements`, `reports`, `settings`, `users`.
+Main nav **không** liệt kê từng key đó. Shell gom: **Tuyến đường** (`WorkspaceKeys.RouteCatalog` = `route-catalog`, không phải AppScreen — hiện nếu manager hoặc `Can(locations)` / `Can(routes)`), **Lệnh điều xe** (hub form / sửa theo khách / nhập Excel; `dispatch-grid-edit` không còn item riêng), **Cấu hình** (tham số, công ty, thành phố, người dùng, từ điển — hiện nếu manager hoặc `Can(settings)` hoặc `Can(cities)`). Tra cứu / đối soát `OpenDispatch(id)` → hub form → `OpenByIdAsync`.
 
 Đóng băng (có view/VM, **không** thêm vào `MainViewModel.Items`): phiếu thu, phiếu chi, HĐ GTGT.
 
@@ -380,13 +380,13 @@ Lỗi UI: `DispatcherUnhandledException` → MessageBox tiếng Việt, không c
 
 ### 10.2 Shell
 
-`MainWindow`: nav trái (lọc theo View/Create), `ContentControl` + `DataTemplate` theo kiểu ViewModel.
+`MainWindow`: nav trái (lọc theo View/Create, cộng quy tắc hub Cấu hình / Tuyến đường), `ContentControl` + `DataTemplate` theo kiểu ViewModel.
 
-`MainViewModel` giữ mọi workspace scoped, chọn `NavItem` → `ILoadableWorkspace.LoadAsync`. `WorkspaceNavigator.OpenDispatch` chuyển sang màn lệnh và `OpenByIdAsync`.
+`MainViewModel` giữ workspace scoped của **item nav**. Hub `SettingsWorkspaceViewModel` / `RouteCatalogWorkspaceViewModel` / `DispatchHubWorkspaceViewModel` bọc view lồng (City, User, Location, Route, form lệnh, lưới theo khách, nhập Excel). `WorkspaceNavigator.OpenDispatch` chọn nav lệnh và `DispatchHubWorkspaceViewModel.OpenOrderAsync`.
 
 ### 10.3 Workspace
 
-Một màn = `FooView.xaml` + code-behind tối thiểu + `FooWorkspaceViewModel`.
+Một màn catalog = `FooView.xaml` + code-behind tối thiểu + `FooWorkspaceViewModel`. Hub (Cấu hình, Tuyến đường, Lệnh điều xe) là một ViewModel vỏ + section ListBox, host view con; `AppScreen.Key` vẫn gắn view con.
 
 `WorkspaceBase`: mode Browse/Create/Edit, overlay editor, toast, `RunAsync` bắt exception → toast lỗi, `UsePermissions(screenKey)` cho enable nút.
 
@@ -493,18 +493,18 @@ Thứ tự script:
 | `employees`       | EmployeeView                    | EmployeeWorkspaceViewModel   | CatalogService                                |
 | `departments`     | DepartmentView                  | DepartmentWorkspaceViewModel | CatalogService                                |
 | `job-titles`      | JobTitleView                    | JobTitleWorkspaceViewModel   | CatalogService                                |
-| `cities`          | CityView                        | CityWorkspaceViewModel       | CatalogService                                |
-| `locations`       | LocationView                    | LocationWorkspaceViewModel   | LocationService                               |
-| `routes`          | RouteView                       | RouteWorkspaceViewModel      | RouteService                                  |
+| `cities`          | CityView (hub Cấu hình)     | CityWorkspaceViewModel       | CatalogService                                |
+| `locations`       | LocationView (hub Tuyến đường) | LocationWorkspaceViewModel | LocationService                               |
+| `routes`          | RouteView (hub Tuyến đường) | RouteWorkspaceViewModel      | RouteService                                  |
 | `price-lists`     | PriceListView                   | PriceListWorkspaceViewModel  | PriceListService                              |
-| `dispatch-orders` | DispatchView                    | DispatchWorkspaceViewModel   | DispatchOrderService, DispatchDocumentService |
-| `dispatch-grid-edit` | DispatchGridEditView         | DispatchGridEditWorkspaceViewModel | DispatchOrderService                    |
+| `dispatch-orders` | DispatchHubView → DispatchView / DispatchImportView | DispatchHubWorkspaceViewModel, DispatchWorkspaceViewModel, DispatchImportWorkspaceViewModel | DispatchOrderService, DispatchDocumentService, DispatchImportService |
+| `dispatch-grid-edit` | DispatchGridEditView (hub lệnh) | DispatchGridEditWorkspaceViewModel | DispatchOrderService                    |
 | `lookup`          | LookupView                      | LookupWorkspaceViewModel     | DispatchOrderService                          |
 | `reconcile`       | ReconcileView                   | ReconcileWorkspaceViewModel  | DispatchOrderService, ChangeLogService        |
 | `statements`      | StatementView                   | StatementWorkspaceViewModel  | FreightStatementService                       |
 | `reports`         | ReportView                      | ReportWorkspaceViewModel     | ReportQueryService, DashboardQueryService     |
 | `settings`        | SettingsView                    | SettingsWorkspaceViewModel   | SettingsService, CompanyService, LocationAliasService, RouteAliasService, CustomerAliasService |
-| `users`           | UserView                        | UserWorkspaceViewModel       | UserAdminService                              |
+| `users`           | UserView (hub Cấu hình)         | UserWorkspaceViewModel       | UserAdminService                              |
 | *(đóng băng)*     | CashReceipt/Payment/InvoiceView | *WorkspaceViewModel          | CashDocumentService, VatInvoiceService        |
 
 

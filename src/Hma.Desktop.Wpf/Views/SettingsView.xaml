@@ -140,6 +140,12 @@
                     </StackPanel>
                 </Border>
             </ScrollViewer>
+            <Grid Visibility="{Binding IsCitiesSelected, Converter={StaticResource BoolToVisibility}}">
+                <views:CityView DataContext="{Binding Cities}"/>
+            </Grid>
+            <Grid Visibility="{Binding IsUsersSelected, Converter={StaticResource BoolToVisibility}}">
+                <views:UserView DataContext="{Binding Users}"/>
+            </Grid>
             <Grid Visibility="{Binding IsLocationAliasesSelected, Converter={StaticResource BoolToVisibility}}">
                 <views:LocationAliasView DataContext="{Binding LocationAliases}"/>
             </Grid>

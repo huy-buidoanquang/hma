@@ -62,9 +62,6 @@
                     <Button Content="Làm lại" Style="{StaticResource SecondaryButton}" Command="{Binding ResetFiltersCommand}"/>
                     <Border Style="{StaticResource ToolbarSpacer}"/>
                     <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
-                    <Button Content="Tải mẫu Excel" Style="{StaticResource SecondaryButton}" Command="{Binding DownloadTemplateCommand}" IsEnabled="{Binding CanCreate}"/>
-                    <Button Content="Kiểm tra Excel" Style="{StaticResource SecondaryButton}" Command="{Binding CheckExcelCommand}" IsEnabled="{Binding CanCreate}"/>
-                    <Button Content="Nhập Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ImportExcelCommand}" IsEnabled="{Binding CanCreate}"/>
                     <Button Content="Excel cước" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
                     <Button Content="In ngày" Style="{StaticResource SecondaryButton}" Command="{Binding PrintSummaryDayCommand}" IsEnabled="{Binding CanPrint}"/>
                     <Button Content="In tháng" Style="{StaticResource SecondaryButton}" Command="{Binding PrintSummaryMonthCommand}" IsEnabled="{Binding CanPrint}"/>

@@ -17,6 +17,7 @@ public static class DatabaseSeeder
                 new VehicleType { Code = "3.5T", Name = "Xe 3.5 tấn", Tonnage = 3.5m },
                 new VehicleType { Code = "5T", Name = "Xe 5 tấn", Tonnage = 5m },
                 new VehicleType { Code = "1.45T", Name = "Xe 1.45 tấn", Tonnage = 1.45m },
+                new VehicleType { Code = "1.5T", Name = "Xe 1.5 tấn", Tonnage = 1.5m },
                 new VehicleType { Code = "8T", Name = "Xe 8 tấn", Tonnage = 8m },
                 new VehicleType { Code = "2.5T", Name = "Xe 2.5 tấn", Tonnage = 2.5m },
                 new VehicleType { Code = "10T", Name = "Xe 10 tấn", Tonnage = 10m },
@@ -152,7 +153,7 @@ public static class DatabaseSeeder
         await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.DispatchGridEdit, ct);
         await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.Locations, ct);
         await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.Routes, ct);
-
+        await EnsureVehicleTypeAsync(db, "1.5T", "Xe 1.5 tấn", 1.5m, ct);
         await DemoDataSeeder.SeedIfEmptyAsync(db, ct);
         await EnsureVehicleAliasesAsync(db, ct);
     }
@@ -175,6 +176,15 @@ public static class DatabaseSeeder
             CanDelete = false,
             CanPrint = true
         });
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureVehicleTypeAsync(
+        HmaDbContext db, string code, string name, decimal tonnage, CancellationToken ct)
+    {
+        if (await db.VehicleTypes.AnyAsync(t => t.Code == code, ct))
+            return;
+        db.VehicleTypes.Add(new VehicleType { Code = code, Name = name, Tonnage = tonnage });
         await db.SaveChangesAsync(ct);
     }
 

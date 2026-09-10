@@ -1,0 +1,79 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.DispatchImportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="16">
+        <TextBlock DockPanel.Dock="Top" Text="Nhập lệnh từ Excel" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,8"/>
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,16" Opacity="0.75"
+                   Text="Mở file bảng điều xe, sửa trực tiếp trên lưới theo từng trọng tải, kiểm tra, rồi chọn dòng muốn nhập. Không tạo điểm/tuyến mới — thiếu catalog thì sửa ô Tuyến hoặc thêm bí danh."/>
+        <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ActionBar}">
+            <Button Content="Tải mẫu Excel" Style="{StaticResource SecondaryButton}" Command="{Binding DownloadTemplateCommand}" IsEnabled="{Binding CanCreate}"/>
+            <Button Content="Mở file" Command="{Binding OpenFileCommand}" IsEnabled="{Binding CanCreate}"/>
+            <Button Content="Kiểm tra" Style="{StaticResource SecondaryButton}" Command="{Binding CheckRowsCommand}" IsEnabled="{Binding CanCreate}"/>
+            <Button Content="Nhập dòng đã chọn" Command="{Binding ImportSelectedCommand}" IsEnabled="{Binding CanCreate}"/>
+        </WrapPanel>
+        <Border DockPanel.Dock="Bottom"
+                Visibility="{Binding ToastMessage, Converter={StaticResource StringToVisibility}}">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource StatusBanner}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ToastIsError}" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource BrushError}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding ToastMessage}" Foreground="{DynamicResource BrushBlack}"/>
+        </Border>
+        <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
+                Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
+        </Border>
+        <TabControl ItemsSource="{Binding Sheets}" SelectedItem="{Binding SelectedSheet}"
+                    Margin="0,8,0,0">
+            <TabControl.ItemTemplate>
+                <DataTemplate>
+                    <Border BorderThickness="1">
+                    <TextBlock Text="{Binding Title}" Margin="0" Padding="0"/>
+                    </Border>
+                </DataTemplate>
+            </TabControl.ItemTemplate>
+            <TabControl.ContentTemplate>
+                <DataTemplate>
+                    <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                              AutoGenerateColumns="False" CanUserAddRows="False"
+                              HeadersVisibility="Column" IsReadOnly="False">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="48">
+                                <DataGridTemplateColumn.Header>
+                                    <CheckBox Style="{StaticResource GridCheckBox}"
+                                              IsThreeState="True"
+                                              ToolTip="Chọn tất cả"
+                                              IsChecked="{Binding DataContext.AllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource GridCheckBox}"
+                                                  IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Ca" Binding="{Binding BlockLabel}" Width="48" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="STT" Binding="{Binding Stt}" Width="48" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Tuyến" Binding="{Binding Route, UpdateSourceTrigger=PropertyChanged}" Width="200"/>
+                            <DataGridTextColumn Header="Ngày" Binding="{Binding PickupAt, UpdateSourceTrigger=PropertyChanged}" Width="100"/>
+                            <DataGridTextColumn Header="Mã KH" Binding="{Binding CustomerCode, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+                            <DataGridTextColumn Header="Biển" Binding="{Binding Plate, UpdateSourceTrigger=PropertyChanged}" Width="100"/>
+                            <DataGridTextColumn Header="Tải" Binding="{Binding Tonnage, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                            <DataGridTextColumn Header="Cước" Binding="{Binding Freight, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                            <DataGridTextColumn Header="Phát sinh" Binding="{Binding ExtraCost, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
+                            <DataGridTextColumn Header="TT" Binding="{Binding PaymentMethod, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                            <DataGridTextColumn Header="Tài xế" Binding="{Binding DriverName, UpdateSourceTrigger=PropertyChanged}" Width="140"/>
+                            <DataGridTextColumn Header="Ghi chú" Binding="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+                            <DataGridTextColumn Header="Lỗi" Binding="{Binding ErrorText}" Width="*" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DataTemplate>
+            </TabControl.ContentTemplate>
+        </TabControl>
+    </DockPanel>
+</UserControl>

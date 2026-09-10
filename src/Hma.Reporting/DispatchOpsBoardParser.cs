@@ -53,6 +53,8 @@ internal static class DispatchOpsBoardParser
                         continue;
                     if (!DispatchOpsBoardLayout.Started(stt, driver, plate, route, customer))
                         continue;
+                    if (string.IsNullOrWhiteSpace(route) || string.IsNullOrWhiteSpace(customer))
+                        continue;
 
                     string? pickup = null;
                     string? delivery = null;

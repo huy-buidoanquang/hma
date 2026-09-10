@@ -25,19 +25,15 @@ public partial class MainViewModel : ObservableObject
         EmployeeWorkspaceViewModel employees,
         DepartmentWorkspaceViewModel departments,
         JobTitleWorkspaceViewModel jobTitles,
-        CityWorkspaceViewModel cities,
-        LocationWorkspaceViewModel locations,
-        RouteWorkspaceViewModel routes,
+        RouteCatalogWorkspaceViewModel routeCatalog,
         PriceListWorkspaceViewModel prices,
-        DispatchWorkspaceViewModel dispatch,
-        DispatchGridEditWorkspaceViewModel dispatchGrid,
+        DispatchHubWorkspaceViewModel dispatchHub,
         ReconcileWorkspaceViewModel reconcile,
         StatementWorkspaceViewModel statements,
         LookupWorkspaceViewModel lookup,
         DashboardWorkspaceViewModel dashboard,
         ReportWorkspaceViewModel reports,
-        SettingsWorkspaceViewModel settings,
-        UserWorkspaceViewModel users)
+        SettingsWorkspaceViewModel settings)
     {
         _auth = auth;
         _prompt = prompt;
@@ -49,7 +45,7 @@ public partial class MainViewModel : ObservableObject
             {
                 var item = Items.FirstOrDefault(i => i.Key == ScreenKeys.DispatchOrders);
                 if (item is not null) Selected = item;
-                _ = dispatch.OpenByIdAsync(id);
+                _ = dispatchHub.OpenOrderAsync(id);
             };
         }
 
@@ -63,20 +59,17 @@ public partial class MainViewModel : ObservableObject
             [ScreenKeys.Employees] = employees,
             [ScreenKeys.Departments] = departments,
             [ScreenKeys.JobTitles] = jobTitles,
-            [ScreenKeys.Cities] = cities,
-            [ScreenKeys.Locations] = locations,
-            [ScreenKeys.Routes] = routes,
+            [WorkspaceKeys.RouteCatalog] = routeCatalog,
             [ScreenKeys.PriceLists] = prices,
-            [ScreenKeys.DispatchOrders] = dispatch,
-            [ScreenKeys.DispatchGridEdit] = dispatchGrid,
+            [ScreenKeys.DispatchOrders] = dispatchHub,
             [ScreenKeys.Reconcile] = reconcile,
             [ScreenKeys.Statements] = statements,
             [ScreenKeys.Lookup] = lookup,
             [ScreenKeys.Reports] = reports,
-            [ScreenKeys.Settings] = settings,
-            [ScreenKeys.Users] = users
+            [ScreenKeys.Settings] = settings
         };
 
+        var manager = currentUser.User?.IsManager == true;
         foreach (var (key, title) in new (string Key, string Title)[]
                  {
                      (ScreenKeys.Dashboard, "Dashboard"),
@@ -87,25 +80,41 @@ public partial class MainViewModel : ObservableObject
                      (ScreenKeys.Employees, "Nhân viên"),
                      (ScreenKeys.Departments, "Phòng ban"),
                      (ScreenKeys.JobTitles, "Chức vụ"),
-                     (ScreenKeys.Cities, "Thành phố"),
-                     (ScreenKeys.Locations, "Điểm"),
-                     (ScreenKeys.Routes, "Tuyến"),
+                     (WorkspaceKeys.RouteCatalog, "Tuyến đường"),
                      (ScreenKeys.PriceLists, "Bảng giá"),
                      (ScreenKeys.DispatchOrders, "Lệnh điều xe"),
-                     (ScreenKeys.DispatchGridEdit, "Sửa lệnh theo khách"),
                      (ScreenKeys.Lookup, "Tra cứu"),
                      (ScreenKeys.Reconcile, "Đối soát"),
                      (ScreenKeys.Statements, "Bảng kê tháng"),
                      (ScreenKeys.Reports, "Báo cáo"),
-                     (ScreenKeys.Settings, "Cấu hình"),
-                     (ScreenKeys.Users, "Người dùng")
+                     (ScreenKeys.Settings, "Cấu hình")
                  })
         {
-            if (key == ScreenKeys.Users && currentUser.User?.IsManager != true) continue;
-            if (key == ScreenKeys.Settings && currentUser.User?.IsManager != true
-                && !currentUser.Can(key, PermissionAction.View) && !currentUser.Can(key, PermissionAction.Update))
+            if (key == ScreenKeys.Settings)
+            {
+                if (manager
+                    || currentUser.Can(ScreenKeys.Settings, PermissionAction.View)
+                    || currentUser.Can(ScreenKeys.Settings, PermissionAction.Update)
+                    || currentUser.Can(ScreenKeys.Cities, PermissionAction.View)
+                    || currentUser.Can(ScreenKeys.Cities, PermissionAction.Create))
+                    Items.Add(new NavItem { Key = key, Title = title });
                 continue;
-            if (currentUser.User?.IsManager == true || currentUser.Can(key, PermissionAction.View) || currentUser.Can(key, PermissionAction.Create))
+            }
+
+            if (key == WorkspaceKeys.RouteCatalog)
+            {
+                if (manager
+                    || currentUser.Can(ScreenKeys.Locations, PermissionAction.View)
+                    || currentUser.Can(ScreenKeys.Locations, PermissionAction.Create)
+                    || currentUser.Can(ScreenKeys.Routes, PermissionAction.View)
+                    || currentUser.Can(ScreenKeys.Routes, PermissionAction.Create))
+                    Items.Add(new NavItem { Key = key, Title = title });
+                continue;
+            }
+
+            if (manager
+                || currentUser.Can(key, PermissionAction.View)
+                || currentUser.Can(key, PermissionAction.Create))
                 Items.Add(new NavItem { Key = key, Title = title });
         }
 

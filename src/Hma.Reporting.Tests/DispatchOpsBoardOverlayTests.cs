@@ -18,9 +18,9 @@ public class DispatchOpsBoardOverlayTests
         var parsed = parser.Parse(source);
         Assert.Equal(2, parsed.Count);
         Assert.Equal("TEC", parsed[0].CustomerCode);
-        Assert.Equal("", parsed[1].CustomerCode);
-        Assert.Equal("ca trái", parsed[0].BlockLabel);
-        Assert.Equal("ca phải", parsed[1].BlockLabel);
+        Assert.Equal("ASC", parsed[1].CustomerCode);
+        Assert.Equal("1", parsed[0].BlockLabel);
+        Assert.Equal("2", parsed[1].BlockLabel);
         Assert.Equal("nb", parsed[0].PickupCity);
         Assert.Equal("1.25", parsed[0].Tonnage);
 
@@ -48,13 +48,13 @@ public class DispatchOpsBoardOverlayTests
         var again = parser.Parse(output);
         Assert.Equal(2, again.Count);
         Assert.Equal("TEC", again[0].CustomerCode);
-        Assert.True(string.IsNullOrWhiteSpace(again[1].CustomerCode));
+        Assert.Equal("ASC", again[1].CustomerCode);
         Assert.Equal(1, again[0].StartColumn);
         Assert.Equal(9, again[1].StartColumn);
     }
 
     [Fact]
-    public void Parse_emits_started_row_with_blank_route_and_skips_idle()
+    public void Parse_skips_blank_route_or_customer_and_idle()
     {
         using var source = new MemoryStream();
         using (var wb = new XLWorkbook())
@@ -70,15 +70,15 @@ public class DispatchOpsBoardOverlayTests
             ws.Cell(5, 2).Value = "Bình";
             ws.Cell(5, 3).Value = "29C11111";
             ws.Cell(5, 4).Value = "X";
+            ws.Cell(6, 1).Value = 3;
+            ws.Cell(6, 2).Value = "Chi";
+            ws.Cell(6, 3).Value = "29C22222";
+            ws.Cell(6, 4).Value = "nb - hp";
             wb.SaveAs(source);
         }
 
         source.Position = 0;
-        var rows = new DispatchImportParser().Parse(source);
-        Assert.Single(rows);
-        Assert.Equal("1", rows[0].Stt);
-        Assert.True(string.IsNullOrWhiteSpace(rows[0].Route));
-        Assert.Equal("8", rows[0].Tonnage);
+        Assert.Empty(new DispatchImportParser().Parse(source));
     }
 
     [Fact]
@@ -141,10 +141,13 @@ public class DispatchOpsBoardOverlayTests
             var parser = new DispatchImportParser();
             var rows = parser.Parse(input);
             Assert.True(rows.Count > 100, $"Expected roster rows, got {rows.Count}");
-            Assert.Contains(rows, r => string.IsNullOrWhiteSpace(r.Route));
+            Assert.DoesNotContain(rows, r => string.IsNullOrWhiteSpace(r.Route));
+            Assert.DoesNotContain(rows, r => string.IsNullOrWhiteSpace(r.CustomerCode));
             Assert.Contains(rows, r => r.SheetName == "8");
             Assert.Contains(rows, r => r.SheetName == "10");
             Assert.DoesNotContain(rows, r => string.Equals(r.Route, "X", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(rows, r => r.BlockLabel == "1");
+            Assert.Contains(rows, r => r.BlockLabel == "2");
 
             var checks = rows.Select((r, i) => new DispatchImportCheck
             {
@@ -179,7 +182,7 @@ public class DispatchOpsBoardOverlayTests
         WriteHeaders(ws, 1);
         WriteHeaders(ws, 8);
         WriteTrip(ws, 4, 1, "1", "An", "29C91076", "nb - hp", "TEC");
-        WriteTrip(ws, 4, 8, "1", "An", "29C91076", "nb - hp", "");
+        WriteTrip(ws, 4, 8, "1", "An", "29C91076", "nb - hp", "ASC");
         wb.SaveAs(ms);
         return ms;
     }

@@ -12,7 +12,8 @@ BEGIN
         (5, N'8T',    N'Xe 8 tấn',    8.00),
         (6, N'2.5T',  N'Xe 2.5 tấn',  2.50),
         (7, N'10T',   N'Xe 10 tấn',  10.00),
-        (8, N'15T',   N'Xe 15 tấn',  15.00);
+        (8, N'15T',   N'Xe 15 tấn',  15.00),
+        (9, N'1.5T',  N'Xe 1.5 tấn',  1.50);
     SET IDENTITY_INSERT dbo.VehicleType OFF;
 END
 

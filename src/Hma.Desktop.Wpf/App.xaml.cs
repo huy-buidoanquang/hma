@@ -63,6 +63,9 @@ public partial class App : System.Windows.Application
                 services.AddScoped<PriceListWorkspaceViewModel>();
                 services.AddScoped<DispatchWorkspaceViewModel>();
                 services.AddScoped<DispatchGridEditWorkspaceViewModel>();
+                services.AddScoped<DispatchImportWorkspaceViewModel>();
+                services.AddScoped<DispatchHubWorkspaceViewModel>();
+                services.AddScoped<RouteCatalogWorkspaceViewModel>();
                 services.AddScoped<ReconcileWorkspaceViewModel>();
                 services.AddScoped<StatementWorkspaceViewModel>();
                 services.AddScoped<LookupWorkspaceViewModel>();

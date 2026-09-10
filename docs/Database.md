@@ -247,7 +247,7 @@ Cùng hình: `Id`, `Code` unique, `Name`, `LegacyId`. Nguồn `phongban` / `chuc
 | Name | NVARCHAR(255) | NOT NULL | |
 | Tonnage | DECIMAL(9,2) | NOT NULL | |
 
-Seed 8 loại (Id 1–8 khi chạy `002_seed.sql` với `IDENTITY_INSERT`): 1.25, 3.5, 5, 1.45, 8, 2.5, 10, 15 tấn.
+Seed 9 loại (Id 1–9 khi chạy `002_seed.sql` với `IDENTITY_INSERT`): 1.25, 3.5, 5, 1.45, 1.5, 8, 2.5, 10, 15 tấn. `1.5T` thêm cho sheet bảng điều xe; `1.45T` giữ cho ETL.
 
 ### `PaymentMethod`
 
@@ -728,9 +728,9 @@ Không CHECK constraint cho Status, Kind, VAT 0–100, hay TotalAmount = tổng 
 | `DatabaseSeeder` | `MigrateAndSeedAsync` lúc start WPF |
 | `DemoDataSeeder` | Chỉ khi **chưa có khách** (DB trống). Không đè ETL/production |
 
-Cùng nội dung catalog: 8 `VehicleType`, `UNASSIGNED`, 17 `AppScreen`, 6 sequence, 3 parameter, 1 `Company`.
+Cùng nội dung catalog: 9 `VehicleType` (có `1.5T`, giữ `1.45T`), `UNASSIGNED`, 17 `AppScreen`, 6 sequence, 3 parameter, 1 `Company`.
 
-Seeder C# **thêm** user `admin` / `admin123` (manager) và `ketoan` / `ketoan123` + `UserPermission`. `002_seed.sql` **không** insert user — cutover lấy user từ `etl/06_security.sql` (`RESET:`). DB trống còn nhận kịch bản diễn tập Bắc Bộ (`DemoDataSeeder`): khách, đối tác, xe/tài xế, bảng giá, lệnh tháng trước/tháng này, chứng từ placeholder, bảng kê tháng trước.
+Seeder C# **thêm** user `admin` / `admin123` (manager) và `ketoan` / `ketoan123` + `UserPermission`. `002_seed.sql` **không** insert user — cutover lấy user từ `etl/06_security.sql` (`RESET:`). DB trống còn nhận danh mục từ bảng điều xe 11/08/2026 (`DemoDataSeeder` / `OpsBoardCatalogData`): khách, tài xế, xe (`UNASSIGNED`), điểm, tuyến, bí danh. **Không** seed lệnh, bảng giá, bảng kê. DB đã có khách (ETL/demo cũ) không bị đè — xóa khách hoặc CSDL rồi mở app.
 
 ---
 

@@ -15,6 +15,8 @@ public sealed class DispatchImportParser : IDispatchImportParser
         "Hình thức TT", "Tài xế"
     ];
 
+    public static IReadOnlyList<string> OpsBoardSheetNames => DispatchOpsBoardLayout.SheetNames;
+
     public IReadOnlyList<DispatchImportRow> Parse(Stream stream)
     {
         using var wb = DispatchExcelWorkbook.Open(stream);

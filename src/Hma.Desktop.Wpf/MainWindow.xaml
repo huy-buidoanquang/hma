@@ -43,6 +43,9 @@
         <DataTemplate DataType="{x:Type vm:RouteWorkspaceViewModel}">
             <views:RouteView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RouteCatalogWorkspaceViewModel}">
+            <views:RouteCatalogView/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:PriceListWorkspaceViewModel}">
             <views:PriceListView/>
         </DataTemplate>
@@ -51,6 +54,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:DispatchGridEditWorkspaceViewModel}">
             <views:DispatchGridEditView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DispatchHubWorkspaceViewModel}">
+            <views:DispatchHubView/>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ReconcileWorkspaceViewModel}">
             <views:ReconcileView/>

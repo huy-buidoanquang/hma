@@ -20,6 +20,19 @@
                     <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
                 </WrapPanel>
             </StackPanel>
+            <Border DockPanel.Dock="Bottom"
+                    Visibility="{Binding ToastMessage, Converter={StaticResource StringToVisibility}}">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource StatusBanner}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ToastIsError}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource BrushError}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding ToastMessage}" Foreground="{DynamicResource BrushBlack}"/>
+            </Border>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>

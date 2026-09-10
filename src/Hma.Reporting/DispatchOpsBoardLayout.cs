@@ -58,7 +58,7 @@ internal static class DispatchOpsBoardLayout
                 blocks.Add(new DispatchOpsBoardBlock(
                     headerRow,
                     cols[i],
-                    cols.Count == 1 ? "ca" : (i == 0 ? "ca trái" : "ca phải"),
+                    cols.Count == 1 ? "ca" : (i == 0 ? "1" : "2"),
                     nextSameCol));
             }
         }

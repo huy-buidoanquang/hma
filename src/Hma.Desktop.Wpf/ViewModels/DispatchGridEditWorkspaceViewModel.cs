@@ -21,7 +21,10 @@ public partial class DispatchGridEditWorkspaceViewModel(
     [ObservableProperty] private DispatchGridRow? selected;
     [ObservableProperty] private bool? allSelected;
 
+    public override bool HasUnsavedChanges => _dirty;
+
     private bool _suppressAllSelected;
+    private bool _dirty;
 
     public ObservableCollection<DispatchGridRow> Items { get; } = [];
     public ObservableCollection<Customer> CustomerOptions { get; } = [];
@@ -83,6 +86,7 @@ public partial class DispatchGridEditWorkspaceViewModel(
             Items.Add(row);
         }
         RefreshAllSelected();
+        _dirty = false;
         Status = $"{Items.Count} lệnh kỳ {Month:00}/{Year}";
     }
 
@@ -140,6 +144,11 @@ public partial class DispatchGridEditWorkspaceViewModel(
     {
         if (e.PropertyName == nameof(DispatchGridRow.IsSelected))
             RefreshAllSelected();
+        else if (e.PropertyName is nameof(DispatchGridRow.RouteId) or nameof(DispatchGridRow.VehicleId)
+                 or nameof(DispatchGridRow.UnitPrice) or nameof(DispatchGridRow.ExtraCost)
+                 or nameof(DispatchGridRow.Notes) or nameof(DispatchGridRow.BillingYear)
+                 or nameof(DispatchGridRow.BillingMonth))
+            _dirty = true;
     }
 
     private void RefreshAllSelected()
@@ -153,6 +162,13 @@ public partial class DispatchGridEditWorkspaceViewModel(
         else
             AllSelected = null;
         _suppressAllSelected = false;
+    }
+
+    public void DiscardPendingEdits()
+    {
+        _dirty = false;
+        ClearRows();
+        Status = null;
     }
 
     private void ClearRows()

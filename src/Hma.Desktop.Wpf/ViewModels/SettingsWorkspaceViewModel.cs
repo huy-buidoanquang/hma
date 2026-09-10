@@ -10,6 +10,8 @@ namespace Hma.Desktop.Wpf.ViewModels;
 public partial class SettingsWorkspaceViewModel(
     SettingsService settings,
     CompanyService company,
+    CityWorkspaceViewModel cities,
+    UserWorkspaceViewModel users,
     LocationAliasWorkspaceViewModel locationAliases,
     RouteAliasWorkspaceViewModel routeAliases,
     CustomerAliasWorkspaceViewModel customerAliases,
@@ -37,20 +39,17 @@ public partial class SettingsWorkspaceViewModel(
     private string? _companyBaseline;
 
     public IReadOnlyList<ThemeOption> ThemeOptions => theme.Options;
+    public CityWorkspaceViewModel Cities { get; } = cities;
+    public UserWorkspaceViewModel Users { get; } = users;
     public LocationAliasWorkspaceViewModel LocationAliases { get; } = locationAliases;
     public RouteAliasWorkspaceViewModel RouteAliases { get; } = routeAliases;
     public CustomerAliasWorkspaceViewModel CustomerAliases { get; } = customerAliases;
-    public IReadOnlyList<SettingsSection> Sections { get; } =
-    [
-        new() { Key = SettingsSectionKeys.Parameters, Title = "Tham số" },
-        new() { Key = SettingsSectionKeys.Company, Title = "Công ty" },
-        new() { Key = SettingsSectionKeys.LocationAliases, Title = "Từ điển điểm" },
-        new() { Key = SettingsSectionKeys.RouteAliases, Title = "Từ điển tuyến" },
-        new() { Key = SettingsSectionKeys.CustomerAliases, Title = "Từ điển khách" }
-    ];
+    public IReadOnlyList<SettingsSection> Sections { get; } = BuildSections(user);
 
     public bool IsParametersSelected => SelectedSection?.Key == SettingsSectionKeys.Parameters;
     public bool IsCompanySelected => SelectedSection?.Key == SettingsSectionKeys.Company;
+    public bool IsCitiesSelected => SelectedSection?.Key == SettingsSectionKeys.Cities;
+    public bool IsUsersSelected => SelectedSection?.Key == SettingsSectionKeys.Users;
     public bool IsLocationAliasesSelected => SelectedSection?.Key == SettingsSectionKeys.LocationAliases;
     public bool IsRouteAliasesSelected => SelectedSection?.Key == SettingsSectionKeys.RouteAliases;
     public bool IsCustomerAliasesSelected => SelectedSection?.Key == SettingsSectionKeys.CustomerAliases;
@@ -58,6 +57,8 @@ public partial class SettingsWorkspaceViewModel(
     public override bool HasUnsavedChanges =>
         ParametersFingerprint != _parametersBaseline
         || CompanyFingerprint != _companyBaseline
+        || Cities.HasUnsavedChanges
+        || Users.HasUnsavedChanges
         || LocationAliases.HasUnsavedChanges
         || RouteAliases.HasUnsavedChanges
         || CustomerAliases.HasUnsavedChanges;
@@ -68,37 +69,59 @@ public partial class SettingsWorkspaceViewModel(
     private string CompanyFingerprint =>
         EditorFingerprint.Of(CompanyId, CompanyName, CompanyAddress, CompanyPhone, CompanyTaxCode, CompanyBank, CompanyWebsite, CompanyEmail);
 
+    private bool CanLoadSettingsBody =>
+        user.User?.IsManager == true || user.Can(ScreenKeys.Settings, PermissionAction.View);
+
     public override async Task LoadAsync()
     {
         UsePermissions(user, ScreenKeys.Settings);
         UsePrompt(prompt);
+        Cities.DiscardUnsavedEditor();
+        Users.DiscardUnsavedEditor();
+        LocationAliases.DiscardUnsavedEditor();
+        RouteAliases.DiscardUnsavedEditor();
+        CustomerAliases.DiscardUnsavedEditor();
         _loadingTheme = true;
         UiTheme = theme.Current;
         _loadingTheme = false;
-        SelectedSection ??= Sections[0];
+        if (SelectedSection is null && Sections.Count > 0)
+            SelectedSection = Sections[0];
         await RunAsync(async () =>
         {
-            var model = await settings.LoadAsync();
-            VatRate = model.VatRate;
-            DocumentStorePath = model.DocumentStorePath;
-            DispatchOrderLastValue = model.DispatchOrderLastValue;
-            FreightStatementLastValue = model.FreightStatementLastValue;
-            _parametersBaseline = ParametersFingerprint;
+            if (CanLoadSettingsBody)
+            {
+                var model = await settings.LoadAsync();
+                VatRate = model.VatRate;
+                DocumentStorePath = model.DocumentStorePath;
+                DispatchOrderLastValue = model.DispatchOrderLastValue;
+                FreightStatementLastValue = model.FreightStatementLastValue;
+                _parametersBaseline = ParametersFingerprint;
 
-            var info = await company.GetAsync();
-            CompanyId = info.Id;
-            CompanyName = info.Name;
-            CompanyAddress = info.Address;
-            CompanyPhone = info.Phone;
-            CompanyTaxCode = info.TaxCode;
-            CompanyBank = info.Bank;
-            CompanyWebsite = info.Website;
-            CompanyEmail = info.Email;
-            _companyBaseline = CompanyFingerprint;
+                var info = await company.GetAsync();
+                CompanyId = info.Id;
+                CompanyName = info.Name;
+                CompanyAddress = info.Address;
+                CompanyPhone = info.Phone;
+                CompanyTaxCode = info.TaxCode;
+                CompanyBank = info.Bank;
+                CompanyWebsite = info.Website;
+                CompanyEmail = info.Email;
+                _companyBaseline = CompanyFingerprint;
 
-            await LocationAliases.LoadAsync();
-            await RouteAliases.LoadAsync();
-            await CustomerAliases.LoadAsync();
+                await LocationAliases.LoadAsync();
+                await RouteAliases.LoadAsync();
+                await CustomerAliases.LoadAsync();
+            }
+            else
+            {
+                _parametersBaseline = ParametersFingerprint;
+                _companyBaseline = CompanyFingerprint;
+            }
+
+            if (Sections.Any(s => s.Key == SettingsSectionKeys.Cities))
+                await Cities.LoadAsync();
+            if (Sections.Any(s => s.Key == SettingsSectionKeys.Users))
+                await Users.LoadAsync();
         });
     }
 
@@ -112,6 +135,8 @@ public partial class SettingsWorkspaceViewModel(
     {
         OnPropertyChanged(nameof(IsParametersSelected));
         OnPropertyChanged(nameof(IsCompanySelected));
+        OnPropertyChanged(nameof(IsCitiesSelected));
+        OnPropertyChanged(nameof(IsUsersSelected));
         OnPropertyChanged(nameof(IsLocationAliasesSelected));
         OnPropertyChanged(nameof(IsRouteAliasesSelected));
         OnPropertyChanged(nameof(IsCustomerAliasesSelected));
@@ -168,5 +193,32 @@ public partial class SettingsWorkspaceViewModel(
             CompanyId = row.Id;
             _companyBaseline = CompanyFingerprint;
         }, "Đã lưu thông tin công ty.");
+    }
+
+    private static IReadOnlyList<SettingsSection> BuildSections(ICurrentUser current)
+    {
+        var manager = current.User?.IsManager == true;
+        var settingsView = manager || current.Can(ScreenKeys.Settings, PermissionAction.View);
+        var citiesView = manager || current.Can(ScreenKeys.Cities, PermissionAction.View)
+                         || current.Can(ScreenKeys.Cities, PermissionAction.Create);
+        var list = new List<SettingsSection>();
+        if (settingsView)
+        {
+            list.Add(new() { Key = SettingsSectionKeys.Parameters, Title = "Tham số" });
+            list.Add(new() { Key = SettingsSectionKeys.Company, Title = "Công ty" });
+        }
+
+        if (citiesView)
+            list.Add(new() { Key = SettingsSectionKeys.Cities, Title = "Thành phố" });
+        if (manager)
+            list.Add(new() { Key = SettingsSectionKeys.Users, Title = "Người dùng" });
+        if (settingsView)
+        {
+            list.Add(new() { Key = SettingsSectionKeys.LocationAliases, Title = "Từ điển điểm" });
+            list.Add(new() { Key = SettingsSectionKeys.RouteAliases, Title = "Từ điển tuyến" });
+            list.Add(new() { Key = SettingsSectionKeys.CustomerAliases, Title = "Từ điển khách" });
+        }
+
+        return list;
     }
 }

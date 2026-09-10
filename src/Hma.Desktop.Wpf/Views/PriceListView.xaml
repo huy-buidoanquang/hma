@@ -68,7 +68,7 @@
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Label Style="{StaticResource FormLabel}" Content="Khách (trống = giá công bố)"/>
+                                <Label Style="{StaticResource FormLabel}" Content="Khách (để trống = giá công bố)"/>
                                 <ComboBox Grid.Column="1" Margin="0" ItemsSource="{Binding Customers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding Editor.CustomerId}" IsEnabled="{Binding AreFieldsEnabled}"/>
                             </Grid>
                             <Grid Style="{StaticResource FormRow}">
