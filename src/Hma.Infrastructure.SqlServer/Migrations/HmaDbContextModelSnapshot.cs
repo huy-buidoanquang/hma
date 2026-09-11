@@ -59,9 +59,13 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DisplayName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<int?>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FailedLoginCount")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsManager")
@@ -70,20 +74,31 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Property<bool>("IsSpecial")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("LegacyId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("UserName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("EmployeeId");
+
+                    b.HasIndex("UserName")
+                        .IsUnique();
 
                     b.ToTable("AppUser", (string)null);
                 });
@@ -463,6 +478,14 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Property<string>("AmountInWords")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("ApprovedExceptionCost")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<decimal>("ApprovedExceptionRevenue")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
                     b.Property<string>("ArNumber")
                         .HasColumnType("nvarchar(max)");
 
@@ -471,6 +494,30 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.Property<int>("BillingYear")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("BuyExtraCost")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<string>("BuyOverrideReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("BuyRateSourceSnapshot")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("BuySurcharge")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<decimal>("BuyTotal")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<decimal>("BuyUnitPrice")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -504,7 +551,21 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                         .HasPrecision(20, 2)
                         .HasColumnType("decimal(20,2)");
 
+                    b.Property<string>("FreightOverrideReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("GrossMargin")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<bool>("IsBuyManual")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFreightManual")
                         .HasColumnType("bit");
 
                     b.Property<int?>("LegacyId")
@@ -512,6 +573,24 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PartnerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PartnerNameSnapshot")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<decimal>("PartnerOperatingFeePercent")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<decimal>("PartnerPayableAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<int?>("PartnerRateId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("PaymentMethodId")
                         .HasColumnType("int");
@@ -521,6 +600,13 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.Property<DateTime>("PickupAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("PriceListItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PriceSourceSnapshot")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("ReceiverAddress")
                         .HasColumnType("nvarchar(max)");
@@ -543,7 +629,23 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Property<int?>("ReconciledByUserId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ReconciliationRejectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReconciliationRejectedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReconciliationRejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int>("ReconciliationStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ReconciliationSubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReconciliationSubmittedByUserId")
                         .HasColumnType("int");
 
                     b.Property<int?>("RouteId")
@@ -593,7 +695,8 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code");
+                    b.HasIndex("Code")
+                        .IsUnique();
 
                     b.HasIndex("ConfirmedByUserId");
 
@@ -605,11 +708,21 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.HasIndex("EmployeeId");
 
+                    b.HasIndex("PartnerId");
+
+                    b.HasIndex("PartnerRateId");
+
                     b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("PriceListItemId");
 
                     b.HasIndex("ReceiverCustomerId");
 
                     b.HasIndex("ReconciledByUserId");
+
+                    b.HasIndex("ReconciliationRejectedByUserId");
+
+                    b.HasIndex("ReconciliationSubmittedByUserId");
 
                     b.HasIndex("RouteId");
 
@@ -835,12 +948,21 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("ExtraCostTotal")
                         .HasPrecision(20, 2)
                         .HasColumnType("decimal(20,2)");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("FinalizedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("FreightTotal")
                         .HasPrecision(20, 2)
@@ -866,6 +988,15 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("SubmittedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("SurchargeTotal")
                         .HasPrecision(20, 2)
                         .HasColumnType("decimal(20,2)");
@@ -885,11 +1016,29 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                         .HasPrecision(9, 2)
                         .HasColumnType("decimal(9,2)");
 
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VoidedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Year")
                         .HasColumnType("int")
                         .HasColumnName("Year");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FinalizedByUserId");
+
+                    b.HasIndex("SubmittedByUserId");
+
+                    b.HasIndex("VoidedByUserId");
 
                     b.HasIndex("CustomerId", "Year", "Month")
                         .IsUnique();
@@ -954,7 +1103,8 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DispatchOrderId");
+                    b.HasIndex("DispatchOrderId")
+                        .IsUnique();
 
                     b.HasIndex("FreightStatementId");
 
@@ -1098,6 +1248,228 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.ToTable("Partner", (string)null);
                 });
 
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerRate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EffectiveTo")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PartnerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RouteId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("Surcharge")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<int>("VehicleTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("RouteId");
+
+                    b.HasIndex("VehicleTypeId");
+
+                    b.HasIndex("PartnerId", "RouteId", "VehicleTypeId", "EffectiveFrom")
+                        .IsUnique();
+
+                    b.ToTable("PartnerRate", (string)null);
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerSettlement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("FinalizedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int")
+                        .HasColumnName("Month");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("OperatingFeeAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<int>("PartnerId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PayableAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("SubmittedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TripCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VoidedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int")
+                        .HasColumnName("Year");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FinalizedByUserId");
+
+                    b.HasIndex("SubmittedByUserId");
+
+                    b.HasIndex("VoidedByUserId");
+
+                    b.HasIndex("PartnerId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("PartnerSettlement", (string)null);
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerSettlementLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("BuyTotal")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<string>("DispatchCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("DispatchOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DriverName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("OperatingFeeAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<decimal>("OperatingFeePercent")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("decimal(9,2)");
+
+                    b.Property<int>("PartnerSettlementId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PayableAmount")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<string>("PlateNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Route")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("TripDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("PartnerSettlementId");
+
+                    b.ToTable("PartnerSettlementLine", (string)null);
+                });
+
             modelBuilder.Entity("Hma.Domain.Entities.PaymentMethod", b =>
                 {
                     b.Property<int>("Id")
@@ -1191,13 +1563,16 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("DeliveryLocationId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("LegacyId")
                         .HasColumnType("int");
 
                     b.Property<int>("PriceListRevisionId")
                         .HasColumnType("int");
 
-                    b.Property<int>("RouteId")
+                    b.Property<int?>("RouteId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Surcharge")
@@ -1213,11 +1588,19 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PriceListRevisionId");
+                    b.HasIndex("DeliveryLocationId");
 
                     b.HasIndex("RouteId");
 
                     b.HasIndex("VehicleTypeId");
+
+                    b.HasIndex("PriceListRevisionId", "DeliveryLocationId", "VehicleTypeId")
+                        .IsUnique()
+                        .HasFilter("[RouteId] IS NULL AND [DeliveryLocationId] IS NOT NULL");
+
+                    b.HasIndex("PriceListRevisionId", "RouteId", "VehicleTypeId")
+                        .IsUnique()
+                        .HasFilter("[RouteId] IS NOT NULL");
 
                     b.ToTable("PriceListItem", (string)null);
                 });
@@ -1368,6 +1751,141 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SystemParameter", (string)null);
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.TransportException", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CustomerCharge")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("DispatchOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("PartnerCost")
+                        .HasPrecision(20, 2)
+                        .HasColumnType("decimal(20,2)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ReviewedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("SubmittedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TransportExceptionCodeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VoidedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("DispatchOrderId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("SubmittedByUserId");
+
+                    b.HasIndex("TransportExceptionCodeId");
+
+                    b.HasIndex("VoidedByUserId");
+
+                    b.ToTable("TransportException", (string)null);
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.TransportExceptionCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("TransportExceptionCode", (string)null);
                 });
 
             modelBuilder.Entity("Hma.Domain.Entities.UserPermission", b =>
@@ -1729,9 +2247,24 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Hma.Domain.Entities.Partner", "Partner")
+                        .WithMany()
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.PartnerRate", "PartnerRate")
+                        .WithMany()
+                        .HasForeignKey("PartnerRateId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Hma.Domain.Entities.PaymentMethod", "PaymentMethod")
                         .WithMany()
                         .HasForeignKey("PaymentMethodId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.PriceListItem", "PriceListItem")
+                        .WithMany()
+                        .HasForeignKey("PriceListItemId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Hma.Domain.Entities.Customer", "ReceiverCustomer")
@@ -1742,6 +2275,16 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.HasOne("Hma.Domain.Entities.AppUser", "ReconciledByUser")
                         .WithMany()
                         .HasForeignKey("ReconciledByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "ReconciliationRejectedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReconciliationRejectedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "ReconciliationSubmittedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReconciliationSubmittedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Hma.Domain.Entities.Route", "Route")
@@ -1772,11 +2315,21 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
                     b.Navigation("Employee");
 
+                    b.Navigation("Partner");
+
+                    b.Navigation("PartnerRate");
+
                     b.Navigation("PaymentMethod");
+
+                    b.Navigation("PriceListItem");
 
                     b.Navigation("ReceiverCustomer");
 
                     b.Navigation("ReconciledByUser");
+
+                    b.Navigation("ReconciliationRejectedByUser");
+
+                    b.Navigation("ReconciliationSubmittedByUser");
 
                     b.Navigation("Route");
 
@@ -1845,13 +2398,41 @@ namespace Hma.Infrastructure.SqlServer.Migrations
 
             modelBuilder.Entity("Hma.Domain.Entities.FreightStatement", b =>
                 {
+                    b.HasOne("Hma.Domain.Entities.AppUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Hma.Domain.Entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Hma.Domain.Entities.AppUser", "FinalizedByUser")
+                        .WithMany()
+                        .HasForeignKey("FinalizedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "SubmittedByUser")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "VoidedByUser")
+                        .WithMany()
+                        .HasForeignKey("VoidedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
                     b.Navigation("Customer");
+
+                    b.Navigation("FinalizedByUser");
+
+                    b.Navigation("SubmittedByUser");
+
+                    b.Navigation("VoidedByUser");
                 });
 
             modelBuilder.Entity("Hma.Domain.Entities.FreightStatementLine", b =>
@@ -1894,21 +2475,17 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Navigation("Location");
                 });
 
-            modelBuilder.Entity("Hma.Domain.Entities.PriceList", b =>
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerRate", b =>
                 {
-                    b.HasOne("Hma.Domain.Entities.Customer", "Customer")
+                    b.HasOne("Hma.Domain.Entities.AppUser", "CreatedByUser")
                         .WithMany()
-                        .HasForeignKey("CustomerId");
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Customer");
-                });
-
-            modelBuilder.Entity("Hma.Domain.Entities.PriceListItem", b =>
-                {
-                    b.HasOne("Hma.Domain.Entities.PriceListRevision", "PriceListRevision")
-                        .WithMany("Items")
-                        .HasForeignKey("PriceListRevisionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                    b.HasOne("Hma.Domain.Entities.Partner", "Partner")
+                        .WithMany()
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Hma.Domain.Entities.Route", "Route")
@@ -1920,8 +2497,110 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.HasOne("Hma.Domain.Entities.VehicleType", "VehicleType")
                         .WithMany()
                         .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("Route");
+
+                    b.Navigation("VehicleType");
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerSettlement", b =>
+                {
+                    b.HasOne("Hma.Domain.Entities.AppUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "FinalizedByUser")
+                        .WithMany()
+                        .HasForeignKey("FinalizedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.Partner", "Partner")
+                        .WithMany()
+                        .HasForeignKey("PartnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "SubmittedByUser")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "VoidedByUser")
+                        .WithMany()
+                        .HasForeignKey("VoidedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("FinalizedByUser");
+
+                    b.Navigation("Partner");
+
+                    b.Navigation("SubmittedByUser");
+
+                    b.Navigation("VoidedByUser");
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerSettlementLine", b =>
+                {
+                    b.HasOne("Hma.Domain.Entities.DispatchOrder", "DispatchOrder")
+                        .WithMany()
+                        .HasForeignKey("DispatchOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hma.Domain.Entities.PartnerSettlement", "PartnerSettlement")
+                        .WithMany("Lines")
+                        .HasForeignKey("PartnerSettlementId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("DispatchOrder");
+
+                    b.Navigation("PartnerSettlement");
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PriceList", b =>
+                {
+                    b.HasOne("Hma.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId");
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PriceListItem", b =>
+                {
+                    b.HasOne("Hma.Domain.Entities.Location", "DeliveryLocation")
+                        .WithMany()
+                        .HasForeignKey("DeliveryLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.PriceListRevision", "PriceListRevision")
+                        .WithMany("Items")
+                        .HasForeignKey("PriceListRevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Hma.Domain.Entities.Route", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.VehicleType", "VehicleType")
+                        .WithMany()
+                        .HasForeignKey("VehicleTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DeliveryLocation");
 
                     b.Navigation("PriceListRevision");
 
@@ -1975,6 +2654,53 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Navigation("Location");
 
                     b.Navigation("Route");
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.TransportException", b =>
+                {
+                    b.HasOne("Hma.Domain.Entities.AppUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.DispatchOrder", "DispatchOrder")
+                        .WithMany("TransportExceptions")
+                        .HasForeignKey("DispatchOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "SubmittedByUser")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Hma.Domain.Entities.TransportExceptionCode", "ExceptionCode")
+                        .WithMany()
+                        .HasForeignKey("TransportExceptionCodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Hma.Domain.Entities.AppUser", "VoidedByUser")
+                        .WithMany()
+                        .HasForeignKey("VoidedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("DispatchOrder");
+
+                    b.Navigation("ExceptionCode");
+
+                    b.Navigation("ReviewedByUser");
+
+                    b.Navigation("SubmittedByUser");
+
+                    b.Navigation("VoidedByUser");
                 });
 
             modelBuilder.Entity("Hma.Domain.Entities.UserPermission", b =>
@@ -2070,6 +2796,8 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Navigation("Lines");
 
                     b.Navigation("Stops");
+
+                    b.Navigation("TransportExceptions");
                 });
 
             modelBuilder.Entity("Hma.Domain.Entities.FreightStatement", b =>
@@ -2082,6 +2810,11 @@ namespace Hma.Infrastructure.SqlServer.Migrations
                     b.Navigation("Drivers");
 
                     b.Navigation("Vehicles");
+                });
+
+            modelBuilder.Entity("Hma.Domain.Entities.PartnerSettlement", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Hma.Domain.Entities.PriceList", b =>

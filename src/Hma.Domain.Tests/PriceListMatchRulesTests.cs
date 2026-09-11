@@ -83,6 +83,20 @@ public class PriceListMatchRulesTests
         Assert.Contains("biến động", privQuote.SourceLabel, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Pick_prefers_exact_route_over_destination_fallback()
+    {
+        var fallback = Item(customerId: null, fluctuation: false, created: AsOf, unit: 900_000);
+        fallback.RouteId = null;
+        fallback.DeliveryLocationId = 99;
+        var exact = Item(customerId: null, fluctuation: false, created: AsOf.AddDays(-1), unit: 800_000);
+        exact.RouteId = 42;
+
+        var hit = PriceListMatchRules.Pick([fallback, exact], null, AsOf, exactRouteId: 42);
+
+        Assert.Same(exact, hit);
+    }
+
     private static PriceListItem Item(
         int? customerId,
         bool fluctuation,

@@ -9,6 +9,7 @@ namespace Hma.Desktop.Wpf.ViewModels;
 
 public partial class SettingsWorkspaceViewModel(
     SettingsService settings,
+    SystemHealthService health,
     CompanyService company,
     CityWorkspaceViewModel cities,
     UserWorkspaceViewModel users,
@@ -32,6 +33,7 @@ public partial class SettingsWorkspaceViewModel(
     [ObservableProperty] private string? companyBank;
     [ObservableProperty] private string? companyWebsite;
     [ObservableProperty] private string? companyEmail;
+    [ObservableProperty] private string healthStatus = "Chưa kiểm tra";
     [ObservableProperty] private SettingsSection? selectedSection;
     private bool _loadingTheme;
     private bool _suppressSection;
@@ -193,6 +195,20 @@ public partial class SettingsWorkspaceViewModel(
             CompanyId = row.Id;
             _companyBaseline = CompanyFingerprint;
         }, "Đã lưu thông tin công ty.");
+    }
+
+    [RelayCommand]
+    private async Task CheckHealth()
+    {
+        await RunAsync(async () =>
+        {
+            var result = await health.CheckAsync();
+            var database = result.DatabaseAvailable ? "SQL: tốt" : "SQL: lỗi";
+            var storage = result.DocumentStorageAvailable ? "Kho chứng từ: tốt" : "Kho chứng từ: lỗi";
+            var topology = result.UsesLocalDocumentStorage ? "đang dùng thư mục cục bộ" : "đang dùng thư mục dùng chung";
+            HealthStatus = $"{result.CheckedAt:dd/MM/yyyy HH:mm} · {database} · {storage} · {topology} · "
+                           + $"{result.PendingTransportExceptions} sự cố chờ xử lý · {result.PendingReconciliations} chuyến chờ đối soát";
+        });
     }
 
     private static IReadOnlyList<SettingsSection> BuildSections(ICurrentUser current)

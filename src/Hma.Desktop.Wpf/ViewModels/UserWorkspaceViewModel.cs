@@ -60,8 +60,12 @@ public partial class UserWorkspaceViewModel(UserAdminService users, CatalogServi
     {
         Editor = new AppUser
         {
-            Id = value.Id, UserName = value.UserName, DisplayName = value.DisplayName,
-            IsManager = value.IsManager, PasswordHash = value.PasswordHash, EmployeeId = value.EmployeeId
+            Id = value.Id,
+            UserName = value.UserName,
+            DisplayName = value.DisplayName,
+            IsManager = value.IsManager,
+            PasswordHash = value.PasswordHash,
+            EmployeeId = value.EmployeeId
         };
         NewPassword = "";
         foreach (var row in PermissionRows)

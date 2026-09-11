@@ -14,7 +14,7 @@
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ActionBar}">
                 <StackPanel Style="{StaticResource FilterCluster}" Margin="0">
                     <Label Style="{StaticResource FilterLabel}" Content="Mã lệnh"/>
-                    <TextBox Style="{StaticResource FilterField}" Width="140" Text="{Binding FilterCode}"/>
+                    <TextBox Style="{StaticResource SearchField}" Width="140" Text="{Binding FilterCode}"/>
                 </StackPanel>
                 <Button Content="Tìm" Command="{Binding SearchCommand}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
             </WrapPanel>
@@ -40,10 +40,10 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Ngày" Binding="{Binding PickupAt, StringFormat=dd/MM/yyyy}"/>
-                    <DataGridTextColumn Header="Khách" Binding="{Binding Customer.Name}" Width="*"/>
-                    <DataGridTextColumn Header="Tuyến" Binding="{Binding RouteLabel}" Width="160"/>
-                    <DataGridTextColumn Header="Tổng" Binding="{Binding TotalAmount, Converter={StaticResource VndMoney}}" Width="100" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                    <DataGridTextColumn Header="Ngày" Binding="{Binding PickupAt, StringFormat=dd/MM/yyyy}" Width="90"/>
+                    <DataGridTextColumn Header="Khách" Binding="{Binding Customer.Name}" Width="180"/>
+                    <DataGridTextColumn Header="Tuyến" Binding="{Binding RouteLabel}" Width="180"/>
+                    <DataGridTextColumn Header="Tổng" Binding="{Binding TotalAmount, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
                 </DataGrid.Columns>
             </DataGrid>
         </DockPanel>
@@ -52,7 +52,14 @@
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="Checklist đối soát" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{Binding Checklist}" TextWrapping="Wrap" Style="{StaticResource BodyText}"/>
-                    <Button Content="Xác nhận đã đối soát" Command="{Binding ConfirmCommand}" Margin="0,16,0,16" HorizontalAlignment="Left" IsEnabled="{Binding CanUpdate}"/>
+                    <WrapPanel Margin="0,16,0,8">
+                        <Button Content="Gửi duyệt" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}"/>
+                        <Button Content="Duyệt đối soát" Command="{Binding ApproveCommand}" IsEnabled="{Binding CanApprove}"/>
+                    </WrapPanel>
+                    <Label Content="Lý do từ chối"/>
+                    <TextBox Text="{Binding RejectionReason, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanReject}"/>
+                    <Button Content="Từ chối" Style="{StaticResource DestructiveButton}" Command="{Binding RejectCommand}"
+                            Margin="0,8,0,16" HorizontalAlignment="Left" IsEnabled="{Binding CanReject}"/>
                     <TextBlock Text="Lịch sử cước / xe / tuyến / trạng thái / đối soát" Style="{StaticResource SectionTitle}" Margin="0,8,0,8"/>
                 </StackPanel>
                 <DataGrid ItemsSource="{Binding History}">

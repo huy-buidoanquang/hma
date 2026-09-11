@@ -1,10 +1,15 @@
 using Hma.Application.Abstractions;
 using Hma.Domain.Entities;
+using Hma.Domain.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Application.Services;
 
-public class FreightStatementService(IHmaDbContext db, IDocumentNumberService numbers, ICurrentUser current)
+public class FreightStatementService(
+    IHmaDbContext db,
+    IDocumentNumberService numbers,
+    ICurrentUser current,
+    IChangeLogService log)
 {
     public Task<List<FreightStatement>> ListAsync(int? customerId, CancellationToken ct = default)
     {
@@ -15,9 +20,20 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
 
     public Task<FreightStatement?> GetAsync(int id, CancellationToken ct = default) =>
         db.FreightStatements.Include(s => s.Customer).Include(s => s.Lines)
+            .Include(s => s.CreatedByUser)
+            .Include(s => s.SubmittedByUser)
+            .Include(s => s.FinalizedByUser)
+            .Include(s => s.VoidedByUser)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
 
-    public async Task<FreightStatement> GenerateAsync(int customerId, int year, int month, CancellationToken ct = default)
+    public Task<FreightStatement> GenerateAsync(int customerId, int year, int month, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => GenerateCoreAsync(customerId, year, month, token), ct);
+
+    private async Task<FreightStatement> GenerateCoreAsync(
+        int customerId,
+        int year,
+        int month,
+        CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.Statements, PermissionAction.Create);
         var vatParam = await db.Parameters.FirstOrDefaultAsync(p => p.Key == "VatRate", ct);
@@ -31,16 +47,19 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
             .Include(d => d.VehicleType)
             .Include(d => d.Stops)
             .Include(d => d.Route)
+            .Include(d => d.Documents)
             .Where(d => d.CustomerId == customerId
                         && d.BillingYear == year && d.BillingMonth == month
-                        && (d.ReconciliationStatus == ReconciliationStatus.Reconciled
-                            || d.Status == DispatchStatus.Locked))
+                        && d.Status == DispatchStatus.Completed
+                        && d.ReconciliationStatus == ReconciliationStatus.Reconciled
+                        && d.Documents.Any(x => x.Kind == DispatchDocumentKind.DeliveryNote))
             .OrderBy(d => d.PickupAt)
             .ToListAsync(ct);
 
         var existing = await db.FreightStatements
             .Include(s => s.Lines)
             .FirstOrDefaultAsync(s => s.CustomerId == customerId && s.Year == year && s.Month == month, ct);
+        FreightStatementRules.EnsureCanGenerate(existing);
 
         FreightStatement statement;
         if (existing is not null)
@@ -56,7 +75,9 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
                 CustomerId = customerId,
                 Year = year,
                 Month = month,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                CreatedByUserId = current.User?.Id,
+                Status = FinancialDocumentStatus.Draft
             };
             db.Add(statement);
         }
@@ -65,6 +86,7 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
         statement.Lines.Clear();
         foreach (var o in orders)
         {
+            DispatchWorkflowRules.EnsureCanIncludeInStatement(o);
             statement.Lines.Add(new FreightStatementLine
             {
                 DispatchOrderId = o.Id,
@@ -76,7 +98,7 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
                 DriverName = o.Driver?.Name,
                 UnitPrice = o.UnitPrice,
                 Surcharge = o.Surcharge,
-                ExtraCost = o.ExtraCost,
+                ExtraCost = o.BillableExtraCost,
                 LineTotal = o.TotalAmount,
                 Notes = o.Notes
             });
@@ -91,5 +113,61 @@ public class FreightStatementService(IHmaDbContext db, IDocumentNumberService nu
         statement.TotalWithVat = statement.GrandTotal + statement.VatAmount;
         await ConcurrencyConflict.SaveAsync(db, ct);
         return await GetAsync(statement.Id, ct) ?? statement;
+    }
+
+    public Task<FreightStatement> SubmitAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => SubmitCoreAsync(id, token), ct);
+
+    private async Task<FreightStatement> SubmitCoreAsync(int id, CancellationToken ct)
+    {
+        PermissionGuard.Require(current, ScreenKeys.Statements, PermissionAction.Update);
+        var statement = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy bảng kê.");
+        FreightStatementRules.EnsureCanSubmit(statement, current.User?.Id);
+        statement.Status = FinancialDocumentStatus.Submitted;
+        statement.SubmittedAt = DateTime.Now;
+        statement.SubmittedByUserId = current.User?.Id;
+        db.Update(statement);
+        db.ApplyOriginalRowVersion(statement, statement.RowVersion);
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        await log.RecordAsync("FreightStatement", id, "Submit", "Gửi duyệt bảng kê", null, null, ct);
+        return await GetAsync(id, ct) ?? statement;
+    }
+
+    public Task<FreightStatement> FinalizeAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => FinalizeCoreAsync(id, token), ct);
+
+    private async Task<FreightStatement> FinalizeCoreAsync(int id, CancellationToken ct)
+    {
+        PermissionGuard.Require(current, ScreenKeys.Statements, PermissionAction.Update);
+        var statement = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy bảng kê.");
+        FreightStatementRules.EnsureCanFinalize(statement, current.User?.Id);
+        statement.Status = FinancialDocumentStatus.Finalized;
+        statement.FinalizedAt = DateTime.Now;
+        statement.FinalizedByUserId = current.User?.Id;
+        db.Update(statement);
+        db.ApplyOriginalRowVersion(statement, statement.RowVersion);
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        await log.RecordAsync("FreightStatement", id, "Finalize", "Chốt bảng kê", null, null, ct);
+        return await GetAsync(id, ct) ?? statement;
+    }
+
+    public Task<FreightStatement> VoidAsync(int id, string reason, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => VoidCoreAsync(id, reason, token), ct);
+
+    private async Task<FreightStatement> VoidCoreAsync(int id, string reason, CancellationToken ct)
+    {
+        PermissionGuard.Require(current, ScreenKeys.Statements, PermissionAction.Update);
+        var statement = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy bảng kê.");
+        FreightStatementRules.EnsureCanVoid(statement, current.User?.IsManager == true, reason);
+        statement.Status = FinancialDocumentStatus.Voided;
+        statement.VoidedAt = DateTime.Now;
+        statement.VoidedByUserId = current.User?.Id;
+        statement.VoidReason = reason.Trim();
+        db.Update(statement);
+        db.ApplyOriginalRowVersion(statement, statement.RowVersion);
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        await log.RecordAsync("FreightStatement", id, "Void", "Hủy bảng kê", null,
+            new { Reason = statement.VoidReason }, ct);
+        return await GetAsync(id, ct) ?? statement;
     }
 }

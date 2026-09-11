@@ -24,6 +24,11 @@ public interface IHmaDbContext
     IQueryable<PriceList> PriceLists { get; }
     IQueryable<PriceListRevision> PriceListRevisions { get; }
     IQueryable<PriceListItem> PriceListItems { get; }
+    IQueryable<PartnerRate> PartnerRates { get; }
+    IQueryable<PartnerSettlement> PartnerSettlements { get; }
+    IQueryable<PartnerSettlementLine> PartnerSettlementLines { get; }
+    IQueryable<TransportExceptionCode> TransportExceptionCodes { get; }
+    IQueryable<TransportException> TransportExceptions { get; }
     IQueryable<DispatchOrder> DispatchOrders { get; }
     IQueryable<DispatchOrderStop> DispatchOrderStops { get; }
     IQueryable<DispatchOrderLine> DispatchOrderLines { get; }
@@ -49,4 +54,10 @@ public interface IHmaDbContext
     Task ReloadAsync<T>(T entity, CancellationToken cancellationToken = default) where T : class;
     Task<T?> FindAsync<T>(int id, CancellationToken cancellationToken = default) where T : class;
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken = default);
+    Task<T> ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> action,
+        CancellationToken cancellationToken = default);
 }

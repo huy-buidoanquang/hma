@@ -9,6 +9,7 @@ public class DispatchOrderService(
     IHmaDbContext db,
     IDocumentNumberService numbers,
     PriceListService prices,
+    PartnerRateService partnerRates,
     ICurrentUser current,
     IChangeLogService log)
 {
@@ -42,6 +43,7 @@ public class DispatchOrderService(
             .Include(d => d.ReceiverCustomer)
             .Include(d => d.Driver)
             .Include(d => d.Vehicle).ThenInclude(v => v!.Partner)
+            .Include(d => d.Partner)
             .Include(d => d.VehicleType)
             .Include(d => d.Route)
             .Include(d => d.Stops)
@@ -81,20 +83,26 @@ public class DispatchOrderService(
 
     public Task<DispatchOrder?> GetAsync(int id, CancellationToken ct = default) =>
         db.DispatchOrders
+            .AsNoTracking()
             .Include(d => d.Lines)
             .Include(d => d.Documents)
+            .Include(d => d.TransportExceptions)
             .Include(d => d.Customer)
             .Include(d => d.SenderCustomer)
             .Include(d => d.ReceiverCustomer)
             .Include(d => d.Driver)
             .Include(d => d.Vehicle).ThenInclude(v => v!.VehicleType)
             .Include(d => d.Vehicle).ThenInclude(v => v!.Partner)
+            .Include(d => d.Partner)
+            .Include(d => d.PartnerRate)
             .Include(d => d.VehicleType)
             .Include(d => d.Route)
             .Include(d => d.Stops)
             .Include(d => d.CreatedByUser)
             .Include(d => d.PaymentMethod)
             .Include(d => d.ConfirmedByUser)
+            .Include(d => d.ReconciliationSubmittedByUser)
+            .Include(d => d.ReconciliationRejectedByUser)
             .Include(d => d.Customer).ThenInclude(c => c!.AccountantEmployee)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
@@ -125,13 +133,48 @@ public class DispatchOrderService(
         {
             order.UnitPrice = rate.UnitPrice;
             order.Surcharge = rate.Surcharge;
+            order.PriceListItemId = rate.PriceListItemId;
+            order.PriceSourceSnapshot = rate.SourceLabel;
+            order.IsFreightManual = false;
+            order.FreightOverrideReason = null;
         }
         order.RecalculateTotal();
-        order.AmountInWords = AmountText.From(order.TotalAmount);
+        var vehicle = order.VehicleId is null
+            ? null
+            : await db.Vehicles.AsNoTracking().Include(x => x.Partner)
+                .FirstOrDefaultAsync(x => x.Id == order.VehicleId, ct);
+        var partner = vehicle?.Partner;
+        var isAssigned = partner is not null && partner.Code != "UNASSIGNED";
+        if (isAssigned && order.RouteId is int routeId && order.VehicleTypeId is int vehicleTypeId)
+        {
+            var buyRate = await partnerRates.GetRateAsync(partner!.Id, routeId, vehicleTypeId, order.PickupAt, ct);
+            if (buyRate is not null)
+            {
+                order.BuyUnitPrice = buyRate.UnitPrice;
+                order.BuySurcharge = buyRate.Surcharge;
+                PartnerCommercialRules.Capture(order, partner, buyRate, isAssignedPartner: true);
+            }
+            else
+            {
+                order.PartnerId = partner!.Id;
+                order.PartnerNameSnapshot = partner.Name;
+                order.PartnerOperatingFeePercent = partner.OperatingFeePercent;
+                order.PartnerRateId = null;
+                order.BuyRateSourceSnapshot = null;
+            }
+        }
+        else
+        {
+            PartnerCommercialRules.Capture(order, null, null, isAssignedPartner: false);
+        }
+        AmountText.Refresh(order);
         return rate;
     }
 
-    public async Task SaveAsync(DispatchOrder order, CancellationToken ct = default)
+    public Task SaveAsync(DispatchOrder order, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => SaveCoreAsync(order, token), ct);
+
+    private async Task SaveCoreAsync(DispatchOrder order, CancellationToken ct)
     {
         PermissionGuard.RequireSave(current, ScreenKeys.DispatchOrders, order.Id == 0);
         if (order.CustomerId is null)
@@ -163,32 +206,54 @@ public class DispatchOrderService(
         }
 
         await ApplyRouteStopsAsync(order, ct);
-        DispatchOrderRules.EnsureCanSave(order);
-        await EnsureDispatchFksAsync(order, ct);
-
-        if (order.Id != 0)
-        {
-            var existing = await db.DispatchOrders.AsNoTracking()
-                .Include(d => d.Customer)
-                .FirstOrDefaultAsync(d => d.Id == order.Id, ct);
-            if (existing is not null)
-            {
-                DispatchConfirmRules.EnsureCanSave(existing, current.User, existing.Customer);
-                if (existing.ReconciliationStatus == ReconciliationStatus.Reconciled
-                    && (existing.UnitPrice != order.UnitPrice || existing.Surcharge != order.Surcharge || existing.ExtraCost != order.ExtraCost)
-                    && current.User?.IsManager != true && !DispatchConfirmRules.IsPic(current.User, existing.Customer))
-                    throw new InvalidOperationException("Không được đổi cước sau khi đã đối soát.");
-            }
-        }
-
         if (order.VehicleTypeId is null && order.VehicleId is not null)
         {
             var vehicle = await db.Vehicles.AsNoTracking().FirstOrDefaultAsync(v => v.Id == order.VehicleId, ct);
             order.VehicleTypeId = vehicle?.VehicleTypeId;
         }
+        var freightQuote = await prices.GetFreightAsync(
+            order.CustomerId, order.RouteId, order.VehicleTypeId, order.PickupAt, ct);
+        FreightPricingRules.CaptureSource(order, freightQuote);
+        DispatchOrderRules.EnsureCanSave(order);
+        await EnsureDispatchFksAsync(order, ct);
+
+        DispatchOrder? persistedOrder = null;
+        if (order.Id != 0)
+        {
+            persistedOrder = await db.DispatchOrders.AsNoTracking()
+                .Include(d => d.Customer)
+                .FirstOrDefaultAsync(d => d.Id == order.Id, ct);
+            if (persistedOrder is null)
+                throw new InvalidOperationException("Không tìm thấy lệnh điều xe.");
+            DispatchWorkflowRules.EnsureCanEdit(persistedOrder);
+            order.ApprovedExceptionRevenue = persistedOrder.ApprovedExceptionRevenue;
+            order.ApprovedExceptionCost = persistedOrder.ApprovedExceptionCost;
+        }
+        else if (order.ApprovedExceptionRevenue != 0 || order.ApprovedExceptionCost != 0)
+            throw new InvalidOperationException("Chi phí sự cố chỉ được cập nhật qua quy trình duyệt sự cố.");
 
         order.RecalculateTotal();
-        order.AmountInWords = AmountText.From(order.TotalAmount);
+        var commercialVehicle = await db.Vehicles.AsNoTracking()
+            .Include(x => x.Partner)
+            .FirstOrDefaultAsync(x => x.Id == order.VehicleId, ct);
+        var commercialDriver = await db.Drivers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == order.DriverId, ct);
+        if (commercialVehicle is null || commercialDriver is null)
+            throw new InvalidOperationException("Không tìm thấy xe hoặc tài xế.");
+        DispatchAssignmentRules.EnsureSamePartner(commercialVehicle, commercialDriver);
+        var commercialPartner = commercialVehicle?.Partner;
+        var hasAssignedPartner = commercialPartner is not null && commercialPartner.Code != "UNASSIGNED";
+        if (persistedOrder is not null)
+            TransportExceptionRules.EnsurePartnerAssignmentCanChange(
+                persistedOrder, hasAssignedPartner ? commercialPartner!.Id : null);
+        PartnerRate? buyRate = null;
+        if (hasAssignedPartner && order.RouteId is int commercialRouteId && order.VehicleTypeId is int commercialVehicleTypeId)
+        {
+            buyRate = await partnerRates.GetRateAsync(
+                commercialPartner!.Id, commercialRouteId, commercialVehicleTypeId, order.PickupAt, ct);
+        }
+        PartnerCommercialRules.Capture(order, commercialPartner, buyRate, hasAssignedPartner);
+        AmountText.Refresh(order);
 
         var originalVersion = order.Id == 0 ? [] : order.RowVersion.ToArray();
 
@@ -199,14 +264,28 @@ public class DispatchOrderService(
         order.Lines.Clear();
         var incomingStops = order.Stops.ToList();
         order.Stops.Clear();
+        order.Documents.Clear();
+        order.TransportExceptions.Clear();
 
         var before = order.Id == 0 ? null : await db.DispatchOrders.AsNoTracking()
             .Where(d => d.Id == order.Id)
             .Select(d => new
             {
-                d.UnitPrice, d.Surcharge, d.ExtraCost, d.TotalAmount,
-                d.VehicleId, d.DriverId, d.RouteId,
-                d.PickupAddress, d.DeliveryAddress, d.Status
+                d.UnitPrice,
+                d.Surcharge,
+                d.ExtraCost,
+                d.TotalAmount,
+                d.BuyUnitPrice,
+                d.BuySurcharge,
+                d.BuyExtraCost,
+                d.PartnerPayableAmount,
+                d.GrossMargin,
+                d.VehicleId,
+                d.DriverId,
+                d.RouteId,
+                d.PickupAddress,
+                d.DeliveryAddress,
+                d.Status
             })
             .FirstOrDefaultAsync(ct);
 
@@ -268,6 +347,13 @@ public class DispatchOrderService(
                     $"Cước {order.UnitPrice:N0} + phụ phí {order.Surcharge:N0} + phát sinh {order.ExtraCost:N0} = {order.TotalAmount:N0}",
                     before, new { order.UnitPrice, order.Surcharge, order.ExtraCost, order.TotalAmount }, ct);
             }
+            if (before.BuyUnitPrice != order.BuyUnitPrice || before.BuySurcharge != order.BuySurcharge
+                || before.BuyExtraCost != order.BuyExtraCost || before.PartnerPayableAmount != order.PartnerPayableAmount)
+            {
+                await log.RecordAsync("DispatchOrder", order.Id, "UpdatePartnerCost",
+                    $"Giá mua {order.BuyUnitPrice:N0} + phụ phí {order.BuySurcharge:N0} + phát sinh {order.BuyExtraCost:N0}; phải trả {order.PartnerPayableAmount:N0}",
+                    before, new { order.BuyUnitPrice, order.BuySurcharge, order.BuyExtraCost, order.PartnerPayableAmount, order.GrossMargin }, ct);
+            }
             if (before.VehicleId != order.VehicleId || before.DriverId != order.DriverId)
             {
                 await log.RecordAsync("DispatchOrder", order.Id, "UpdateVehicleDriver",
@@ -290,14 +376,14 @@ public class DispatchOrderService(
         }
     }
 
-    public async Task DeleteAsync(int id, CancellationToken ct = default)
+    public Task DeleteAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => DeleteCoreAsync(id, token), ct);
+
+    private async Task DeleteCoreAsync(int id, CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Delete);
         var entity = await db.FindAsync<DispatchOrder>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh điều xe.");
-        if (entity.Status == DispatchStatus.Locked)
-            throw new InvalidOperationException("Không xóa lệnh đã khóa.");
-        if (entity.ReconciliationStatus == ReconciliationStatus.Reconciled)
-            throw new InvalidOperationException("Không xóa lệnh đã đối soát.");
+        DispatchWorkflowRules.EnsureCanDelete(entity);
         var originalVersion = entity.RowVersion.ToArray();
         entity.IsDeleted = true;
         db.Update(entity);
@@ -306,14 +392,17 @@ public class DispatchOrderService(
         await log.RecordAsync("DispatchOrder", id, "Delete", $"Ẩn lệnh {entity.Code}", null, null, ct);
     }
 
-    public async Task LockAsync(int id, string? arNumber = null, CancellationToken ct = default)
+    public Task LockAsync(int id, string? arNumber = null, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => LockCoreAsync(id, arNumber, token), ct);
+
+    private async Task LockCoreAsync(int id, string? arNumber, CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
         var entity = await db.DispatchOrders
             .Include(d => d.Customer)
             .FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
         DispatchConfirmRules.EnsureCanConfirm(current.User, entity.Customer);
-        entity.Status = DispatchStatus.Locked;
+        DispatchWorkflowRules.EnsureCanConfirm(entity);
         entity.ConfirmedByUserId = current.User?.Id;
         entity.ConfirmedAt = DateTime.Now;
         if (!string.IsNullOrWhiteSpace(arNumber))
@@ -325,14 +414,19 @@ public class DispatchOrderService(
         await log.RecordAsync("DispatchOrder", id, "Lock", $"Chốt lệnh{ar}", null, entity.ArNumber, ct);
     }
 
-    public async Task UnlockAsync(int id, CancellationToken ct = default)
+    public Task UnlockAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => UnlockCoreAsync(id, token), ct);
+
+    private async Task UnlockCoreAsync(int id, CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
         var entity = await db.DispatchOrders
             .Include(d => d.Customer)
             .FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
         DispatchConfirmRules.EnsureCanUnlock(current.User, entity.Customer);
-        entity.Status = DispatchStatus.Issued;
+        DispatchWorkflowRules.EnsureCanUnconfirm(entity);
+        if (entity.Status == DispatchStatus.Locked)
+            entity.Status = DispatchStatus.Completed;
         entity.ConfirmedByUserId = null;
         entity.ConfirmedAt = null;
         db.Update(entity);
@@ -341,15 +435,14 @@ public class DispatchOrderService(
         await log.RecordAsync("DispatchOrder", id, "Unlock", "Bỏ chốt lệnh", null, null, ct);
     }
 
-    public async Task SetStatusAsync(int id, DispatchStatus status, CancellationToken ct = default)
+    public Task SetStatusAsync(int id, DispatchStatus status, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => SetStatusCoreAsync(id, status, token), ct);
+
+    private async Task SetStatusCoreAsync(int id, DispatchStatus status, CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
         var entity = await db.FindAsync<DispatchOrder>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
-        if (entity.Status == DispatchStatus.Locked)
-        {
-            var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.Id == entity.CustomerId, ct);
-            DispatchConfirmRules.EnsureCanSave(entity, current.User, customer);
-        }
+        DispatchWorkflowRules.EnsureCanChangeStatus(entity, status);
         var previous = entity.Status;
         entity.Status = status;
         db.Update(entity);
@@ -359,14 +452,39 @@ public class DispatchOrderService(
             await log.RecordAsync("DispatchOrder", id, "UpdateStatus", $"{previous} → {status}", previous, status, ct);
     }
 
-    public async Task ReconcileAsync(int id, CancellationToken ct = default)
+    public Task SubmitReconciliationAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => SubmitReconciliationCoreAsync(id, token), ct);
+
+    private async Task SubmitReconciliationCoreAsync(int id, CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.Reconcile, PermissionAction.Update);
         var order = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
-        if (order.Status != DispatchStatus.Completed)
-            throw new InvalidOperationException("Chỉ đối soát lệnh đã hoàn thành chuyến.");
+        DispatchWorkflowRules.EnsureCanSubmitReconciliation(order, current.User?.Id);
+
+        var previous = order.ReconciliationStatus;
+        order.ReconciliationStatus = ReconciliationStatus.Submitted;
+        order.ReconciliationSubmittedAt = DateTime.Now;
+        order.ReconciliationSubmittedByUserId = current.User?.Id;
+        order.ReconciliationRejectedAt = null;
+        order.ReconciliationRejectedByUserId = null;
+        order.ReconciliationRejectionReason = null;
+        db.Update(order);
+        db.ApplyOriginalRowVersion(order, order.RowVersion);
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        await log.RecordAsync("DispatchOrder", id, "SubmitReconciliation", "Gửi duyệt đối soát",
+            new { Status = previous }, new { Status = ReconciliationStatus.Submitted }, ct);
+    }
+
+    public Task ReconcileAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => ReconcileCoreAsync(id, token), ct);
+
+    private async Task ReconcileCoreAsync(int id, CancellationToken ct)
+    {
+        PermissionGuard.Require(current, ScreenKeys.Reconcile, PermissionAction.Update);
+        var order = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
         if (order.ReconciliationStatus == ReconciliationStatus.Reconciled)
             return;
+        DispatchWorkflowRules.EnsureCanApproveReconciliation(order, current.User?.Id);
 
         order.ReconciliationStatus = ReconciliationStatus.Reconciled;
         order.ReconciledAt = DateTime.Now;
@@ -375,10 +493,34 @@ public class DispatchOrderService(
         db.ApplyOriginalRowVersion(order, order.RowVersion);
         await ConcurrencyConflict.SaveAsync(db, ct);
         await log.RecordAsync("DispatchOrder", id, "Reconcile", "Đã đối soát",
-            new { Status = "Pending" }, new { Status = "Reconciled" }, ct);
+            new { Status = ReconciliationStatus.Submitted }, new { Status = ReconciliationStatus.Reconciled }, ct);
     }
 
-    public async Task UnreconcileAsync(int id, CancellationToken ct = default)
+    public Task RejectReconciliationAsync(int id, string reason, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => RejectReconciliationCoreAsync(id, reason, token), ct);
+
+    private async Task RejectReconciliationCoreAsync(int id, string reason, CancellationToken ct)
+    {
+        PermissionGuard.Require(current, ScreenKeys.Reconcile, PermissionAction.Update);
+        var order = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
+        DispatchWorkflowRules.EnsureCanRejectReconciliation(order, current.User?.Id, reason);
+
+        order.ReconciliationStatus = ReconciliationStatus.Rejected;
+        order.ReconciliationRejectedAt = DateTime.Now;
+        order.ReconciliationRejectedByUserId = current.User?.Id;
+        order.ReconciliationRejectionReason = reason.Trim();
+        db.Update(order);
+        db.ApplyOriginalRowVersion(order, order.RowVersion);
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        await log.RecordAsync("DispatchOrder", id, "RejectReconciliation", "Từ chối đối soát",
+            new { Status = ReconciliationStatus.Submitted },
+            new { Status = ReconciliationStatus.Rejected, Reason = order.ReconciliationRejectionReason }, ct);
+    }
+
+    public Task UnreconcileAsync(int id, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => UnreconcileCoreAsync(id, token), ct);
+
+    private async Task UnreconcileCoreAsync(int id, CancellationToken ct)
     {
         PermissionGuard.Require(current, ScreenKeys.Reconcile, PermissionAction.Update);
         if (current.User?.IsManager != true)
@@ -390,6 +532,11 @@ public class DispatchOrderService(
         order.ReconciliationStatus = ReconciliationStatus.Pending;
         order.ReconciledAt = null;
         order.ReconciledByUserId = null;
+        order.ReconciliationSubmittedAt = null;
+        order.ReconciliationSubmittedByUserId = null;
+        order.ReconciliationRejectedAt = null;
+        order.ReconciliationRejectedByUserId = null;
+        order.ReconciliationRejectionReason = null;
         db.Update(order);
         db.ApplyOriginalRowVersion(order, order.RowVersion);
         await ConcurrencyConflict.SaveAsync(db, ct);
@@ -420,35 +567,36 @@ public class DispatchOrderService(
         return customer;
     }
 
-    public async Task ShiftBillingPeriodAsync(IReadOnlyList<int> ids, CancellationToken ct = default)
+    public Task ShiftBillingPeriodAsync(IReadOnlyList<int> ids, CancellationToken ct = default) =>
+        db.ExecuteInTransactionAsync(token => ShiftBillingPeriodCoreAsync(ids, token), ct);
+
+    private async Task ShiftBillingPeriodCoreAsync(IReadOnlyList<int> ids, CancellationToken ct)
     {
         RequireDispatchEdit();
-        var skipped = 0;
-        var moved = 0;
+        var entities = new List<DispatchOrder>();
         foreach (var id in ids.Distinct())
         {
             var entity = await db.DispatchOrders
                 .Include(d => d.Customer)
                 .FirstOrDefaultAsync(d => d.Id == id, ct)
                 ?? throw new InvalidOperationException($"Không tìm thấy lệnh #{id}.");
-            if (entity.Status == DispatchStatus.Locked)
-            {
-                skipped++;
-                continue;
-            }
+            DispatchWorkflowRules.EnsureCanEdit(entity);
+            entities.Add(entity);
+        }
+
+        foreach (var entity in entities)
+        {
             BillingPeriodRules.ApplyDefault(entity);
             var next = BillingPeriodRules.Next(entity.BillingYear, entity.BillingMonth);
             entity.BillingYear = next.Year;
             entity.BillingMonth = next.Month;
             db.Update(entity);
             db.ApplyOriginalRowVersion(entity, entity.RowVersion);
-            await ConcurrencyConflict.SaveAsync(db, ct);
-            await log.RecordAsync("DispatchOrder", id, "ShiftBilling",
-                $"Kỳ kế toán → {entity.BillingMonth:00}/{entity.BillingYear}", null, null, ct);
-            moved++;
         }
-        if (moved == 0 && skipped > 0)
-            throw new InvalidOperationException("Không chuyển được: các lệnh đã chốt.");
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        foreach (var entity in entities)
+            await log.RecordAsync("DispatchOrder", entity.Id, "ShiftBilling",
+                $"Kỳ kế toán → {entity.BillingMonth:00}/{entity.BillingYear}", null, null, ct);
     }
 
     public async Task SaveGridRowAsync(
@@ -464,7 +612,7 @@ public class DispatchOrderService(
     {
         RequireDispatchEdit();
         var entity = await GetAsync(id, ct) ?? throw new InvalidOperationException("Không tìm thấy lệnh.");
-        DispatchConfirmRules.EnsureCanSave(entity, current.User, entity.Customer);
+        DispatchWorkflowRules.EnsureCanEdit(entity);
         entity.UnitPrice = unitPrice;
         entity.ExtraCost = extraCost;
         entity.Notes = notes;
@@ -520,9 +668,14 @@ public class DispatchOrderService(
         var vehicleTypeId = order.VehicleTypeId;
         var employeeId = order.EmployeeId;
         var paymentMethodId = order.PaymentMethodId;
+        var priceListItemId = order.PriceListItemId;
+        var partnerId = order.PartnerId;
+        var partnerRateId = order.PartnerRateId;
         var createdBy = order.CreatedByUserId;
         var confirmedBy = order.ConfirmedByUserId;
         var reconciledBy = order.ReconciledByUserId;
+        var reconciliationSubmittedBy = order.ReconciliationSubmittedByUserId;
+        var reconciliationRejectedBy = order.ReconciliationRejectedByUserId;
 
         order.Customer = null;
         order.SenderCustomer = null;
@@ -533,9 +686,14 @@ public class DispatchOrderService(
         order.VehicleType = null;
         order.Employee = null;
         order.PaymentMethod = null;
+        order.PriceListItem = null;
+        order.Partner = null;
+        order.PartnerRate = null;
         order.CreatedByUser = null;
         order.ConfirmedByUser = null;
         order.ReconciledByUser = null;
+        order.ReconciliationSubmittedByUser = null;
+        order.ReconciliationRejectedByUser = null;
 
         order.CustomerId = customerId;
         order.SenderCustomerId = senderId;
@@ -546,9 +704,14 @@ public class DispatchOrderService(
         order.VehicleTypeId = vehicleTypeId;
         order.EmployeeId = employeeId;
         order.PaymentMethodId = paymentMethodId;
+        order.PriceListItemId = priceListItemId;
+        order.PartnerId = partnerId;
+        order.PartnerRateId = partnerRateId;
         order.CreatedByUserId = createdBy;
         order.ConfirmedByUserId = confirmedBy;
         order.ReconciledByUserId = reconciledBy;
+        order.ReconciliationSubmittedByUserId = reconciliationSubmittedBy;
+        order.ReconciliationRejectedByUserId = reconciliationRejectedBy;
     }
 
     private async Task ApplyRouteStopsAsync(DispatchOrder order, CancellationToken ct)

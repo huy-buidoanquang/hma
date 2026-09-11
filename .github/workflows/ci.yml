@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    env:
+      HMA_CONNECTION: Server=(localdb)\MSSQLLocalDB;Database=HmaDesignCi;Trusted_Connection=True;TrustServerCertificate=True
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore tools and packages
+        run: |
+          dotnet tool restore
+          dotnet restore src/Hma.slnx
+
+      - name: Verify formatting
+        run: dotnet format src/Hma.slnx --verify-no-changes --no-restore
+
+      - name: Verify migration model
+        run: dotnet ef migrations has-pending-model-changes --project src/Hma.Infrastructure.SqlServer --startup-project src/Hma.Infrastructure.SqlServer
+
+      - name: Build
+        run: dotnet build src/Hma.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test src/Hma.slnx --configuration Release --no-build

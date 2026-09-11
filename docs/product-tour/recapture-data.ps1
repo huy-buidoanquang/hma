@@ -5,6 +5,11 @@ $ErrorActionPreference = "Stop"
 $root = "f:\projects\hma"
 $outDir = Join-Path $root "docs\product-tour\images"
 . (Join-Path $PSScriptRoot "uia-lib.ps1")
+$tourPassword = $env:HMA_TOUR_PASSWORD
+if ([string]::IsNullOrWhiteSpace($tourPassword)) {
+    throw "Set HMA_TOUR_PASSWORD for the non-production account used to capture the product tour."
+}
+$tourPasswordKeys = [regex]::Replace($tourPassword, '([+^%~(){}\[\]])', '{$1}')
 
 Get-Process -Name "Hma.Desktop.Wpf" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 1
@@ -23,7 +28,7 @@ try {
             [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
             [System.Windows.Automation.ControlType]::Edit))))
     Set-EditValue $edits[0] "admin"
-    if ($null -ne $pwd) { $pwd.SetFocus(); Start-Sleep -Milliseconds 120; [System.Windows.Forms.SendKeys]::SendWait("admin123") }
+    if ($null -ne $pwd) { $pwd.SetFocus(); Start-Sleep -Milliseconds 120; [System.Windows.Forms.SendKeys]::SendWait($tourPasswordKeys) }
     Invoke-FirstButton $login
     Start-Sleep -Seconds 2
     $main = Wait-HmaWindow 1000 60

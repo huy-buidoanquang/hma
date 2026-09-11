@@ -25,11 +25,11 @@ T+5h00  Go-live OR rollback (restore DHXE, reopen legacy)
 Do not run `04_cash.sql` or `05_invoices.sql` in Phase 1.
 
 ## Script order
-- `00_precheck.sql` — source counts
+- `00_precheck.sql` — source counts and the legacy payment-method catalog
 - `01_master.sql` — City, org, Employee, Customer, loaixe, Partner UNASSIGNED, Driver/Vehicle from plates, Company
 - `02_pricing.sql` — PriceList + unpivot banggia_ct into route items
-- `03_dispatch.sql` — DispatchOrder from `ngaylap`/`cuocdv`/`bienso_id`/`hanhtrinh_id`
-- `06_security.sql` — users (`RESET:` passwords)
+- `03_dispatch.sql` — DispatchOrder from `ngaylap`/`cuocdv`/`bienso_id`/`hanhtrinh_id`; map all three `hinhthuc_tt` values to `PaymentMethodId`
+- `06_security.sql` — users ở trạng thái `DISABLED`; quản trị đặt mật khẩu mới bằng quy trình bootstrap/reset an toàn
 - `07_sequences.sql` — `nil_ud` + VAT rate
 - `99_validate.sql` — counts, `SUM(tongthu)` vs `SUM(TotalAmount)`, orphan Customer FK
 
@@ -39,6 +39,7 @@ Do not run `04_cash.sql` or `05_invoices.sql` in Phase 1.
 - SUM(DispatchOrder.TotalAmount) = SUM(nil.tongthu)
 - Drivers/vehicles created for every distinct `nhanvien.biensoxe`
 - Latest dispatch sequence matches `sinhma.nil_ud`
+- Every legacy order with `hinhthuc_tt_id` has a mapped `PaymentMethodId`
 
 ## Rollback
 1. Stop new app.

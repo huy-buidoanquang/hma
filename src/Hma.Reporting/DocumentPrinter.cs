@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Hma.Application.Services;
 using Hma.Domain.Entities;
 using Hma.Domain.Services;
 using QuestPDF.Fluent;
@@ -16,7 +17,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
 
     public string PrintDispatch(DispatchOrder order, Company company)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"LDX-{order.Code}.pdf");
+        var path = TemporaryReportFile.Create($"LDX-{order.Code}.pdf");
         Document.Create(container =>
         {
             container.Page(page =>
@@ -64,8 +65,8 @@ public sealed class DocumentPrinter : IDocumentPrinter
                             }
                         });
                     }
-                    col.Item().PaddingTop(10).Text($"Cước {order.UnitPrice:N0}  ·  Phụ phí {order.Surcharge:N0}  ·  Phát sinh {order.ExtraCost:N0}  ·  Tổng {order.TotalAmount:N0}").FontSize(11).SemiBold();
-                    col.Item().Text($"Bằng chữ: {order.AmountInWords}").FontSize(10);
+                    col.Item().PaddingTop(10).Text($"Cước {order.UnitPrice:N0}  ·  Phụ phí {order.Surcharge:N0}  ·  Phát sinh {order.BillableExtraCost:N0}  ·  Tổng {order.TotalAmount:N0}").FontSize(11).SemiBold();
+                    col.Item().Text($"Bằng chữ: {AmountText.From(order.TotalAmount)}").FontSize(10);
                     if (!string.IsNullOrWhiteSpace(order.Notes))
                         col.Item().Text($"Ghi chú: {order.Notes}").FontSize(10);
                 });
@@ -115,7 +116,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
 
     public string PrintDispatchSummary(IReadOnlyList<DispatchOrder> orders, string title, Company company)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"BC-LDX-{DateTime.Now:yyyyMMddHHmmss}.pdf");
+        var path = TemporaryReportFile.Create("BC-LDX.pdf");
         Document.Create(container =>
         {
             container.Page(page =>
@@ -157,7 +158,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
                         t.Cell().Text(o.Driver?.Name ?? "").FontSize(8);
                         t.Cell().AlignRight().Text(o.UnitPrice.ToString("N0")).FontSize(8);
                         t.Cell().AlignRight().Text(o.Surcharge.ToString("N0")).FontSize(8);
-                        t.Cell().AlignRight().Text(o.ExtraCost.ToString("N0")).FontSize(8);
+                        t.Cell().AlignRight().Text(o.BillableExtraCost.ToString("N0")).FontSize(8);
                         t.Cell().AlignRight().Text(o.TotalAmount.ToString("N0")).FontSize(8);
                     }
                 });
@@ -203,8 +204,6 @@ public sealed class DocumentPrinter : IDocumentPrinter
         var row = 2;
         foreach (var o in orders)
         {
-            var feePct = o.Vehicle?.Partner?.OperatingFeePercent ?? 0;
-            var payable = PartnerFeeRules.RemainderPayable(o.TotalAmount, feePct);
             ws.Cell(row, 1).Value = o.PickupAt;
             ws.Cell(row, 2).Value = o.Code;
             ws.Cell(row, 3).Value = o.Customer?.Code;
@@ -216,10 +215,10 @@ public sealed class DocumentPrinter : IDocumentPrinter
             ws.Cell(row, 9).Value = o.PaymentMethod?.Name;
             ws.Cell(row, 10).Value = o.UnitPrice;
             ws.Cell(row, 11).Value = o.Surcharge;
-            ws.Cell(row, 12).Value = o.ExtraCost;
+            ws.Cell(row, 12).Value = o.BillableExtraCost;
             ws.Cell(row, 13).Value = o.TotalAmount;
-            ws.Cell(row, 14).Value = feePct;
-            ws.Cell(row, 15).Value = payable;
+            ws.Cell(row, 14).Value = o.PartnerOperatingFeePercent;
+            ws.Cell(row, 15).Value = o.PartnerPayableAmount;
             ws.Cell(row, 16).Value = o.BillingMonth > 0 ? $"{o.BillingMonth:00}/{o.BillingYear}" : "";
             ws.Cell(row, 17).Value = o.ReconciliationStatus.ToString();
             ws.Cell(row, 18).Value = o.Status.ToString();
@@ -233,7 +232,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
 
     public string PrintFreightStatement(FreightStatement statement, Company company)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"BK-{statement.Code}.pdf");
+        var path = TemporaryReportFile.Create($"BK-{statement.Code}.pdf");
         Document.Create(container =>
         {
             container.Page(page =>
@@ -259,11 +258,12 @@ public sealed class DocumentPrinter : IDocumentPrinter
                         c.RelativeColumn(1.2f);
                         c.RelativeColumn(1);
                         c.RelativeColumn(1);
+                        c.RelativeColumn(0.9f);
                         c.RelativeColumn(1);
                     });
                     t.Header(h =>
                     {
-                        foreach (var title in new[] { "STT", "Ngày", "Mã lệnh", "Tuyến", "Biển số", "Trọng tải", "Tài xế", "Cước", "Phụ phí", "Tổng tiền" })
+                        foreach (var title in new[] { "STT", "Ngày", "Mã lệnh", "Tuyến", "Biển số", "Trọng tải", "Tài xế", "Cước", "Phụ phí", "Phát sinh", "Tổng tiền" })
                             h.Cell().Text(title).SemiBold().FontSize(9);
                     });
                     var i = 1;
@@ -278,6 +278,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
                         t.Cell().Text(line.DriverName ?? "").FontSize(9);
                         t.Cell().AlignRight().Text(line.UnitPrice.ToString("N0")).FontSize(9);
                         t.Cell().AlignRight().Text(line.Surcharge.ToString("N0")).FontSize(9);
+                        t.Cell().AlignRight().Text(line.ExtraCost.ToString("N0")).FontSize(9);
                         t.Cell().AlignRight().Text(line.LineTotal.ToString("N0")).FontSize(9);
                     }
                 });
@@ -324,6 +325,16 @@ public sealed class DocumentPrinter : IDocumentPrinter
         ws.Cell(row + 2, 11).Value = statement.VatAmount;
         ws.Cell(row + 3, 10).Value = "Tổng sau VAT";
         ws.Cell(row + 3, 11).Value = statement.TotalWithVat;
+        ws.Range(4, 1, 4, headers.Length).Style.Font.Bold = true;
+        ws.Range(row + 1, 10, row + 3, 11).Style.Font.Bold = true;
+        ws.Range(row + 1, 11, row + 3, 11).Style.NumberFormat.Format = "#,##0";
+        if (row > 5)
+        {
+            ws.Range(5, 2, row - 1, 2).Style.DateFormat.Format = "dd/MM/yyyy";
+            ws.Range(5, 8, row - 1, 11).Style.NumberFormat.Format = "#,##0";
+        }
+        ws.SheetView.FreezeRows(4);
+        ws.Columns(1, headers.Length).AdjustToContents();
         wb.SaveAs(path);
         return path;
     }
@@ -363,7 +374,7 @@ public sealed class DocumentPrinter : IDocumentPrinter
 
     private static string Render(string fileName, Company company, string title, (string Label, string Value)[] rows)
     {
-        var path = Path.Combine(Path.GetTempPath(), fileName);
+        var path = TemporaryReportFile.Create(fileName);
         Document.Create(container =>
         {
             container.Page(page =>
@@ -480,18 +491,17 @@ public sealed class DocumentPrinter : IDocumentPrinter
         var row = 3;
         foreach (var o in orders)
         {
-            var feePct = o.Vehicle?.Partner?.OperatingFeePercent ?? 0;
             ws.Cell(row, 1).Value = o.PickupAt;
             ws.Cell(row, 2).Value = o.Code;
             ws.Cell(row, 3).Value = o.Customer?.Name;
             ws.Cell(row, 4).Value = o.RouteLabel;
             ws.Cell(row, 5).Value = o.Vehicle?.PlateNumber;
-            ws.Cell(row, 6).Value = o.Vehicle?.Partner?.Name;
+            ws.Cell(row, 6).Value = o.PartnerNameSnapshot;
             ws.Cell(row, 7).Value = o.UnitPrice;
-            ws.Cell(row, 8).Value = o.ExtraCost;
+            ws.Cell(row, 8).Value = o.BillableExtraCost;
             ws.Cell(row, 9).Value = o.TotalAmount;
-            ws.Cell(row, 10).Value = feePct;
-            ws.Cell(row, 11).Value = PartnerFeeRules.RemainderPayable(o.TotalAmount, feePct);
+            ws.Cell(row, 10).Value = o.PartnerOperatingFeePercent;
+            ws.Cell(row, 11).Value = o.PartnerPayableAmount;
             row++;
         }
         ws.Cell(row, 9).Value = orders.Sum(o => o.TotalAmount);

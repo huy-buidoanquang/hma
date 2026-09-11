@@ -13,6 +13,27 @@ public class PriceListDomainServiceTests
     }
 
     [Fact]
+    public void Locked_price_list_cannot_be_modified()
+    {
+        var list = new PriceList { IsLocked = true };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            PriceListDomainService.EnsureCanModify(list));
+    }
+
+    [Fact]
+    public void Lock_requires_reason()
+    {
+        var list = new PriceList { LockReason = " " };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            PriceListDomainService.EnsureCanLock(list));
+
+        list.LockReason = "Áp dụng từ tháng 9";
+        PriceListDomainService.EnsureCanLock(list);
+    }
+
+    [Fact]
     public void Rejects_effective_to_before_from()
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>

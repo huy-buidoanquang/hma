@@ -1,0 +1,68 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Views.PartnerSettlementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Hma.Desktop.Wpf.Controls">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Quyết toán đối tác" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,12"/>
+            <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Số" Binding="{Binding Code}" Width="85"/>
+                    <DataGridTextColumn Header="Đối tác" Binding="{Binding Partner.Name}" Width="*"/>
+                    <DataGridTextColumn Header="Kỳ" Binding="{Binding Month, StringFormat={}{0:00}}" Width="45"/>
+                    <DataGridTextColumn Header="Năm" Binding="{Binding Year}" Width="55"/>
+                    <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status, Converter={StaticResource BusinessEnumLabel}}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+        <DockPanel Grid.Column="2">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <WrapPanel>
+                    <StackPanel Style="{StaticResource FilterCluster}">
+                        <Label Style="{StaticResource FilterLabel}" Content="Đối tác"/>
+                        <ComboBox Style="{StaticResource FilterCombo}" Width="220" ItemsSource="{Binding Partners}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding PartnerId}"/>
+                    </StackPanel>
+                    <StackPanel Style="{StaticResource FilterCluster}">
+                        <Label Style="{StaticResource FilterLabel}" Content="Kỳ kế toán"/>
+                        <controls:MonthYearPicker Style="{StaticResource FilterMonthYear}" Month="{Binding Month}" Year="{Binding Year}"/>
+                    </StackPanel>
+                </WrapPanel>
+                <WrapPanel>
+                    <Button Content="Lập quyết toán" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}" Margin="0,0,8,8"/>
+                    <Button Content="Gửi duyệt" Style="{StaticResource SecondaryButton}" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}" Margin="0,0,8,8"/>
+                    <Button Content="Chốt" Style="{StaticResource SecondaryButton}" Command="{Binding FinalizeCommand}" IsEnabled="{Binding CanFinalize}" Margin="0,0,8,8"/>
+                </WrapPanel>
+            </StackPanel>
+            <WrapPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Lý do hủy"/>
+                    <TextBox Style="{StaticResource FilterField}" Width="300" Text="{Binding VoidReason, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanVoid}"/>
+                </StackPanel>
+                <Button Content="Hủy quyết toán" Style="{StaticResource DestructiveButton}" Command="{Binding VoidCommand}" IsEnabled="{Binding CanVoid}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
+            </WrapPanel>
+            <StackPanel>
+                <WrapPanel Margin="0,0,0,8">
+                    <TextBlock Text="Tổng mua: "/><TextBlock Text="{Binding CurrentSettlement.GrossAmount, Converter={StaticResource VndMoney}}" FontWeight="SemiBold" Margin="0,0,20,0"/>
+                    <TextBlock Text="Phí điều hành: "/><TextBlock Text="{Binding CurrentSettlement.OperatingFeeAmount, Converter={StaticResource VndMoney}}" FontWeight="SemiBold" Margin="0,0,20,0"/>
+                    <TextBlock Text="Phải trả: "/><TextBlock Text="{Binding CurrentSettlement.PayableAmount, Converter={StaticResource VndMoney}}" FontWeight="SemiBold"/>
+                </WrapPanel>
+                <DataGrid ItemsSource="{Binding CurrentSettlement.Lines}" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Ngày" Binding="{Binding TripDate, StringFormat=dd/MM/yyyy}" Width="90"/>
+                        <DataGridTextColumn Header="Lệnh" Binding="{Binding DispatchCode}" Width="85"/>
+                        <DataGridTextColumn Header="Tuyến" Binding="{Binding Route}" Width="*"/>
+                        <DataGridTextColumn Header="Biển" Binding="{Binding PlateNumber}" Width="90"/>
+                        <DataGridTextColumn Header="Giá mua" Binding="{Binding BuyTotal, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                        <DataGridTextColumn Header="Phí ĐH" Binding="{Binding OperatingFeeAmount, Converter={StaticResource VndMoney}}" Width="100" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                        <DataGridTextColumn Header="Phải trả" Binding="{Binding PayableAmount, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</UserControl>

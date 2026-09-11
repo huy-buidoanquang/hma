@@ -46,10 +46,17 @@ public partial class EmployeeWorkspaceViewModel(CatalogService catalog, ICurrent
         if (Selected is null) return;
         Editor = new Employee
         {
-            Id = Selected.Id, Code = Selected.Code, Name = Selected.Name, Address = Selected.Address,
-            Phone = Selected.Phone, Mobile = Selected.Mobile, BirthDate = Selected.BirthDate,
-            IdentityNumber = Selected.IdentityNumber, VehiclePlate = Selected.VehiclePlate,
-            DepartmentId = Selected.DepartmentId, JobTitleId = Selected.JobTitleId
+            Id = Selected.Id,
+            Code = Selected.Code,
+            Name = Selected.Name,
+            Address = Selected.Address,
+            Phone = Selected.Phone,
+            Mobile = Selected.Mobile,
+            BirthDate = Selected.BirthDate,
+            IdentityNumber = Selected.IdentityNumber,
+            VehiclePlate = Selected.VehiclePlate,
+            DepartmentId = Selected.DepartmentId,
+            JobTitleId = Selected.JobTitleId
         };
         EnterExisting($"Xem nhân viên — {Editor.Code}", $"Sửa nhân viên — {Editor.Code}", Editor);
     }

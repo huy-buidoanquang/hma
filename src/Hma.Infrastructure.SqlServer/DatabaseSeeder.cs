@@ -40,6 +40,9 @@ public static class DatabaseSeeder
             ("departments", "Phòng ban"),
             ("job-titles", "Chức vụ"),
             ("price-lists", "Bảng giá"),
+            ("partner-rates", "Giá mua đối tác"),
+            ("partner-settlements", "Quyết toán đối tác"),
+            ("transport-exceptions", "Sự cố vận tải"),
             ("dispatch-orders", "Lệnh điều xe"),
             ("dispatch-grid-edit", "Sửa lệnh theo khách"),
             ("reconcile", "Đối soát"),
@@ -58,6 +61,19 @@ public static class DatabaseSeeder
         }
         await db.SaveChangesAsync(ct);
 
+        if (!await db.TransportExceptionCodes.AnyAsync(ct))
+        {
+            db.TransportExceptionCodes.AddRange(
+                new TransportExceptionCode { Code = "WAIT", Name = "Chờ bốc/dỡ hàng" },
+                new TransportExceptionCode { Code = "OVERNIGHT", Name = "Lưu xe qua đêm" },
+                new TransportExceptionCode { Code = "TOLL", Name = "Cầu đường phát sinh" },
+                new TransportExceptionCode { Code = "RETURN", Name = "Quay đầu / đổi hành trình" },
+                new TransportExceptionCode { Code = "FAILED_DELIVERY", Name = "Giao hàng thất bại" },
+                new TransportExceptionCode { Code = "CLAIM", Name = "Tổn thất / khiếu nại" },
+                new TransportExceptionCode { Code = "OTHER", Name = "Sự cố khác" });
+            await db.SaveChangesAsync(ct);
+        }
+
         var settingsScreen = db.Screens.FirstOrDefault(s => s.Key == ScreenKeys.Settings);
         if (settingsScreen is not null && settingsScreen.Name != "Cấu hình")
             settingsScreen.Name = "Cấu hình";
@@ -70,6 +86,7 @@ public static class DatabaseSeeder
             db.Sequences.AddRange(
                 new DocumentSequence { Key = "dispatch-order", LastValue = 0 },
                 new DocumentSequence { Key = "freight-statement", LastValue = 0 },
+                new DocumentSequence { Key = "partner-settlement", LastValue = 0 },
                 new DocumentSequence { Key = "walk-in-customer", LastValue = 0 },
                 new DocumentSequence { Key = "cash-receipt", LastValue = 0 },
                 new DocumentSequence { Key = "cash-payment", LastValue = 0 },
@@ -92,23 +109,26 @@ public static class DatabaseSeeder
             });
         }
 
-        if (!await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(db.PaymentMethods, ct))
-        {
-            db.PaymentMethods.AddRange(
-                new PaymentMethod { Code = PaymentMethodCodes.Credit, Name = "Trả sau" },
-                new PaymentMethod { Code = PaymentMethodCodes.DriverCollect, Name = "Lái xe thu" });
-            await db.SaveChangesAsync(ct);
-        }
+        await EnsurePaymentMethodAsync(db, PaymentMethodCodes.Credit, "Trả sau", ct);
+        await EnsurePaymentMethodAsync(db, PaymentMethodCodes.DriverCollect, "Lái xe thu", ct);
+        await EnsurePaymentMethodAsync(db, PaymentMethodCodes.DispatcherCollect, "Điều hành thu", ct);
 
         await db.SaveChangesAsync(ct);
 
         var hasher = new Pbkdf2PasswordHasher();
         if (!await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(db.Users, ct))
         {
+            var bootstrapPassword = Environment.GetEnvironmentVariable("HMA_BOOTSTRAP_ADMIN_PASSWORD");
+            if (string.IsNullOrWhiteSpace(bootstrapPassword))
+            {
+                throw new InvalidOperationException(
+                    "Cơ sở dữ liệu chưa có người dùng. Đặt biến HMA_BOOTSTRAP_ADMIN_PASSWORD bằng mật khẩu mạnh cho lần khởi tạo đầu tiên.");
+            }
+            AppUserDomainService.EnsurePasswordIsStrong(bootstrapPassword);
             db.Users.Add(new AppUser
             {
                 UserName = "admin",
-                PasswordHash = hasher.Hash("admin123"),
+                PasswordHash = hasher.Hash(bootstrapPassword),
                 DisplayName = "Quản trị",
                 IsManager = true,
                 CreatedAt = DateTime.Now
@@ -119,40 +139,49 @@ public static class DatabaseSeeder
         if (!await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(
                 db.Users.Where(u => u.UserName == "ketoan"), ct))
         {
-            var accountant = new AppUser
+            var accountantPassword = Environment.GetEnvironmentVariable("HMA_BOOTSTRAP_ACCOUNTANT_PASSWORD");
+            if (!string.IsNullOrWhiteSpace(accountantPassword))
             {
-                UserName = "ketoan",
-                PasswordHash = hasher.Hash("ketoan123"),
-                DisplayName = "Kế toán",
-                IsManager = false,
-                CreatedAt = DateTime.Now
-            };
-            db.Users.Add(accountant);
-            await db.SaveChangesAsync(ct);
-
-            var keys = new[] { "customers", "partners", "drivers", "vehicles", "employees", "cities", "locations", "routes", "departments", "job-titles",
-                "price-lists", "dispatch-orders", "dispatch-grid-edit", "reconcile", "statements", "lookup", "dashboard", "reports" };
-            var granted = db.Screens.Where(s => keys.Contains(s.Key)).ToList();
-            foreach (var screen in granted)
-            {
-                db.UserPermissions.Add(new UserPermission
+                AppUserDomainService.EnsurePasswordIsStrong(accountantPassword);
+                var accountant = new AppUser
                 {
-                    AppUserId = accountant.Id,
-                    AppScreenId = screen.Id,
-                    CanView = true,
-                    CanCreate = screen.Key is not "dashboard" and not "reports",
-                    CanUpdate = screen.Key is not "dashboard" and not "reports",
-                    CanDelete = false,
-                    CanPrint = true
-                });
+                    UserName = "ketoan",
+                    PasswordHash = hasher.Hash(accountantPassword),
+                    DisplayName = "Kế toán",
+                    IsManager = false,
+                    CreatedAt = DateTime.Now
+                };
+                db.Users.Add(accountant);
+                await db.SaveChangesAsync(ct);
+
+                var keys = new[] { "customers", "partners", "drivers", "vehicles", "employees", "cities", "locations", "routes", "departments", "job-titles",
+                "price-lists", "partner-rates", "partner-settlements", "transport-exceptions", "dispatch-orders", "dispatch-grid-edit", "reconcile", "statements", "lookup", "dashboard", "reports" };
+                var granted = db.Screens.Where(s => keys.Contains(s.Key)).ToList();
+                foreach (var screen in granted)
+                {
+                    db.UserPermissions.Add(new UserPermission
+                    {
+                        AppUserId = accountant.Id,
+                        AppScreenId = screen.Id,
+                        CanView = true,
+                        CanCreate = screen.Key is not "dashboard" and not "reports",
+                        CanUpdate = screen.Key is not "dashboard" and not "reports",
+                        CanDelete = false,
+                        CanPrint = true
+                    });
+                }
+                await db.SaveChangesAsync(ct);
             }
-            await db.SaveChangesAsync(ct);
         }
 
         var accountantUser = db.Users.FirstOrDefault(u => u.UserName == "ketoan");
         await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.DispatchGridEdit, ct);
         await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.Locations, ct);
         await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.Routes, ct);
+        await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.PartnerRates, ct);
+        await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.PartnerSettlements, ct);
+        await GrantAccountantScreenAsync(db, accountantUser, ScreenKeys.TransportExceptions, ct);
+        await EnsureSequenceAsync(db, "partner-settlement", ct);
         await EnsureVehicleTypeAsync(db, "1.5T", "Xe 1.5 tấn", 1.5m, ct);
         await DemoDataSeeder.SeedIfEmptyAsync(db, ct);
         await EnsureVehicleAliasesAsync(db, ct);
@@ -185,6 +214,28 @@ public static class DatabaseSeeder
         if (await db.VehicleTypes.AnyAsync(t => t.Code == code, ct))
             return;
         db.VehicleTypes.Add(new VehicleType { Code = code, Name = name, Tonnage = tonnage });
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureSequenceAsync(HmaDbContext db, string key, CancellationToken ct)
+    {
+        if (await db.Sequences.AnyAsync(x => x.Key == key, ct))
+            return;
+        db.Sequences.Add(new DocumentSequence { Key = key, LastValue = 0 });
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsurePaymentMethodAsync(
+        HmaDbContext db, string code, string name, CancellationToken ct)
+    {
+        var existing = await db.PaymentMethods.SingleOrDefaultAsync(x => x.Code == code, ct);
+        if (existing is null)
+            db.PaymentMethods.Add(new PaymentMethod { Code = code, Name = name });
+        else if (existing.Name != name)
+            existing.Name = name;
+        else
+            return;
+
         await db.SaveChangesAsync(ct);
     }
 

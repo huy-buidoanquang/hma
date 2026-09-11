@@ -10,6 +10,7 @@ UNION ALL SELECT 'chucvu', COUNT(*) FROM chucvu
 UNION ALL SELECT 'tenbg', COUNT(*) FROM tenbg
 UNION ALL SELECT 'banggia', COUNT(*) FROM banggia
 UNION ALL SELECT 'banggia_ct', COUNT(*) FROM banggia_ct
+UNION ALL SELECT 'hinhthuc_tt', COUNT(*) FROM hinhthuc_tt
 UNION ALL SELECT 'nil', COUNT(*) FROM nil
 UNION ALL SELECT 'nil_ct', COUNT(*) FROM nil_ct
 UNION ALL SELECT 'phieuthu', COUNT(*) FROM phieuthu
@@ -20,3 +21,4 @@ UNION ALL SELECT '[user]', COUNT(*) FROM [user];
 
 SELECT SUM(CAST(tongthu AS DECIMAL(20,2))) AS DispatchTotal FROM nil;
 SELECT MAX(nil_ud) AS LastDispatchCode FROM nil;
+SELECT hinhthuc_tt_id, hinhthuc_tt_ud, hinhthuc_tt_nm FROM hinhthuc_tt ORDER BY hinhthuc_tt_id;

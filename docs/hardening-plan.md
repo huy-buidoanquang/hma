@@ -1,5 +1,8 @@
 # Review feedback & kế hoạch sửa — HMA Phase 1
 
+> Trạng thái triển khai 11/09/2026: P0/P1 trong tài liệu này đã được hiện thực hóa bằng migration, workflow maker–checker, storage abstraction, soft-delete lệnh, pricing traceability, partner commercial/settlement, transport exception, CI và integration test SQL Server. Không migration nào đã được tự động áp lên database production.
+> Các mục “hiện trạng” bên dưới là baseline trước hardening, được giữ lại để giải thích nguyên nhân và quyết định kiến trúc; trạng thái sau triển khai là `Architecture.md` và `Database.md`.
+
 Đối chiếu từng nhận xét kiến trúc với **code đang chạy** (`src/`, `database/001_schema.sql`), không với ý định. Kết luận: làm gì ngay, làm gì sau, **không** làm gì vì sai chỗ hoặc vượt Phase 1.
 
 ---
@@ -251,7 +254,7 @@ Gọn: `LocalDiskFileStorage(IHmaDbContext db)` đọc `DocumentStorePath` mỗi
 
 **WPF:** đọc file dialog thành stream, truyền stream + fileName vào `AttachAsync(orderId, kind, fileName, stream)`.
 
-**Key format:** `{orderId:000000}/{yyyyMMddHHmmss}-{safeFileName}` — an toàn path (bỏ `..`, `\`).
+**Key format:** `{orderId:000000}/{yyyyMMddHHmmssfff}-{guid}-{safeFileName}` — an toàn path (bỏ `..`, `\`) và không ghi đè file trùng tên.
 
 **Cắt:** file đã lưu path tuyệt đối trước khi đổi — Phase 1 chưa production; không viết migrator path. Ghi trong Database.md.
 

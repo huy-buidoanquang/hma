@@ -34,7 +34,10 @@ internal static class SessionDbGate
     public static async Task<T> RunAsync<T>(Func<Task<T>> action)
     {
         T result = default!;
-        await RunAsync(async () => result = await action());
+        await RunAsync(async () =>
+        {
+            result = await action();
+        });
         return result;
     }
 }

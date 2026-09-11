@@ -17,6 +17,7 @@ Phase 1 product is the brief chain (dispatch → documents → reconcile → mon
 | `khachhang` | `Customer` | Extra: ContactName, Email, AccountantEmployeeId |
 | `tenbg` / `banggia` / `banggia_ct` | `PriceList` / `Revision` / `Item` | Item = pickup city (nullable) + delivery city + vehicle type + unit + surcharge |
 | `loaixe` | `VehicleType` | 8 types; preserve Ids |
+| `hinhthuc_tt` | `PaymentMethod` | Map by the three canonical codes; do not preserve legacy Ids |
 | `nil` | `DispatchOrder` | See column map |
 | `nil_ct` | `DispatchOrderLine` | |
 | — | `DispatchDocument` | File metadata; bytes on disk |
@@ -38,6 +39,7 @@ Dropped: Plexis `ui_*`, `business_object`, `gio`, `phut`, `trongluong`, `Recover
 | city of sender / receiver / `hanhtrinh_id` | Location (từ City) → Route 2 điểm + `DispatchOrderStop` |
 | `bienso_id` | `DriverId` + plate → `VehicleId` |
 | `loaixe_id` | `VehicleTypeId` |
+| `hinhthuc_tt_id` | Join `hinhthuc_tt`; map Điều hành thu / Lái xe thu / Trả sau to the three canonical `PaymentMethod` codes |
 | `cuocdv` | `UnitPrice` |
 | `thukhac` | `ExtraCost` |
 | `tongthu` | `TotalAmount` |

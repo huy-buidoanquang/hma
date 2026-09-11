@@ -19,6 +19,7 @@
             <conv:StringToVisibilityConverter x:Key="StringToVisibility"/>
             <conv:VndMoneyConverter x:Key="VndMoney"/>
             <conv:LocationAliasKindConverter x:Key="LocationAliasKind"/>
+            <conv:BusinessEnumLabelConverter x:Key="BusinessEnumLabel"/>
             <Style TargetType="Window">
                 <Setter Property="FontFamily" Value="{StaticResource AppFont}"/>
                 <Setter Property="FontSize" Value="13"/>

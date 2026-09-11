@@ -47,8 +47,8 @@ public sealed class ThemeService
     {
         var name = theme.Equals(Dark, StringComparison.OrdinalIgnoreCase) ? Dark : Light;
         var uri = name == Dark
-            ? new Uri("pack://application:,,,/Themes/Colors.Dark.xaml", UriKind.Absolute)
-            : new Uri("pack://application:,,,/Themes/Colors.Light.xaml", UriKind.Absolute);
+            ? new Uri("pack://application:,,,/Hma.Desktop.Wpf;component/Themes/Colors.Dark.xaml", UriKind.Absolute)
+            : new Uri("pack://application:,,,/Hma.Desktop.Wpf;component/Themes/Colors.Light.xaml", UriKind.Absolute);
 
         var dicts = System.Windows.Application.Current.Resources.MergedDictionaries;
         var next = new ResourceDictionary { Source = uri };

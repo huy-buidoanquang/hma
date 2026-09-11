@@ -66,22 +66,7 @@ public partial class DispatchGridEditWorkspaceViewModel(
             billingYear: Year, billingMonth: Month);
         foreach (var o in list)
         {
-            var row = new DispatchGridRow
-            {
-                Id = o.Id,
-                Code = o.Code,
-                PickupAt = o.PickupAt,
-                CustomerLabel = o.CustomerCodeName,
-                Status = o.Status,
-                ReconciliationStatus = o.ReconciliationStatus,
-                RouteId = o.RouteId,
-                VehicleId = o.VehicleId,
-                UnitPrice = o.UnitPrice,
-                ExtraCost = o.ExtraCost,
-                Notes = o.Notes,
-                BillingYear = o.BillingYear == 0 ? o.PickupAt.Year : o.BillingYear,
-                BillingMonth = o.BillingMonth == 0 ? o.PickupAt.Month : o.BillingMonth
-            };
+            var row = DispatchGridRow.FromOrder(o);
             row.PropertyChanged += OnRowPropertyChanged;
             Items.Add(row);
         }

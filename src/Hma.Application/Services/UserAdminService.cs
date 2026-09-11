@@ -21,7 +21,12 @@ public class UserAdminService(IHmaDbContext db, IPasswordHasher hasher, ICurrent
             throw new InvalidOperationException("Tên đăng nhập đã tồn tại.");
 
         if (!string.IsNullOrWhiteSpace(newPassword))
+        {
+            AppUserDomainService.EnsurePasswordIsStrong(newPassword);
             user.PasswordHash = hasher.Hash(newPassword);
+            user.FailedLoginCount = 0;
+            user.LockoutEnd = null;
+        }
 
         if (user.EmployeeId is int employeeId
             && !await db.Employees.AnyAsync(e => e.Id == employeeId, ct))

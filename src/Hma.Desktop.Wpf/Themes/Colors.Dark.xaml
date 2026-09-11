@@ -16,7 +16,7 @@
     <SolidColorBrush x:Key="NavBrush" Color="{StaticResource Blue900}"/>
 
     <SolidColorBrush x:Key="InkBrush" Color="{StaticResource Gray100}"/>
-    <SolidColorBrush x:Key="InkSecondaryBrush" Color="{StaticResource Gray500}"/>
+    <SolidColorBrush x:Key="InkSecondaryBrush" Color="{StaticResource Gray400}"/>
     <SolidColorBrush x:Key="InkMutedBrush" Color="{StaticResource Gray500}"/>
     <SolidColorBrush x:Key="NavTextBrush" Color="{StaticResource Gray050}"/>
 

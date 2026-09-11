@@ -28,7 +28,6 @@
             <Label Content="Mật khẩu"/>
             <PasswordBox x:Name="PasswordBox"/>
             <Button Content="Đăng nhập" Click="OnLoginClick" HorizontalAlignment="Left" MinWidth="140" Margin="0,8,0,0"/>
-            <TextBlock Text="Mặc định: admin / admin123" Style="{StaticResource CaptionText}" Margin="0,16,0,0"/>
         </StackPanel>
         <Border Grid.RowSpan="2" Panel.ZIndex="20"
                 Visibility="{Binding Error, Converter={StaticResource StringToVisibility}}">

@@ -34,12 +34,18 @@ public static class DemoDataSeeder
             "Phố Nguyễn Khoái, Hai Bà Trưng, Hà Nội", new DateTime(1979, 1, 18), "001079001118");
         await db.SaveChangesAsync(ct);
 
-        var admin = await db.Users.FirstAsync(u => u.UserName == "admin", ct);
-        var ketoan = await db.Users.FirstAsync(u => u.UserName == "ketoan", ct);
-        admin.DisplayName = "Phạm Quốc Huy";
-        admin.EmployeeId = huy.Id;
-        ketoan.DisplayName = "Nguyễn Thị Hoa";
-        ketoan.EmployeeId = hoa.Id;
+        var admin = await db.Users.FirstOrDefaultAsync(u => u.UserName == "admin", ct);
+        var ketoan = await db.Users.FirstOrDefaultAsync(u => u.UserName == "ketoan", ct);
+        if (admin is not null)
+        {
+            admin.DisplayName = "Phạm Quốc Huy";
+            admin.EmployeeId = huy.Id;
+        }
+        if (ketoan is not null)
+        {
+            ketoan.DisplayName = "Nguyễn Thị Hoa";
+            ketoan.EmployeeId = hoa.Id;
+        }
         await db.SaveChangesAsync(ct);
 
         var unassigned = await db.Partners.FirstAsync(p => p.Code == "UNASSIGNED", ct);
@@ -70,8 +76,9 @@ public static class DemoDataSeeder
         }
 
         var locByCode = new Dictionary<string, Location>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (code, name, _) in LegacyData.Locations)
+        foreach (var group in LegacyData.Locations.GroupBy(x => x.Code, StringComparer.OrdinalIgnoreCase))
         {
+            var (code, name, _) = group.First();
             var location = new Location { Code = code, Name = name };
             db.Locations.Add(location);
             locByCode[code] = location;
@@ -79,10 +86,11 @@ public static class DemoDataSeeder
 
         await db.SaveChangesAsync(ct);
         var locationAliasSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (code, _, aliases) in LegacyData.Locations)
+        foreach (var group in LegacyData.Locations.GroupBy(x => x.Code, StringComparer.OrdinalIgnoreCase))
         {
+            var code = group.Key;
             var location = locByCode[code];
-            foreach (var alias in aliases)
+            foreach (var alias in group.SelectMany(x => x.Aliases))
             {
                 if (AliasText.EqualsNormalized(alias, location.Code) || AliasText.EqualsNormalized(alias, location.Name))
                     continue;

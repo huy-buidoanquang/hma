@@ -13,6 +13,9 @@ public static class ScreenKeys
     public const string Departments = "departments";
     public const string JobTitles = "job-titles";
     public const string PriceLists = "price-lists";
+    public const string PartnerRates = "partner-rates";
+    public const string PartnerSettlements = "partner-settlements";
+    public const string TransportExceptions = "transport-exceptions";
     public const string DispatchOrders = "dispatch-orders";
     public const string DispatchGridEdit = "dispatch-grid-edit";
     public const string Reconcile = "reconcile";

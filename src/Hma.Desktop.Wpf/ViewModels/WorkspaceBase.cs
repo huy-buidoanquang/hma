@@ -50,6 +50,10 @@ public abstract partial class WorkspaceBase : ObservableObject, ILoadableWorkspa
 
     protected bool CanEditExisting => string.IsNullOrEmpty(_screenKey) || CanUpdate;
 
+    protected virtual void OnWorkspaceModeChanged()
+    {
+    }
+
     protected void UsePermissions(ICurrentUser user, string screenKey)
     {
         _currentUser = user;
@@ -174,6 +178,7 @@ public abstract partial class WorkspaceBase : ObservableObject, ILoadableWorkspa
         OnPropertyChanged(nameof(IsEditorReadOnly));
         OnPropertyChanged(nameof(CanSave));
         NotifyPermissions();
+        OnWorkspaceModeChanged();
     }
 
     private void NotifyPermissions()

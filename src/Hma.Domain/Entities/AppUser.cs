@@ -10,5 +10,8 @@ public class AppUser : Entity
     public bool IsManager { get; set; }
     public bool IsSpecial { get; set; }
     public DateTime? CreatedAt { get; set; }
+    public int FailedLoginCount { get; set; }
+    public DateTime? LockoutEnd { get; set; }
+    public DateTime? LastLoginAt { get; set; }
     public ICollection<UserPermission> Permissions { get; set; } = new List<UserPermission>();
 }

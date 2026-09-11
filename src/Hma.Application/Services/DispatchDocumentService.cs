@@ -1,5 +1,6 @@
 using Hma.Application.Abstractions;
 using Hma.Domain.Entities;
+using Hma.Domain.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Application.Services;
@@ -22,6 +23,12 @@ public class DispatchDocumentService(IHmaDbContext db, ICurrentUser current, IFi
         CancellationToken ct = default)
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Update);
+        var order = await db.DispatchOrders
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == dispatchOrderId, ct)
+            ?? throw new InvalidOperationException("Không tìm thấy lệnh điều xe.");
+        DispatchWorkflowRules.EnsureCanMutateDocuments(order);
+
         var key = FileStorageKey.ForDispatchDocument(dispatchOrderId, fileName);
         var stored = await files.SaveAsync(key, content, ct);
         var doc = new DispatchDocument
@@ -33,8 +40,17 @@ public class DispatchDocumentService(IHmaDbContext db, ICurrentUser current, IFi
             UploadedAt = DateTime.Now,
             UploadedByUserId = current.User?.Id
         };
-        db.Add(doc);
-        await PersistenceGuard.SaveAsync(db, ct);
+        try
+        {
+            db.Add(doc);
+            await PersistenceGuard.SaveAsync(db, ct);
+        }
+        catch
+        {
+            try { await files.DeleteAsync(stored, CancellationToken.None); }
+            catch { /* Preserve the database error; storage cleanup is best-effort. */ }
+            throw;
+        }
         return doc;
     }
 
@@ -42,6 +58,11 @@ public class DispatchDocumentService(IHmaDbContext db, ICurrentUser current, IFi
     {
         PermissionGuard.Require(current, ScreenKeys.DispatchOrders, PermissionAction.Delete);
         var entity = await db.FindAsync<DispatchDocument>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy chứng từ.");
+        var order = await db.DispatchOrders
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == entity.DispatchOrderId, ct)
+            ?? throw new InvalidOperationException("Không tìm thấy lệnh điều xe.");
+        DispatchWorkflowRules.EnsureCanMutateDocuments(order);
         db.Remove(entity);
         await PersistenceGuard.SaveAsync(db, ct);
         await files.DeleteAsync(entity.StoredPath, ct);

@@ -125,10 +125,13 @@ public class DispatchImportMatchingTests
         var items = new[]
         {
             new PaymentMethod { Code = PaymentMethodCodes.DriverCollect, Name = "Lái xe thu" },
-            new PaymentMethod { Code = PaymentMethodCodes.Credit, Name = "Trả sau" }
+            new PaymentMethod { Code = PaymentMethodCodes.Credit, Name = "Trả sau" },
+            new PaymentMethod { Code = PaymentMethodCodes.DispatcherCollect, Name = "Điều hành thu" }
         };
         Assert.Equal(PaymentMethodCodes.Credit, DispatchImportMatching.MatchPayment(items, null)?.Code);
         Assert.Equal(PaymentMethodCodes.DriverCollect, DispatchImportMatching.MatchPayment(items, "Lái xe thu")?.Code);
+        Assert.Equal(PaymentMethodCodes.DispatcherCollect, DispatchImportMatching.MatchPayment(items, "Điều hành thu")?.Code);
+        Assert.Equal(PaymentMethodCodes.DispatcherCollect, DispatchImportMatching.MatchPayment(items, "dieu-hanh-thu")?.Code);
     }
 
     [Fact]

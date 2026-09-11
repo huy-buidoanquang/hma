@@ -15,6 +15,15 @@ public class FileStorageKeyTests
     }
 
     [Fact]
+    public void ForDispatchDocument_never_reuses_a_key()
+    {
+        var first = FileStorageKey.ForDispatchDocument(123, "bbgh.pdf");
+        var second = FileStorageKey.ForDispatchDocument(123, "bbgh.pdf");
+
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
     public void Normalize_rejects_parent_segments() =>
         Assert.Throws<InvalidOperationException>(() => FileStorageKey.Normalize("000123/../secret.pdf"));
 

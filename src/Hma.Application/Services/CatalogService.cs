@@ -7,6 +7,9 @@ namespace Hma.Application.Services;
 
 public class CatalogService(IHmaDbContext db, ICurrentUser current)
 {
+    private const int MaxListResults = 500;
+    private const int MaxLookupResults = 50;
+
     public Task<List<City>> CitiesAsync(CancellationToken ct = default) =>
         db.Cities.AsNoTracking().OrderBy(x => x.Code).ToListAsync(ct);
 
@@ -36,7 +39,7 @@ public class CatalogService(IHmaDbContext db, ICurrentUser current)
         var q = db.Partners.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(code)) q = q.Where(p => p.Code.Contains(code));
         if (!string.IsNullOrWhiteSpace(name)) q = q.Where(p => p.Name.Contains(name));
-        return q.OrderBy(p => p.Code).Take(500).ToListAsync(ct);
+        return q.OrderBy(p => p.Code).Take(MaxListResults).ToListAsync(ct);
     }
 
     public Task<List<Driver>> DriversAsync(string? code = null, string? name = null, CancellationToken ct = default)
@@ -44,14 +47,38 @@ public class CatalogService(IHmaDbContext db, ICurrentUser current)
         var q = db.Drivers.AsNoTracking().Include(d => d.Partner).AsQueryable();
         if (!string.IsNullOrWhiteSpace(code)) q = q.Where(d => d.Code.Contains(code));
         if (!string.IsNullOrWhiteSpace(name)) q = q.Where(d => d.Name.Contains(name));
-        return q.OrderBy(d => d.Code).Take(500).ToListAsync(ct);
+        return q.OrderBy(d => d.Code).Take(MaxListResults).ToListAsync(ct);
+    }
+
+    public Task<List<Driver>> DriverOptionsAsync(string? text, CancellationToken ct = default)
+    {
+        var q = db.Drivers.AsNoTracking().Include(d => d.Partner).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            var term = text.Trim();
+            q = q.Where(d => d.Code.Contains(term) || d.Name.Contains(term));
+        }
+
+        return q.OrderBy(d => d.Name).ThenBy(d => d.Code).Take(MaxLookupResults).ToListAsync(ct);
     }
 
     public Task<List<Vehicle>> VehiclesAsync(string? plate = null, CancellationToken ct = default)
     {
         var q = db.Vehicles.AsNoTracking().Include(v => v.Partner).Include(v => v.VehicleType).AsQueryable();
         if (!string.IsNullOrWhiteSpace(plate)) q = q.Where(v => v.PlateNumber.Contains(plate));
-        return q.OrderBy(v => v.PlateNumber).Take(500).ToListAsync(ct);
+        return q.OrderBy(v => v.PlateNumber).Take(MaxListResults).ToListAsync(ct);
+    }
+
+    public Task<List<Vehicle>> VehicleOptionsAsync(string? text, CancellationToken ct = default)
+    {
+        var q = db.Vehicles.AsNoTracking().Include(v => v.Partner).Include(v => v.VehicleType).AsQueryable();
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            var term = text.Trim();
+            q = q.Where(v => v.PlateNumber.Contains(term));
+        }
+
+        return q.OrderBy(v => v.PlateNumber).Take(MaxLookupResults).ToListAsync(ct);
     }
 
     public async Task SaveCityAsync(City city, CancellationToken ct = default)

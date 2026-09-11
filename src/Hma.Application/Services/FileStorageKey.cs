@@ -7,7 +7,7 @@ public static class FileStorageKey
     public static string ForDispatchDocument(int dispatchOrderId, string fileName)
     {
         var safe = SanitizeFileName(fileName);
-        return $"{dispatchOrderId:000000}/{DateTime.Now:yyyyMMddHHmmss}-{safe}";
+        return $"{dispatchOrderId:000000}/{DateTime.Now:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}-{safe}";
     }
 
     public static string Normalize(string key)

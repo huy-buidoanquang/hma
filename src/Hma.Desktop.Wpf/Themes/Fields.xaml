@@ -122,6 +122,9 @@
         <Setter Property="Height" Value="32"/>
         <Setter Property="MaxHeight" Value="32"/>
         <Setter Property="Template" Value="{StaticResource FilterTextBoxTemplate}"/>
+    </Style>
+
+    <Style x:Key="SearchField" TargetType="TextBox" BasedOn="{StaticResource FilterField}">
         <Setter Property="b:CommandBehaviors.EnterCommand" Value="{Binding SearchCommand}"/>
     </Style>
 

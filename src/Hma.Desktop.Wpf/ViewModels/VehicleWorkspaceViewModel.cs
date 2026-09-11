@@ -65,8 +65,11 @@ public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentU
         if (Selected is null) return;
         Editor = new Vehicle
         {
-            Id = Selected.Id, PlateNumber = Selected.PlateNumber, PartnerId = Selected.PartnerId,
-            VehicleTypeId = Selected.VehicleTypeId, Tonnage = Selected.Tonnage
+            Id = Selected.Id,
+            PlateNumber = Selected.PlateNumber,
+            PartnerId = Selected.PartnerId,
+            VehicleTypeId = Selected.VehicleTypeId,
+            Tonnage = Selected.Tonnage
         };
         Trips.Clear();
         foreach (var t in await catalog.TripsByVehicleAsync(Editor.Id)) Trips.Add(t);
@@ -100,7 +103,7 @@ public partial class VehicleWorkspaceViewModel(CatalogService catalog, ICurrentU
     private void ExportExcel()
     {
         if (!CanPrint) return;
-        var path = Path.Combine(Path.GetTempPath(), "DS-XE.xlsx");
+        var path = TemporaryReportFile.Create("DS-XE.xlsx");
         printer.ExportVehiclesExcel(Items.ToList(), path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         Status = "Đã xuất Excel xe.";

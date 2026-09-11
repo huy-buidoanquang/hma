@@ -27,6 +27,11 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<PriceListRevision> PriceListRevisions => Set<PriceListRevision>();
     public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
+    public DbSet<PartnerRate> PartnerRates => Set<PartnerRate>();
+    public DbSet<PartnerSettlement> PartnerSettlements => Set<PartnerSettlement>();
+    public DbSet<PartnerSettlementLine> PartnerSettlementLines => Set<PartnerSettlementLine>();
+    public DbSet<TransportExceptionCode> TransportExceptionCodes => Set<TransportExceptionCode>();
+    public DbSet<TransportException> TransportExceptions => Set<TransportException>();
     public DbSet<DispatchOrder> DispatchOrders => Set<DispatchOrder>();
     public DbSet<DispatchOrderStop> DispatchOrderStops => Set<DispatchOrderStop>();
     public DbSet<DispatchOrderLine> DispatchOrderLines => Set<DispatchOrderLine>();
@@ -65,6 +70,11 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     IQueryable<PriceList> IHmaDbContext.PriceLists => PriceLists;
     IQueryable<PriceListRevision> IHmaDbContext.PriceListRevisions => PriceListRevisions;
     IQueryable<PriceListItem> IHmaDbContext.PriceListItems => PriceListItems;
+    IQueryable<PartnerRate> IHmaDbContext.PartnerRates => PartnerRates;
+    IQueryable<PartnerSettlement> IHmaDbContext.PartnerSettlements => PartnerSettlements;
+    IQueryable<PartnerSettlementLine> IHmaDbContext.PartnerSettlementLines => PartnerSettlementLines;
+    IQueryable<TransportExceptionCode> IHmaDbContext.TransportExceptionCodes => TransportExceptionCodes;
+    IQueryable<TransportException> IHmaDbContext.TransportExceptions => TransportExceptions;
     IQueryable<DispatchOrder> IHmaDbContext.DispatchOrders => DispatchOrders;
     IQueryable<DispatchOrderStop> IHmaDbContext.DispatchOrderStops => DispatchOrderStops;
     IQueryable<DispatchOrderLine> IHmaDbContext.DispatchOrderLines => DispatchOrderLines;
@@ -97,7 +107,10 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
                 entry.State = EntityState.Modified;
         }
         else
-            entry = Set<T>().Update(entity);
+        {
+            entry = Entry(entity);
+            entry.State = EntityState.Modified;
+        }
 
         StampConcurrencyOriginal(entry);
     }
@@ -121,6 +134,42 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     async Task IHmaDbContext.ReloadAsync<T>(T entity, CancellationToken cancellationToken)
     {
         await Entry(entity).ReloadAsync(cancellationToken);
+    }
+
+    async Task IHmaDbContext.ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is not null)
+        {
+            await action(cancellationToken);
+            return;
+        }
+
+        var strategy = Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+            await action(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        });
+    }
+
+    async Task<T> IHmaDbContext.ExecuteInTransactionAsync<T>(
+        Func<CancellationToken, Task<T>> action,
+        CancellationToken cancellationToken)
+    {
+        if (Database.CurrentTransaction is not null)
+            return await action(cancellationToken);
+
+        var strategy = Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+            var result = await action(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
     }
 
     private T? FindTracked<T>(T entity) where T : class
@@ -206,6 +255,11 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<PriceList>().ToTable("PriceList");
         modelBuilder.Entity<PriceListRevision>().ToTable("PriceListRevision");
         modelBuilder.Entity<PriceListItem>().ToTable("PriceListItem");
+        modelBuilder.Entity<PartnerRate>().ToTable("PartnerRate");
+        modelBuilder.Entity<PartnerSettlement>().ToTable("PartnerSettlement");
+        modelBuilder.Entity<PartnerSettlementLine>().ToTable("PartnerSettlementLine");
+        modelBuilder.Entity<TransportExceptionCode>().ToTable("TransportExceptionCode");
+        modelBuilder.Entity<TransportException>().ToTable("TransportException");
         modelBuilder.Entity<DispatchOrder>().ToTable("DispatchOrder");
         modelBuilder.Entity<DispatchOrderStop>().ToTable("DispatchOrderStop");
         modelBuilder.Entity<DispatchOrderLine>().ToTable("DispatchOrderLine");
@@ -230,6 +284,8 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<SystemParameter>().Property(x => x.Value).HasColumnName("Value");
         modelBuilder.Entity<FreightStatement>().Property(x => x.Year).HasColumnName("Year");
         modelBuilder.Entity<FreightStatement>().Property(x => x.Month).HasColumnName("Month");
+        modelBuilder.Entity<PartnerSettlement>().Property(x => x.Year).HasColumnName("Year");
+        modelBuilder.Entity<PartnerSettlement>().Property(x => x.Month).HasColumnName("Month");
 
         modelBuilder.Entity<Location>().Property(x => x.Code).HasMaxLength(50);
         modelBuilder.Entity<Location>().Property(x => x.Name).HasMaxLength(255);
@@ -239,6 +295,31 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<Route>().Property(x => x.Description).HasMaxLength(500);
         modelBuilder.Entity<Route>().Property(x => x.Fingerprint).HasMaxLength(200);
         modelBuilder.Entity<DispatchOrderStop>().Property(x => x.NameSnapshot).HasMaxLength(255);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.ReconciliationRejectionReason).HasMaxLength(500);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.PriceSourceSnapshot).HasMaxLength(500);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.FreightOverrideReason).HasMaxLength(500);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.PartnerNameSnapshot).HasMaxLength(255);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.BuyRateSourceSnapshot).HasMaxLength(500);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.BuyOverrideReason).HasMaxLength(500);
+        modelBuilder.Entity<PartnerSettlement>().Property(x => x.Code).HasMaxLength(50);
+        modelBuilder.Entity<PartnerSettlement>().Property(x => x.Notes).HasMaxLength(500);
+        modelBuilder.Entity<PartnerSettlement>().Property(x => x.VoidReason).HasMaxLength(500);
+        modelBuilder.Entity<PartnerSettlementLine>().Property(x => x.DispatchCode).HasMaxLength(50);
+        modelBuilder.Entity<PartnerSettlementLine>().Property(x => x.Route).HasMaxLength(255);
+        modelBuilder.Entity<PartnerSettlementLine>().Property(x => x.PlateNumber).HasMaxLength(50);
+        modelBuilder.Entity<PartnerSettlementLine>().Property(x => x.DriverName).HasMaxLength(255);
+        modelBuilder.Entity<TransportExceptionCode>().Property(x => x.Code).HasMaxLength(50);
+        modelBuilder.Entity<TransportExceptionCode>().Property(x => x.Name).HasMaxLength(255);
+        modelBuilder.Entity<TransportExceptionCode>().Property(x => x.IsActive).HasDefaultValue(true);
+        modelBuilder.Entity<TransportException>().Property(x => x.CodeSnapshot).HasMaxLength(50);
+        modelBuilder.Entity<TransportException>().Property(x => x.NameSnapshot).HasMaxLength(255);
+        modelBuilder.Entity<TransportException>().Property(x => x.Description).HasMaxLength(1000);
+        modelBuilder.Entity<TransportException>().Property(x => x.ReviewNote).HasMaxLength(500);
+        modelBuilder.Entity<TransportException>().Property(x => x.VoidReason).HasMaxLength(500);
+        modelBuilder.Entity<FreightStatement>().Property(x => x.VoidReason).HasMaxLength(500);
+        modelBuilder.Entity<AppUser>().Property(x => x.UserName).HasMaxLength(50);
+        modelBuilder.Entity<AppUser>().Property(x => x.PasswordHash).HasMaxLength(255);
+        modelBuilder.Entity<AppUser>().Property(x => x.DisplayName).HasMaxLength(255);
         modelBuilder.Entity<LocationAlias>().Property(x => x.Alias).HasMaxLength(100);
         modelBuilder.Entity<RouteAlias>().Property(x => x.Alias).HasMaxLength(100);
         modelBuilder.Entity<CustomerAlias>().Property(x => x.Alias).HasMaxLength(100);
@@ -254,15 +335,36 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<RouteStop>().HasIndex(x => new { x.RouteId, x.Sequence }).IsUnique();
         modelBuilder.Entity<DispatchOrderStop>().HasIndex(x => new { x.DispatchOrderId, x.Sequence }).IsUnique();
         modelBuilder.Entity<Customer>().HasIndex(x => x.Code);
-        modelBuilder.Entity<DispatchOrder>().HasIndex(x => x.Code);
+        modelBuilder.Entity<DispatchOrder>().HasIndex(x => x.Code).IsUnique();
         modelBuilder.Entity<Partner>().HasIndex(x => x.Code).IsUnique();
         modelBuilder.Entity<Driver>().HasIndex(x => x.Code).IsUnique();
         modelBuilder.Entity<Vehicle>().HasIndex(x => x.PlateNumber).IsUnique();
+        modelBuilder.Entity<AppUser>().HasIndex(x => x.UserName).IsUnique();
         modelBuilder.Entity<UserPermission>().HasIndex(x => new { x.AppUserId, x.AppScreenId }).IsUnique();
         modelBuilder.Entity<FreightStatement>().HasIndex(x => new { x.CustomerId, x.Year, x.Month }).IsUnique();
+        modelBuilder.Entity<FreightStatementLine>().HasIndex(x => x.DispatchOrderId).IsUnique();
+        modelBuilder.Entity<PriceListItem>()
+            .HasIndex(x => new { x.PriceListRevisionId, x.RouteId, x.VehicleTypeId })
+            .IsUnique()
+            .HasFilter("[RouteId] IS NOT NULL");
+        modelBuilder.Entity<PriceListItem>()
+            .HasIndex(x => new { x.PriceListRevisionId, x.DeliveryLocationId, x.VehicleTypeId })
+            .IsUnique()
+            .HasFilter("[RouteId] IS NULL AND [DeliveryLocationId] IS NOT NULL");
+        modelBuilder.Entity<PartnerRate>()
+            .HasIndex(x => new { x.PartnerId, x.RouteId, x.VehicleTypeId, x.EffectiveFrom })
+            .IsUnique();
+        modelBuilder.Entity<PartnerSettlement>()
+            .HasIndex(x => new { x.PartnerId, x.Year, x.Month }).IsUnique();
+        modelBuilder.Entity<PartnerSettlementLine>()
+            .HasIndex(x => x.DispatchOrderId).IsUnique();
+        modelBuilder.Entity<TransportExceptionCode>().HasIndex(x => x.Code).IsUnique();
 
         modelBuilder.Entity<DispatchOrder>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<PriceList>().Property(x => x.RowVersion).IsRowVersion();
+        modelBuilder.Entity<PartnerRate>().Property(x => x.RowVersion).IsRowVersion();
+        modelBuilder.Entity<PartnerSettlement>().Property(x => x.RowVersion).IsRowVersion();
+        modelBuilder.Entity<TransportException>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<FreightStatement>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<DocumentSequence>().Property(x => x.RowVersion).IsRowVersion();
 
@@ -271,10 +373,28 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<Vehicle>().Property(x => x.Tonnage).HasPrecision(9, 2);
         modelBuilder.Entity<PriceListItem>().Property(x => x.UnitPrice).HasPrecision(20, 2);
         modelBuilder.Entity<PriceListItem>().Property(x => x.Surcharge).HasPrecision(20, 2);
+        modelBuilder.Entity<PartnerRate>().Property(x => x.UnitPrice).HasPrecision(20, 2);
+        modelBuilder.Entity<PartnerRate>().Property(x => x.Surcharge).HasPrecision(20, 2);
+        foreach (var name in new[] { nameof(PartnerSettlement.GrossAmount),
+                     nameof(PartnerSettlement.OperatingFeeAmount), nameof(PartnerSettlement.PayableAmount) })
+            modelBuilder.Entity<PartnerSettlement>().Property(name).HasPrecision(20, 2);
+        foreach (var name in new[] { nameof(PartnerSettlementLine.BuyTotal),
+                     nameof(PartnerSettlementLine.OperatingFeeAmount), nameof(PartnerSettlementLine.PayableAmount) })
+            modelBuilder.Entity<PartnerSettlementLine>().Property(name).HasPrecision(20, 2);
+        modelBuilder.Entity<PartnerSettlementLine>().Property(x => x.OperatingFeePercent).HasPrecision(9, 2);
         modelBuilder.Entity<DispatchOrder>().Property(x => x.UnitPrice).HasPrecision(20, 2);
         modelBuilder.Entity<DispatchOrder>().Property(x => x.Surcharge).HasPrecision(20, 2);
         modelBuilder.Entity<DispatchOrder>().Property(x => x.ExtraCost).HasPrecision(20, 2);
         modelBuilder.Entity<DispatchOrder>().Property(x => x.TotalAmount).HasPrecision(20, 2);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.ApprovedExceptionRevenue).HasPrecision(20, 2);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.ApprovedExceptionCost).HasPrecision(20, 2);
+        foreach (var name in new[] { nameof(DispatchOrder.BuyUnitPrice), nameof(DispatchOrder.BuySurcharge),
+                     nameof(DispatchOrder.BuyExtraCost), nameof(DispatchOrder.BuyTotal),
+                     nameof(DispatchOrder.PartnerPayableAmount), nameof(DispatchOrder.GrossMargin) })
+            modelBuilder.Entity<DispatchOrder>().Property(name).HasPrecision(20, 2);
+        modelBuilder.Entity<DispatchOrder>().Property(x => x.PartnerOperatingFeePercent).HasPrecision(9, 2);
+        modelBuilder.Entity<TransportException>().Property(x => x.CustomerCharge).HasPrecision(20, 2);
+        modelBuilder.Entity<TransportException>().Property(x => x.PartnerCost).HasPrecision(20, 2);
         modelBuilder.Entity<DispatchOrderLine>().Property(x => x.Kilometers).HasPrecision(18, 2);
         foreach (var name in new[] { nameof(FreightStatement.FreightTotal), nameof(FreightStatement.SurchargeTotal),
                      nameof(FreightStatement.ExtraCostTotal), nameof(FreightStatement.GrandTotal),
@@ -306,13 +426,67 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.ReconciledByUser).WithMany().HasForeignKey(d => d.ReconciledByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.ReconciliationSubmittedByUser).WithMany()
+            .HasForeignKey(d => d.ReconciliationSubmittedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.ReconciliationRejectedByUser).WithMany()
+            .HasForeignKey(d => d.ReconciliationRejectedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.ConfirmedByUser).WithMany().HasForeignKey(d => d.ConfirmedByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.PaymentMethod).WithMany().HasForeignKey(d => d.PaymentMethodId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.PriceListItem).WithMany().HasForeignKey(d => d.PriceListItemId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.Partner).WithMany().HasForeignKey(d => d.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.PartnerRate).WithMany().HasForeignKey(d => d.PartnerRateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.Employee).WithMany().HasForeignKey(d => d.EmployeeId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PriceListItem>()
             .HasOne(i => i.Route).WithMany().HasForeignKey(i => i.RouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PriceListItem>()
+            .HasOne(i => i.DeliveryLocation).WithMany().HasForeignKey(i => i.DeliveryLocationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerRate>()
+            .HasOne(x => x.Partner).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerRate>()
+            .HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerRate>()
+            .HasOne(x => x.VehicleType).WithMany().HasForeignKey(x => x.VehicleTypeId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerRate>()
+            .HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerSettlement>()
+            .HasOne(x => x.Partner).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerSettlement>()
+            .HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerSettlement>()
+            .HasOne(x => x.SubmittedByUser).WithMany().HasForeignKey(x => x.SubmittedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerSettlement>()
+            .HasOne(x => x.FinalizedByUser).WithMany().HasForeignKey(x => x.FinalizedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerSettlement>()
+            .HasOne(x => x.VoidedByUser).WithMany().HasForeignKey(x => x.VoidedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PartnerSettlementLine>()
+            .HasOne(x => x.PartnerSettlement).WithMany(x => x.Lines).HasForeignKey(x => x.PartnerSettlementId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PartnerSettlementLine>()
+            .HasOne(x => x.DispatchOrder).WithMany().HasForeignKey(x => x.DispatchOrderId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportException>()
+            .HasOne(x => x.DispatchOrder).WithMany(x => x.TransportExceptions)
+            .HasForeignKey(x => x.DispatchOrderId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportException>()
+            .HasOne(x => x.ExceptionCode).WithMany()
+            .HasForeignKey(x => x.TransportExceptionCodeId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportException>()
+            .HasOne(x => x.CreatedByUser).WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportException>()
+            .HasOne(x => x.SubmittedByUser).WithMany()
+            .HasForeignKey(x => x.SubmittedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportException>()
+            .HasOne(x => x.ReviewedByUser).WithMany()
+            .HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportException>()
+            .HasOne(x => x.VoidedByUser).WithMany()
+            .HasForeignKey(x => x.VoidedByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Location>()
             .HasOne(l => l.City).WithMany().HasForeignKey(l => l.CityId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<LocationAlias>()
@@ -337,13 +511,25 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
             .HasOne(p => p.DriverEmployee).WithMany().HasForeignKey(p => p.DriverEmployeeId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<ChangeLog>()
             .HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FreightStatement>()
+            .HasOne(s => s.CreatedByUser).WithMany().HasForeignKey(s => s.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FreightStatement>()
+            .HasOne(s => s.SubmittedByUser).WithMany().HasForeignKey(s => s.SubmittedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FreightStatement>()
+            .HasOne(s => s.FinalizedByUser).WithMany().HasForeignKey(s => s.FinalizedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FreightStatement>()
+            .HasOne(s => s.VoidedByUser).WithMany().HasForeignKey(s => s.VoidedByUserId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.HasDeliveryNote);
+        modelBuilder.Entity<DispatchOrder>().Ignore(d => d.BillableExtraCost);
+        modelBuilder.Entity<DispatchOrder>().Ignore(d => d.PartnerBillableExtraCost);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.RouteLabel);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.PickupLocationName);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.DeliveryLocationName);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.CanEdit);
         modelBuilder.Entity<DispatchOrder>().Ignore(d => d.CustomerCodeName);
+        modelBuilder.Entity<TransportExceptionCode>().Ignore(x => x.DisplayName);
+        modelBuilder.Entity<TransportException>().Ignore(x => x.StatusLabel);
         modelBuilder.Entity<Customer>().Ignore(c => c.CodeName);
         modelBuilder.Entity<DispatchOrder>().HasQueryFilter(d => !d.IsDeleted);
     }

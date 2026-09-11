@@ -10,4 +10,18 @@ public static class PriceListDomainService
         if (list.EffectiveFrom is { } from && list.EffectiveTo is { } to && to.Date < from.Date)
             throw new InvalidOperationException("Ngày hiệu lực đến phải sau hoặc bằng ngày bắt đầu.");
     }
+
+    public static void EnsureCanModify(PriceList list)
+    {
+        if (list.IsLocked)
+            throw new InvalidOperationException("Bảng giá đã khóa nên không thể sửa dòng giá hoặc phiên bản.");
+    }
+
+    public static void EnsureCanLock(PriceList list)
+    {
+        if (list.IsLocked)
+            throw new InvalidOperationException("Bảng giá đã được khóa.");
+        if (string.IsNullOrWhiteSpace(list.LockReason))
+            throw new InvalidOperationException("Cần nhập lý do khóa bảng giá.");
+    }
 }

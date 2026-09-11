@@ -63,8 +63,13 @@ public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUs
         if (Selected is null) return;
         Editor = new Driver
         {
-            Id = Selected.Id, Code = Selected.Code, Name = Selected.Name, Phone = Selected.Phone,
-            BirthDate = Selected.BirthDate, IdentityNumber = Selected.IdentityNumber, PartnerId = Selected.PartnerId
+            Id = Selected.Id,
+            Code = Selected.Code,
+            Name = Selected.Name,
+            Phone = Selected.Phone,
+            BirthDate = Selected.BirthDate,
+            IdentityNumber = Selected.IdentityNumber,
+            PartnerId = Selected.PartnerId
         };
         Trips.Clear();
         foreach (var t in await catalog.TripsByDriverAsync(Editor.Id)) Trips.Add(t);
@@ -98,7 +103,7 @@ public partial class DriverWorkspaceViewModel(CatalogService catalog, ICurrentUs
     private void ExportExcel()
     {
         if (!CanPrint) return;
-        var path = Path.Combine(Path.GetTempPath(), "DS-TAI-XE.xlsx");
+        var path = TemporaryReportFile.Create("DS-TAI-XE.xlsx");
         printer.ExportDriversExcel(Items.ToList(), path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         Status = "Đã xuất Excel tài xế.";

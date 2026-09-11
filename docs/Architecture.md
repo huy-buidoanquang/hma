@@ -1,5 +1,7 @@
 # Architecture — Hà Minh Anh (HMA)
 
+> Cập nhật hardening 11/09/2026: hệ thống hiện có optimistic concurrency, transaction aggregate, workflow đối soát/bảng kê maker–checker, giá mua đối tác, quyết toán nhà xe, exception vận tải có duyệt, health check và CI. Các phần dưới đây mô tả kiến trúc hiện hành; phiếu thu/chi và hóa đơn VAT vẫn đóng băng cho đến khi thiết kế AR/AP được chốt.
+
 Tài liệu này mô tả **thiết kế hệ thống đang có trong source**, không phải roadmap. Nguồn: `src/`, `database/`, `docs/`, `.cursor/rules/`. Cập nhật khi ranh giới lớp, schema, hoặc chuỗi nghiệp vụ thay đổi.
 
 **Sản phẩm:** ứng dụng desktop điều xe và đối soát cước cho Công ty TNHH DV vận tải & TM Hà Minh Anh.  
@@ -144,7 +146,7 @@ Mọi entity nghiệp vụ kế thừa `Entity` (`Id`, `LegacyId`), trừ `Chang
 | `Vehicle`                | Biển số unique, thuộc `Partner`, optional `VehicleType`                 |
 | `VehicleType`            | 8 loại tải (1.25T … 15T), giữ Id khi ETL                                |
 | `Customer`               | Bill-to; `AccountantEmployeeId`; `IsWalkIn` cho khách vãng lai `VL-nnn` |
-| `PaymentMethod`          | Schema sẵn; Phase 1 không có màn hình                                   |
+| `PaymentMethod`          | Seed Trả sau / Lái xe thu / Điều hành thu; Phase 1 không có màn hình    |
 | `Company`                | Header in (tên công ty)                                                 |
 
 
@@ -155,7 +157,7 @@ Tách so với legacy: `nhanvien` có biển số → `Driver` + `Vehicle`, gán
 ```
 PriceList (optional CustomerId, EffectiveFrom/To, HasPriceFluctuation, IsLocked)
   └── PriceListRevision
-        └── PriceListItem (Route, VehicleType, UnitPrice, Surcharge)
+        └── PriceListItem (Route hoặc DeliveryLocation, VehicleType, UnitPrice, Surcharge)
 ```
 
 Bảng giá **chung** (`CustomerId` null) hoặc **theo khách**. Cờ `HasPriceFluctuation` trên cả bảng. Khóa: `IsLocked` + `LockedAt` + `LockReason`.
@@ -167,7 +169,7 @@ Tra cước `PriceListService.GetFreightAsync(customer, routeId, vehicleType, as
 3. Bảng chung (ưu tiên không biến động rồi revision mới)
 4. Không khớp → cước tay
 
-Cần `RouteId` và `VehicleTypeId`. Khớp cả tuyến (A→B→C), không cộng từng chặng.
+Cần `RouteId` và `VehicleTypeId`. Trong cùng bậc khách/chung, hệ thống ưu tiên đúng tuyến rồi mới fallback điểm đến (dùng để bảo toàn năm cột giá legacy). Lệnh snapshot `PriceListItemId`, nhãn nguồn và bắt buộc lý do nếu nhập khác bảng giá.
 
 ### 5.3 Lệnh điều xe (trung tâm)
 
@@ -177,12 +179,13 @@ Cần `RouteId` và `VehicleTypeId`. Khớp cả tuyến (A→B→C), không c�
 - **Người gửi / người nhận:** FK + snapshot tên, SĐT, địa chỉ, MST (ổn định khi in/bảng kê dù danh mục đổi).
 - **Tuyến:** `PickupAt`, địa chỉ, `RouteId` + snapshot `DispatchOrderStop`.
 - **Xe / tài xế / loại xe.**
-- **Cước:** `UnitPrice + Surcharge + ExtraCost = TotalAmount`; `AmountInWords`.
+- **Cước bán:** bảng giá + phát sinh tay + khoản thu exception đã duyệt; snapshot nguồn và lý do override.
+- **Giá mua:** nhà xe phải trùng giữa xe/tài xế; `PartnerRate` theo tuyến/loại xe; snapshot phí điều hành, số phải trả và gross margin.
 - **Dòng hàng** `DispatchOrderLine` (tên hàng, kiện, hành trình, km).
 - **Chứng từ** `DispatchDocument` (metadata; file trên đĩa).
 
-Trạng thái lệnh `DispatchStatus`: `Draft=0`, `Issued=1`, `Completed=2`, `Locked=3`.  
-Đối soát `ReconciliationStatus`: `Pending=0`, `Reconciled=1`.
+Trạng thái lệnh `DispatchStatus`: `Draft=0`, `Issued=1`, `Completed=2`, `Locked=3` (legacy), `Cancelled=4`.
+Đối soát `ReconciliationStatus`: `Pending=0`, `Reconciled=1`, `Submitted=2`, `Rejected=3`.
 
 `CanEdit` = chưa xóa mềm, chưa khóa và chưa đối soát. Không đổi cước sau đối soát. Xóa lệnh = `IsDeleted` (không DROP); vẫn chặn khóa / đã đối soát. Chỉ quản lý khóa lệnh / hủy đối soát. Hủy đối soát bị chặn nếu lệnh đã nằm trên bảng kê.
 
@@ -192,8 +195,8 @@ Trạng thái lệnh `DispatchStatus`: `Draft=0`, `Issued=1`, `Completed=2`, `Lo
 
 `DispatchDocumentKind`: `DispatchOrder`, `DeliveryNote`, `Invoice`, `Other`.
 
-File copy vào `{DocumentStorePath}/{orderId:000000}/{timestamp}-{fileName}`.  
-`DocumentStorePath` rỗng → `%LocalAppData%\Hma\Documents`. Backup thư mục này cùng SQL.
+`DispatchDocumentService` gọi `IFileStorage`; `LocalDiskFileStorage` ghi file tạm, flush rồi move nguyên tử vào `{DocumentStorePath}/{orderId:000000}/{timestamp-ms}-{guid}-{fileName}`.
+`DocumentStorePath` rỗng → `%LocalAppData%\Hma\Documents`; màn Cấu hình cảnh báo fallback này. Production nhiều máy phải dùng UNC share và backup thư mục cùng SQL.
 
 Đối soát **bắt buộc** có `DeliveryNote`.
 
@@ -211,7 +214,7 @@ Tổng: số chuyến, cước, phụ phí, phát sinh, `GrandTotal`, VAT từ `
 
 `ChangeLog`: `EntityName` + `EntityId`, `Action`, `Summary`, `OldJson`/`NewJson`, user, thời điểm. Lệnh ghi: Create, UpdateFreight, UpdateVehicleDriver, UpdateRoute, UpdateStatus, Lock, Reconcile, Unreconcile.
 
-`DocumentSequence.Key` → số tăng, format `000`: `dispatch-order`, `freight-statement`, `walk-in-customer`, và (đóng băng) `cash-receipt`, `cash-payment`, `vat-invoice`.
+`DocumentSequence.Key` → số tăng có optimistic retry, format `000`: `dispatch-order`, `freight-statement`, `partner-settlement`, `walk-in-customer`, và (đóng băng) `cash-receipt`, `cash-payment`, `vat-invoice`.
 
 `SystemParameter`: `VatRate`, `DocumentStorePath`, `SchemaVersion`.
 
@@ -241,20 +244,24 @@ In một lệnh / theo ngày / tháng / theo khách và Excel danh sách cước
 
 Màn `reconcile` lọc lệnh `Completed` + `Pending`. Checklist: biên bản, tuyến, đơn giá, phụ phí, phát sinh, tổng, trạng thái. Lịch sử ChangeLog bên cạnh.
 
-`ReconcileAsync`: phải Completed, phải có DeliveryNote, ghi `ReconciledAt` / `ReconciledByUserId`.  
+`SubmitReconciliationAsync`: phải Completed, có DeliveryNote, không còn exception nháp/chờ duyệt. `ReconcileAsync`/`RejectReconciliationAsync` bắt buộc maker–checker và ghi đầy đủ user/thời điểm/lý do.
 `UnreconcileAsync`: chỉ manager; fail nếu đã có `FreightStatementLine`.
 
 ### 6.3 Bảng kê
 
-Chọn khách + tháng/năm → `FreightStatementService.GenerateAsync` (quyền `Create` trên `statements`) → PDF/Excel.
+Chọn khách + tháng/năm → lập bản nháp từ lệnh đủ điều kiện → người lập gửi duyệt → người khác chốt. Chỉ bản nháp được sinh lại; bản đã chốt/hủy là bất biến. PDF/Excel dùng snapshot dòng.
 
-### 6.4 Dashboard và báo cáo
+### 6.4 Sự cố vận tải
 
-KPI tháng (`DashboardQueryService.MonthAsync`): tổng cước, số chuyến, chưa/đã đối soát, chờ chứng từ (thiếu DeliveryNote). Lưới theo khách / theo xe trong khoảng ngày.
+Trước khi đối soát, điều phối ghi sự cố bằng mã chuẩn (`WAIT`, `OVERNIGHT`, `TOLL`, `RETURN`, `FAILED_DELIVERY`, `CLAIM`, `OTHER`) và tách khoản thu khách hàng khỏi chi phí nhà xe. Người lập gửi duyệt; quản lý khác người lập duyệt hoặc từ chối. Bản nháp hoặc bản bị từ chối có thể xóa; bản đã gửi duyệt được giữ làm lịch sử. Chỉ sự cố `Approved` được cộng vào `ApprovedExceptionRevenue` / `ApprovedExceptionCost`; hủy sự cố đã duyệt hoàn đúng hai khoản trong cùng transaction và luôn ghi `ChangeLog`.
+
+### 6.5 Dashboard và báo cáo
+
+KPI tháng (`DashboardQueryService.MonthAsync`): doanh thu earned, phải trả đối tác, lãi gộp, trạng thái chuyến, chưa/đã đối soát, chờ chứng từ và exception chưa xử lý. Lưới theo khách / theo xe chỉ tính chuyến Completed.
 
 `ReportQueryService`: lệnh theo ngày hoặc khoảng (optional khách). In PDF tổng hợp. Preset tuần/quý/năm nằm ở ViewModel.
 
-### 6.5 Tra cứu
+### 6.6 Tra cứu
 
 Ô số lệnh **hoặc** biển số → `DispatchOrderService.SearchAsync` (tối đa 500, mới nhất trước) → mở workspace lệnh qua `IWorkspaceNavigator`.
 
@@ -273,20 +280,24 @@ Lịch sử chuyến cũng có trên màn tài xế / xe (`CatalogService.TripsB
 | ------------------------------------------- | ------------------------------------------------------------- |
 | `AuthService`                               | Login, nạp permission + employee, gán `ICurrentUser`          |
 | `CurrentUser`                               | Singleton phiên; `IsManager` bypass mọi `Can`                 |
-| `Pbkdf2PasswordHasher`                      | PBKDF2 100k SHA256; vẫn nhận `RESET:` từ ETL                  |
+| `Pbkdf2PasswordHasher`                      | PBKDF2 SHA256; từ chối hash malformed và tài khoản `DISABLED` từ ETL |
 | `PermissionGuard`                           | Ném `InvalidOperationException` tiếng Việt nếu thiếu quyền    |
 | `UserAdminService`                          | CRUD user + matrix quyền; màn `users`                         |
 | `CustomerService`                           | Tìm/sửa/xóa; unique `Code`                                    |
 | `CatalogService`                            | City, phòng ban, chức vụ, NV, đối tác, TX, xe; lịch sử chuyến |
 | `PriceListService`                          | Header/revision/item; `GetFreightAsync`                       |
+| `PartnerRateService`                        | Giá mua theo đối tác × tuyến × loại xe × hiệu lực             |
+| `PartnerSettlementService`                  | Lập/gửi duyệt/chốt/hủy quyết toán nhà xe                      |
+| `TransportExceptionService`                 | Sự cố có mã, maker–checker, áp/hoàn thu–chi vào lệnh           |
 | `DispatchOrderService`                      | Tìm, CRUD, cước, khóa, status, đối soát, walk-in              |
-| `DispatchDocumentService`                   | Copy file, metadata, xóa file                                 |
-| `FreightStatementService`                   | List/get/generate tháng                                       |
+| `DispatchDocumentService`                   | Metadata và file qua `IFileStorage`, có compensation khi DB lỗi |
+| `FreightStatementService`                   | Lập/gửi duyệt/chốt/hủy bảng kê tháng                          |
 | `DashboardQueryService`                     | KPI + group khách/xe                                          |
 | `ReportQueryService`                        | Lệnh theo ngày/kỳ (và phiếu chi — đóng băng)                  |
 | `ChangeLogService`                          | Ghi/đọc audit                                                 |
 | `DocumentNumberService`                     | Tăng `LastValue`                                              |
 | `SettingsService`                           | VAT, đường chứng từ, số đếm LDX/bảng kê                       |
+| `SystemHealthService`                       | Kiểm tra SQL, quyền ghi kho file và backlog vận hành          |
 | `CompanyService`                            | Header in; Save thông tin công ty (quyền `settings`)          |
 | `LocationService` / `RouteService` | Catalog điểm / tuyến |
 | `LocationAliasService` / `RouteAliasService` / `CustomerAliasService` | Từ điển điểm / tuyến / khách trong hub Cấu hình |
@@ -323,14 +334,14 @@ Mapping legacy → mới: [`schema-mapping.md`](schema-mapping.md).
 
 - 9 `VehicleType` (gồm `1.5T`; giữ `1.45T` cho ETL)  
 - Partner `UNASSIGNED`  
-- 17 `AppScreen` (không gồm cash/VAT)  
+- 3 `PaymentMethod`: Trả sau, Lái xe thu, Điều hành thu
+- 23 `AppScreen` (không gồm cash/VAT; có giá mua, quyết toán và exception)
 - Sequences + `VatRate=10`, `DocumentStorePath=""`, `SchemaVersion=legacy-ux-1`  
 - Company Hà Minh Anh  
-- User `admin` / `admin123` (`IsManager`)  
-- User `ketoan` / `ketoan123`: View/Create/Update/Print trên catalog + lệnh + đối soát + bảng kê + tra cứu; dashboard/reports chỉ View+Print; không Delete; không `users`/`settings`
+- User quản trị đầu tiên chỉ được tạo khi có `HMA_BOOTSTRAP_ADMIN_PASSWORD`; không có mật khẩu mặc định. Tài khoản kế toán demo chỉ được tạo khi có `HMA_BOOTSTRAP_ACCOUNTANT_PASSWORD`.
 - `DemoDataSeeder`: nếu **chưa có khách hàng** thì nạp danh mục từ bảng điều xe 11/08/2026 (khách, tài xế, xe, điểm, tuyến, bí danh). Không seed lệnh / bảng giá / bảng kê. Không chạy khi DB đã có khách (ETL/production). Xóa khách hoặc CSDL rồi mở app để nạp lại.
 
-Chuỗi kết nối: `Hma.Desktop.Wpf/appsettings.json` → `ConnectionStrings:Hma`.
+Chuỗi kết nối production: biến `HMA_CONNECTION` hoặc `ConnectionStrings__Hma`; file `appsettings.json` không chứa secret.
 
 ---
 
@@ -469,7 +480,7 @@ Thứ tự script:
 | `etl/01_master.sql`               | City, org, Employee, Customer, loaixe, UNASSIGNED, Driver/Vehicle từ biển, Company                                |
 | `etl/02_pricing.sql`              | Unpivot `banggia_ct` → `PriceListItem`                                                                            |
 | `etl/03_dispatch.sql`             | `nil` → lệnh (Completed, Pending); `nguoigui` → Customer + Sender snapshot; `nguoinhan` → Receiver; hàng `nil_ct` |
-| `etl/06_security.sql`             | User; password `RESET:` (đổi sau go-live)                                                                         |
+| `etl/06_security.sql`             | User bị vô hiệu hóa (`DISABLED`); không nhập plaintext password legacy                                             |
 | `etl/07_sequences.sql`            | `nil_ud` + VAT                                                                                                    |
 | `etl/99_validate.sql`             | Count KH/lệnh; `SUM(tongthu)` vs `SUM(TotalAmount)`; FK mồ côi                                                    |
 
@@ -518,7 +529,7 @@ Thứ tự script:
 dotnet run --project src/Hma.Desktop.Wpf
 ```
 
-Lần đầu tạo database `Hma` và seed. Đăng nhập: `admin` / `admin123` hoặc `ketoan` / `ketoan123`.
+Lần đầu tạo database `Hma`, đặt `HMA_BOOTSTRAP_ADMIN_PASSWORD` bằng mật khẩu mạnh rồi chạy ứng dụng/`--seed`. Sau khi tạo quản trị viên, xóa biến bootstrap. Không có tài khoản hoặc mật khẩu mặc định trong source.
 
 Schema production: chạy `001_schema.sql` + `002_seed.sql` (và ETL nếu cutover), không dựa vào `EnsureDeleted` của app.
 

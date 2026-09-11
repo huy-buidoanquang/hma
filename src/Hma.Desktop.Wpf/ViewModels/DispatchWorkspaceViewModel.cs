@@ -39,12 +39,15 @@ public partial class DispatchWorkspaceViewModel(
     [ObservableProperty] private DispatchOrder editor = new();
     [ObservableProperty] private DispatchOrder? selected;
     [ObservableProperty] private DispatchDocument? selectedDocument;
+    [ObservableProperty] private DispatchOrderLine? selectedLine;
     [ObservableProperty] private int selectedDocKind = (int)DispatchDocumentKind.DeliveryNote;
     [ObservableProperty] private int pickupHour;
     [ObservableProperty] private int pickupMinute;
     [ObservableProperty] private DateTime? pickupDate = DateTime.Today;
     [ObservableProperty] private string? driverPhone;
     [ObservableProperty] private string? vehiclePlate;
+    [ObservableProperty] private string? vehicleLookupText;
+    [ObservableProperty] private string? driverLookupText;
     [ObservableProperty] private string? newPartyName;
     [ObservableProperty] private string? newPartyPhone;
     [ObservableProperty] private string? newPartyAddress;
@@ -54,6 +57,10 @@ public partial class DispatchWorkspaceViewModel(
     [ObservableProperty] private string? freightSourceLabel;
     [ObservableProperty] private bool freightMissing;
     private bool _suppressAutoFreight;
+    private bool _suppressVehicleLookup;
+    private bool _suppressDriverLookup;
+    private int _vehicleLookupGeneration;
+    private int _driverLookupGeneration;
 
     public ObservableCollection<DispatchOrder> Items { get; } = [];
     public ObservableCollection<Customer> CustomerOptions { get; } = [];
@@ -61,6 +68,7 @@ public partial class DispatchWorkspaceViewModel(
     public ObservableCollection<Vehicle> Vehicles { get; } = [];
     public ObservableCollection<VehicleType> VehicleTypes { get; } = [];
     public ObservableCollection<Location> Locations { get; } = [];
+    public ObservableCollection<City> Cities { get; } = [];
     public ObservableCollection<Route> Routes { get; } = [];
     public ObservableCollection<PaymentMethod> PaymentMethods { get; } = [];
     public ObservableCollection<DispatchDocument> DocumentItems { get; } = [];
@@ -72,12 +80,14 @@ public partial class DispatchWorkspaceViewModel(
         new() { Value = (int)DispatchStatus.Draft, Name = "Nháp" },
         new() { Value = (int)DispatchStatus.Issued, Name = "Đã phát hành" },
         new() { Value = (int)DispatchStatus.Completed, Name = "Hoàn thành" },
-        new() { Value = (int)DispatchStatus.Locked, Name = "Đã khóa" }
+        new() { Value = (int)DispatchStatus.Cancelled, Name = "Đã hủy" }
     ];
     public IReadOnlyList<NamedInt> ReconOptions { get; } =
     [
         new() { Value = (int)ReconciliationStatus.Pending, Name = "Chưa đối soát" },
-        new() { Value = (int)ReconciliationStatus.Reconciled, Name = "Đã đối soát" }
+        new() { Value = (int)ReconciliationStatus.Submitted, Name = "Chờ duyệt" },
+        new() { Value = (int)ReconciliationStatus.Reconciled, Name = "Đã đối soát" },
+        new() { Value = (int)ReconciliationStatus.Rejected, Name = "Bị từ chối" }
     ];
     public IReadOnlyList<NamedInt> DocKindOptions { get; } =
     [
@@ -91,25 +101,41 @@ public partial class DispatchWorkspaceViewModel(
         Editor.Customer ?? CustomerOptions.FirstOrDefault(c => c.Id == Editor.CustomerId);
 
     public override bool IsEditorReadOnly =>
-        IsViewMode
-        || (Editor.Status == DispatchStatus.Locked && !DispatchConfirmRules.CanMutateLocked(current.User, EditorCustomer));
+        IsViewMode || !Editor.CanEdit;
 
-    public bool IsFreightReadOnly =>
-        IsEditorReadOnly
-        || (Editor.ReconciliationStatus == ReconciliationStatus.Reconciled
-            && !DispatchConfirmRules.CanMutateLocked(current.User, EditorCustomer));
+    public bool IsFreightReadOnly => IsEditorReadOnly;
 
     public override bool AreFieldsEnabled => !IsEditorReadOnly;
 
     public bool CanPersist => CanSave && !IsEditorReadOnly;
 
     public bool CanLock =>
-        CanUpdate && Editor.Id != 0 && Editor.Status != DispatchStatus.Locked
+        CanUpdate && Editor.Id != 0 && Editor.Status == DispatchStatus.Completed
+        && Editor.ConfirmedAt is null
+        && Editor.ReconciliationStatus != ReconciliationStatus.Reconciled
         && DispatchConfirmRules.CanConfirm(current.User, EditorCustomer);
 
     public bool CanUnlock =>
-        CanUpdate && Editor.Id != 0 && Editor.Status == DispatchStatus.Locked
+        CanUpdate && Editor.Id != 0 && Editor.ConfirmedAt is not null
+        && Editor.ReconciliationStatus is ReconciliationStatus.Pending or ReconciliationStatus.Rejected
         && DispatchConfirmRules.CanUnlock(current.User, EditorCustomer);
+
+    public bool CanComplete =>
+        CanUpdate && Editor.Id != 0 && Editor.Status == DispatchStatus.Issued && Editor.CanEdit;
+
+    public bool CanAttachDocument =>
+        CanUpdate && Editor.Id != 0 && CanMutateDocuments;
+
+    public bool CanDeleteDocument =>
+        CanDelete && SelectedDocument is not null && CanMutateDocuments;
+
+    public bool CanOpenDocument =>
+        SelectedDocument is not null && !string.IsNullOrWhiteSpace(SelectedDocument.StoredPath);
+
+    private bool CanMutateDocuments =>
+        !Editor.IsDeleted
+        && Editor.Status != DispatchStatus.Cancelled
+        && Editor.ReconciliationStatus is ReconciliationStatus.Pending or ReconciliationStatus.Rejected;
 
     public string TonnageLabel
     {
@@ -255,13 +281,15 @@ public partial class DispatchWorkspaceViewModel(
         foreach (var c in await customers.SearchAsync(null, null, null, null))
             CustomerOptions.Add(c);
         Drivers.Clear();
-        foreach (var d in await catalog.DriversAsync()) Drivers.Add(d);
+        foreach (var d in await catalog.DriverOptionsAsync(null)) Drivers.Add(d);
         Vehicles.Clear();
-        foreach (var v in await catalog.VehiclesAsync()) Vehicles.Add(v);
+        foreach (var v in await catalog.VehicleOptionsAsync(null)) Vehicles.Add(v);
         VehicleTypes.Clear();
         foreach (var v in await catalog.VehicleTypesAsync()) VehicleTypes.Add(v);
         Locations.Clear();
         foreach (var l in await catalog.LocationsAsync()) Locations.Add(l);
+        Cities.Clear();
+        foreach (var c in await catalog.CitiesAsync()) Cities.Add(c);
         Routes.Clear();
         foreach (var r in await catalog.RoutesAsync()) Routes.Add(r);
         PaymentMethods.Clear();
@@ -338,6 +366,7 @@ public partial class DispatchWorkspaceViewModel(
             var full = await orders.GetAsync(id);
             if (full is null) return;
             _suppressAutoFreight = true;
+            EnsureCurrentLookupOptions(full);
             Editor = full;
             BindEditorChrome();
             OnPropertyChanged(nameof(EditorStatus));
@@ -365,6 +394,14 @@ public partial class DispatchWorkspaceViewModel(
         ApplyDriverPhone();
     }
 
+    private void EnsureCurrentLookupOptions(DispatchOrder order)
+    {
+        if (order.Vehicle is not null && Vehicles.All(x => x.Id != order.Vehicle.Id))
+            Vehicles.Insert(0, order.Vehicle);
+        if (order.Driver is not null && Drivers.All(x => x.Id != order.Driver.Id))
+            Drivers.Insert(0, order.Driver);
+    }
+
     private void NotifyEditorBindings()
     {
         OnPropertyChanged(nameof(EditorCustomerId));
@@ -388,9 +425,15 @@ public partial class DispatchWorkspaceViewModel(
         OnPropertyChanged(nameof(AreFieldsEnabled));
         OnPropertyChanged(nameof(CanLock));
         OnPropertyChanged(nameof(CanUnlock));
+        OnPropertyChanged(nameof(CanComplete));
+        OnPropertyChanged(nameof(CanAttachDocument));
+        OnPropertyChanged(nameof(CanDeleteDocument));
+        OnPropertyChanged(nameof(CanOpenDocument));
         OnPropertyChanged(nameof(CanPersist));
         OnPropertyChanged(nameof(Editor));
     }
+
+    protected override void OnWorkspaceModeChanged() => NotifyLockChrome();
 
     private void ApplySenderSnapshot()
     {
@@ -433,6 +476,81 @@ public partial class DispatchWorkspaceViewModel(
         DriverPhone = Drivers.FirstOrDefault(x => x.Id == Editor.DriverId)?.Phone;
     }
 
+    partial void OnVehicleLookupTextChanged(string? value)
+    {
+        if (!_suppressVehicleLookup)
+            _ = RefreshVehicleOptionsAsync(value);
+    }
+
+    partial void OnDriverLookupTextChanged(string? value)
+    {
+        if (!_suppressDriverLookup)
+            _ = RefreshDriverOptionsAsync(value);
+    }
+
+    private async Task RefreshVehicleOptionsAsync(string? text)
+    {
+        var generation = Interlocked.Increment(ref _vehicleLookupGeneration);
+        await Task.Delay(250);
+        if (generation != _vehicleLookupGeneration) return;
+
+        try
+        {
+            var rows = await SessionDbGate.RunAsync(() => catalog.VehicleOptionsAsync(text));
+            if (generation != _vehicleLookupGeneration) return;
+
+            _suppressVehicleLookup = true;
+            Vehicles.Clear();
+            foreach (var row in rows) Vehicles.Add(row);
+
+            var exact = rows.FirstOrDefault(row =>
+                string.Equals(row.PlateNumber.Trim(), text?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (exact is not null)
+                EditorVehicleId = exact.Id;
+        }
+        catch (Exception ex)
+        {
+            if (generation == _vehicleLookupGeneration)
+                ShowToast(PersistenceGuard.Translate(ex).Message, isError: true);
+        }
+        finally
+        {
+            _suppressVehicleLookup = false;
+        }
+    }
+
+    private async Task RefreshDriverOptionsAsync(string? text)
+    {
+        var generation = Interlocked.Increment(ref _driverLookupGeneration);
+        await Task.Delay(250);
+        if (generation != _driverLookupGeneration) return;
+
+        try
+        {
+            var rows = await SessionDbGate.RunAsync(() => catalog.DriverOptionsAsync(text));
+            if (generation != _driverLookupGeneration) return;
+
+            _suppressDriverLookup = true;
+            Drivers.Clear();
+            foreach (var row in rows) Drivers.Add(row);
+
+            var exact = rows.FirstOrDefault(row =>
+                string.Equals(row.Name.Trim(), text?.Trim(), StringComparison.OrdinalIgnoreCase)
+                || string.Equals(row.Code.Trim(), text?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (exact is not null)
+                EditorDriverId = exact.Id;
+        }
+        catch (Exception ex)
+        {
+            if (generation == _driverLookupGeneration)
+                ShowToast(PersistenceGuard.Translate(ex).Message, isError: true);
+        }
+        finally
+        {
+            _suppressDriverLookup = false;
+        }
+    }
+
     private void CombinePickupAt()
     {
         var date = PickupDate ?? DateTime.Today;
@@ -467,7 +585,7 @@ public partial class DispatchWorkspaceViewModel(
             FreightSourceLabel = quote.SourceLabel;
             return;
         }
-        FreightSourceLabel = "";
+        FreightSourceLabel = Editor.PriceSourceSnapshot ?? "";
         FreightMissing = ranLookup ? HasFreightKeys : HasFreightKeys && Editor.UnitPrice == 0 && Editor.Surcharge == 0;
     }
 
@@ -507,6 +625,16 @@ public partial class DispatchWorkspaceViewModel(
     private void AddLine()
     {
         LineItems.Add(new DispatchOrderLine { LineNumber = LineItems.Count + 1 });
+    }
+
+    [RelayCommand]
+    private void RemoveLine(DispatchOrderLine? line)
+    {
+        if (!AreFieldsEnabled || line is null) return;
+        LineItems.Remove(line);
+        var lineNumber = 1;
+        foreach (var item in LineItems)
+            item.LineNumber = lineNumber++;
     }
 
     [RelayCommand]
@@ -571,7 +699,7 @@ public partial class DispatchWorkspaceViewModel(
     [RelayCommand]
     private async Task Complete()
     {
-        if (!CanUpdate || Editor.Id == 0) return;
+        if (!CanComplete || Editor.Id == 0) return;
         await RunAsync(async () =>
         {
             await orders.SetStatusAsync(Editor.Id, DispatchStatus.Completed);
@@ -605,9 +733,11 @@ public partial class DispatchWorkspaceViewModel(
     [RelayCommand]
     private async Task Attach()
     {
-        if (Editor.Id == 0)
+        if (!CanAttachDocument)
         {
-            ShowToast("Lưu lệnh trước khi đính kèm chứng từ.", isError: true);
+            ShowToast(Editor.Id == 0
+                ? "Lưu lệnh trước khi đính kèm chứng từ."
+                : "Không thể thay đổi chứng từ ở trạng thái hiện tại.", isError: true);
             return;
         }
         var dlg = new OpenFileDialog { Title = "Chọn chứng từ" };
@@ -625,12 +755,30 @@ public partial class DispatchWorkspaceViewModel(
     [RelayCommand]
     private async Task OpenDocument()
     {
-        if (SelectedDocument is null || string.IsNullOrWhiteSpace(SelectedDocument.StoredPath)) return;
+        if (!CanOpenDocument || SelectedDocument is null) return;
         await RunAsync(async () =>
         {
             var path = await documents.ResolvePhysicalPathAsync(SelectedDocument.StoredPath);
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         });
+    }
+
+    [RelayCommand]
+    private async Task DeleteDocument()
+    {
+        if (!CanDeleteDocument || SelectedDocument is null || !ConfirmDelete()) return;
+        var id = SelectedDocument.Id;
+        await RunAsync(async () =>
+        {
+            await documents.DeleteAsync(id);
+            await OpenAsync(Editor.Id);
+        }, "Đã xóa chứng từ.");
+    }
+
+    partial void OnSelectedDocumentChanged(DispatchDocument? value)
+    {
+        OnPropertyChanged(nameof(CanDeleteDocument));
+        OnPropertyChanged(nameof(CanOpenDocument));
     }
 
     [RelayCommand]
@@ -691,7 +839,7 @@ public partial class DispatchWorkspaceViewModel(
     private void ExportExcel()
     {
         if (!CanPrint) return;
-        var path = Path.Combine(Path.GetTempPath(), "DS-CUOC.xlsx");
+        var path = TemporaryReportFile.Create("DS-CUOC.xlsx");
         printer.ExportDispatchExcel(Items.ToList(), path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         Status = "Đã xuất danh sách cước.";

@@ -18,6 +18,9 @@ public static class DependencyInjection
         services.AddScoped<CustomerService>();
         services.AddScoped<CatalogService>();
         services.AddScoped<PriceListService>();
+        services.AddScoped<PartnerRateService>();
+        services.AddScoped<PartnerSettlementService>();
+        services.AddScoped<TransportExceptionService>();
         services.AddScoped<DispatchOrderService>();
         services.AddScoped<DispatchImportService>();
         services.AddScoped<DispatchDocumentService>();
@@ -27,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<VatInvoiceService>();
         services.AddScoped<ReportQueryService>();
         services.AddScoped<SettingsService>();
+        services.AddScoped<SystemHealthService>();
         services.AddScoped<CompanyService>();
         services.AddScoped<LocationService>();
         services.AddScoped<RouteService>();

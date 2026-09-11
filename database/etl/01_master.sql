@@ -18,6 +18,13 @@ SELECT thanhpho_id,
 FROM LEGACY.DHXE.dbo.thanhpho;
 SET IDENTITY_INSERT dbo.City OFF;
 
+-- Legacy prices are destination-based. Materialize one location per legacy city so
+-- 02_pricing.sql can preserve every rate without inventing an origin route.
+INSERT INTO dbo.Location (Code, Name, Description, CityId, LegacyId)
+SELECT c.Code, c.Name, c.Description, c.Id, c.LegacyId
+FROM dbo.City c
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Location l WHERE l.Code = c.Code);
+
 SET IDENTITY_INSERT dbo.Department ON;
 INSERT INTO dbo.Department (Id, Code, Name, LegacyId)
 SELECT phongban_id,

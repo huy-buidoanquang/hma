@@ -11,25 +11,37 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderService orders, Ch
 {
     [ObservableProperty] private DispatchOrder? selected;
     [ObservableProperty] private string? filterCode;
+    [ObservableProperty] private string rejectionReason = "";
     public ObservableCollection<DispatchOrder> Items { get; } = [];
     public ObservableCollection<ChangeLog> History { get; } = [];
 
-    public string Checklist
+    public string Checklist => BuildChecklist(Selected);
+
+    internal static string BuildChecklist(DispatchOrder? selected)
     {
-        get
-        {
-            if (Selected is null) return "";
-            var hasDoc = Selected.Documents.Any(d => d.Kind == DispatchDocumentKind.DeliveryNote);
-            return $"Biên bản giao hàng: {(hasDoc ? "Có" : "Không bắt buộc")}\n"
-                   + $"Tuyến: {Selected.RouteLabel}\n"
-                   + $"Đơn giá: {Selected.UnitPrice:N0}\n"
-                   + $"Phụ phí: {Selected.Surcharge:N0}\n"
-                   + $"Phát sinh: {Selected.ExtraCost:N0}\n"
-                   + $"Tổng: {Selected.TotalAmount:N0}\n"
-                   + $"Trạng thái lệnh: {Selected.Status}\n"
-                   + $"Đối soát: {Selected.ReconciliationStatus}";
-        }
+        if (selected is null) return "";
+        var hasDoc = selected.Documents.Any(d => d.Kind == DispatchDocumentKind.DeliveryNote);
+        return $"Biên bản giao hàng: {(hasDoc ? "Có" : "Thiếu — bắt buộc")}\n"
+               + $"Tuyến: {selected.RouteLabel}\n"
+               + $"Đơn giá: {selected.UnitPrice:N0}\n"
+               + $"Phụ phí: {selected.Surcharge:N0}\n"
+               + $"Phát sinh: {selected.BillableExtraCost:N0}\n"
+               + $"Tổng: {selected.TotalAmount:N0}\n"
+               + $"Trạng thái lệnh: {selected.Status}\n"
+               + $"Đối soát: {selected.ReconciliationStatus}";
     }
+
+    public bool CanSubmit =>
+        CanUpdate && Selected is not null
+        && Selected.Status == DispatchStatus.Completed
+        && Selected.ReconciliationStatus is ReconciliationStatus.Pending or ReconciliationStatus.Rejected
+        && Selected.HasDeliveryNote;
+
+    public bool CanApprove =>
+        CanUpdate && Selected?.ReconciliationStatus == ReconciliationStatus.Submitted
+        && Selected.ReconciliationSubmittedByUserId != user.User?.Id;
+
+    public bool CanReject => CanApprove;
 
     public override async Task LoadAsync()
     {
@@ -43,7 +55,18 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderService orders, Ch
         await RunAsync(async () =>
         {
             Items.Clear();
-            foreach (var o in await orders.SearchAsync(FilterCode, null, null, null, null, (int)DispatchStatus.Completed, (int)ReconciliationStatus.Pending, null, null))
+            var waiting = new List<DispatchOrder>();
+            foreach (var status in new[]
+                     {
+                         ReconciliationStatus.Pending,
+                         ReconciliationStatus.Submitted,
+                         ReconciliationStatus.Rejected
+                     })
+            {
+                waiting.AddRange(await orders.SearchAsync(
+                    FilterCode, null, null, null, null, (int)DispatchStatus.Completed, (int)status, null, null));
+            }
+            foreach (var o in waiting.OrderByDescending(x => x.PickupAt).ThenByDescending(x => x.Id))
                 Items.Add(o);
             Status = $"{Items.Count} chuyến chờ đối soát";
         });
@@ -52,6 +75,10 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderService orders, Ch
     partial void OnSelectedChanged(DispatchOrder? value)
     {
         OnPropertyChanged(nameof(Checklist));
+        OnPropertyChanged(nameof(CanSubmit));
+        OnPropertyChanged(nameof(CanApprove));
+        OnPropertyChanged(nameof(CanReject));
+        RejectionReason = value?.ReconciliationRejectionReason ?? "";
         _ = LoadHistoryAsync();
     }
 
@@ -74,15 +101,39 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderService orders, Ch
     }
 
     [RelayCommand]
-    private async Task Confirm()
+    private async Task Submit()
     {
-        if (!CanUpdate || Selected is null) return;
+        if (!CanSubmit || Selected is null) return;
+        await RunAsync(async () =>
+        {
+            await orders.SubmitReconciliationAsync(Selected.Id);
+            Status = "Đã gửi duyệt đối soát.";
+            await Search();
+        });
+    }
+
+    [RelayCommand]
+    private async Task Approve()
+    {
+        if (!CanApprove || Selected is null) return;
         await RunAsync(async () =>
         {
             var full = await orders.GetAsync(Selected.Id);
             if (full is null) return;
             await orders.ReconcileAsync(full.Id);
             Status = "Đã đối soát.";
+            await Search();
+        });
+    }
+
+    [RelayCommand]
+    private async Task Reject()
+    {
+        if (!CanReject || Selected is null) return;
+        await RunAsync(async () =>
+        {
+            await orders.RejectReconciliationAsync(Selected.Id, RejectionReason);
+            Status = "Đã từ chối đối soát.";
             await Search();
         });
     }

@@ -7,8 +7,21 @@ GO
 USE Hma;
 GO
 
+SET ANSI_NULLS ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET ARITHABORT ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET QUOTED_IDENTIFIER ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
+
 IF OBJECT_ID(N'dbo.FreightStatementLine', N'U') IS NOT NULL DROP TABLE dbo.FreightStatementLine;
 IF OBJECT_ID(N'dbo.FreightStatement', N'U') IS NOT NULL DROP TABLE dbo.FreightStatement;
+IF OBJECT_ID(N'dbo.PartnerSettlementLine', N'U') IS NOT NULL DROP TABLE dbo.PartnerSettlementLine;
+IF OBJECT_ID(N'dbo.PartnerSettlement', N'U') IS NOT NULL DROP TABLE dbo.PartnerSettlement;
+IF OBJECT_ID(N'dbo.TransportException', N'U') IS NOT NULL DROP TABLE dbo.TransportException;
+IF OBJECT_ID(N'dbo.TransportExceptionCode', N'U') IS NOT NULL DROP TABLE dbo.TransportExceptionCode;
 IF OBJECT_ID(N'dbo.DispatchDocument', N'U') IS NOT NULL DROP TABLE dbo.DispatchDocument;
 IF OBJECT_ID(N'dbo.ChangeLog', N'U') IS NOT NULL DROP TABLE dbo.ChangeLog;
 IF OBJECT_ID(N'dbo.VatInvoiceLine', N'U') IS NOT NULL DROP TABLE dbo.VatInvoiceLine;
@@ -18,6 +31,7 @@ IF OBJECT_ID(N'dbo.CashReceipt', N'U') IS NOT NULL DROP TABLE dbo.CashReceipt;
 IF OBJECT_ID(N'dbo.DispatchOrderStop', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrderStop;
 IF OBJECT_ID(N'dbo.DispatchOrderLine', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrderLine;
 IF OBJECT_ID(N'dbo.DispatchOrder', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrder;
+IF OBJECT_ID(N'dbo.PartnerRate', N'U') IS NOT NULL DROP TABLE dbo.PartnerRate;
 IF OBJECT_ID(N'dbo.PriceListItem', N'U') IS NOT NULL DROP TABLE dbo.PriceListItem;
 IF OBJECT_ID(N'dbo.PriceListRevision', N'U') IS NOT NULL DROP TABLE dbo.PriceListRevision;
 IF OBJECT_ID(N'dbo.PriceList', N'U') IS NOT NULL DROP TABLE dbo.PriceList;
@@ -252,12 +266,20 @@ CREATE TABLE dbo.PriceListRevision (
 CREATE TABLE dbo.PriceListItem (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PriceListItem PRIMARY KEY,
     PriceListRevisionId INT NOT NULL CONSTRAINT FK_PriceListItem_Revision REFERENCES dbo.PriceListRevision (Id),
-    RouteId INT NOT NULL CONSTRAINT FK_PriceListItem_Route REFERENCES dbo.Route (Id),
+    RouteId INT NULL CONSTRAINT FK_PriceListItem_Route REFERENCES dbo.Route (Id),
+    DeliveryLocationId INT NULL CONSTRAINT FK_PriceListItem_DeliveryLocation REFERENCES dbo.Location (Id),
     VehicleTypeId INT NOT NULL CONSTRAINT FK_PriceListItem_VehicleType REFERENCES dbo.VehicleType (Id),
     UnitPrice DECIMAL(20,2) NOT NULL CONSTRAINT DF_PriceListItem_Unit DEFAULT (0),
     Surcharge DECIMAL(20,2) NOT NULL CONSTRAINT DF_PriceListItem_Surcharge DEFAULT (0),
     LegacyId INT NULL
 );
+
+CREATE UNIQUE INDEX IX_PriceListItem_Revision_Route_VehicleType
+    ON dbo.PriceListItem (PriceListRevisionId, RouteId, VehicleTypeId)
+    WHERE RouteId IS NOT NULL;
+CREATE UNIQUE INDEX IX_PriceListItem_Revision_Destination_VehicleType
+    ON dbo.PriceListItem (PriceListRevisionId, DeliveryLocationId, VehicleTypeId)
+    WHERE RouteId IS NULL AND DeliveryLocationId IS NOT NULL;
 
 CREATE TABLE dbo.AppScreen (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AppScreen PRIMARY KEY,
@@ -275,6 +297,9 @@ CREATE TABLE dbo.AppUser (
     IsManager BIT NOT NULL CONSTRAINT DF_AppUser_IsManager DEFAULT (0),
     IsSpecial BIT NOT NULL CONSTRAINT DF_AppUser_IsSpecial DEFAULT (0),
     CreatedAt DATETIME2 NULL,
+    FailedLoginCount INT NOT NULL CONSTRAINT DF_AppUser_FailedLogin DEFAULT (0),
+    LockoutEnd DATETIME2 NULL,
+    LastLoginAt DATETIME2 NULL,
     LegacyId INT NULL,
     CONSTRAINT UQ_AppUser_UserName UNIQUE (UserName)
 );
@@ -291,6 +316,34 @@ CREATE TABLE dbo.UserPermission (
     CONSTRAINT UQ_UserPermission_User_Screen UNIQUE (AppUserId, AppScreenId)
 );
 
+CREATE TABLE dbo.PartnerRate (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PartnerRate PRIMARY KEY,
+    PartnerId INT NOT NULL CONSTRAINT FK_PartnerRate_Partner REFERENCES dbo.Partner (Id),
+    RouteId INT NOT NULL CONSTRAINT FK_PartnerRate_Route REFERENCES dbo.Route (Id),
+    VehicleTypeId INT NOT NULL CONSTRAINT FK_PartnerRate_VehicleType REFERENCES dbo.VehicleType (Id),
+    EffectiveFrom DATETIME2 NOT NULL,
+    EffectiveTo DATETIME2 NULL,
+    UnitPrice DECIMAL(20,2) NOT NULL,
+    Surcharge DECIMAL(20,2) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL,
+    CreatedByUserId INT NULL CONSTRAINT FK_PartnerRate_CreatedBy REFERENCES dbo.AppUser (Id),
+    RowVersion ROWVERSION NOT NULL,
+    LegacyId INT NULL,
+    CONSTRAINT UQ_PartnerRate_Key UNIQUE (PartnerId, RouteId, VehicleTypeId, EffectiveFrom)
+);
+CREATE INDEX IX_PartnerRate_Route ON dbo.PartnerRate (RouteId);
+CREATE INDEX IX_PartnerRate_VehicleType ON dbo.PartnerRate (VehicleTypeId);
+CREATE INDEX IX_PartnerRate_CreatedBy ON dbo.PartnerRate (CreatedByUserId);
+
+CREATE TABLE dbo.TransportExceptionCode (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_TransportExceptionCode PRIMARY KEY,
+    Code NVARCHAR(50) NOT NULL,
+    Name NVARCHAR(255) NOT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_TransportExceptionCode_IsActive DEFAULT (1),
+    LegacyId INT NULL,
+    CONSTRAINT UQ_TransportExceptionCode_Code UNIQUE (Code)
+);
+
 CREATE TABLE dbo.DispatchOrder (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DispatchOrder PRIMARY KEY,
     Code NVARCHAR(50) NOT NULL,
@@ -300,6 +353,11 @@ CREATE TABLE dbo.DispatchOrder (
     ReconciliationStatus INT NOT NULL CONSTRAINT DF_DispatchOrder_Recon DEFAULT (0),
     ReconciledAt DATETIME2 NULL,
     ReconciledByUserId INT NULL CONSTRAINT FK_DispatchOrder_ReconciledBy REFERENCES dbo.AppUser (Id),
+    ReconciliationSubmittedAt DATETIME2 NULL,
+    ReconciliationSubmittedByUserId INT NULL CONSTRAINT FK_DispatchOrder_ReconSubmittedBy REFERENCES dbo.AppUser (Id),
+    ReconciliationRejectedAt DATETIME2 NULL,
+    ReconciliationRejectedByUserId INT NULL CONSTRAINT FK_DispatchOrder_ReconRejectedBy REFERENCES dbo.AppUser (Id),
+    ReconciliationRejectionReason NVARCHAR(500) NULL,
     CustomerId INT NULL CONSTRAINT FK_DispatchOrder_Customer REFERENCES dbo.Customer (Id),
     SenderCustomerId INT NULL CONSTRAINT FK_DispatchOrder_Sender REFERENCES dbo.Customer (Id),
     SenderName NVARCHAR(255) NULL,
@@ -318,6 +376,8 @@ CREATE TABLE dbo.DispatchOrder (
     VehicleId INT NULL CONSTRAINT FK_DispatchOrder_Vehicle REFERENCES dbo.Vehicle (Id),
     DriverId INT NULL CONSTRAINT FK_DispatchOrder_Driver REFERENCES dbo.Driver (Id),
     VehicleTypeId INT NULL CONSTRAINT FK_DispatchOrder_VehicleType REFERENCES dbo.VehicleType (Id),
+    PartnerId INT NULL CONSTRAINT FK_DispatchOrder_Partner REFERENCES dbo.Partner (Id),
+    PartnerNameSnapshot NVARCHAR(255) NULL,
     EmployeeId INT NULL CONSTRAINT FK_DispatchOrder_Employee REFERENCES dbo.Employee (Id),
     PaymentMethodId INT NULL CONSTRAINT FK_DispatchOrder_Payment REFERENCES dbo.PaymentMethod (Id),
     BillingYear INT NOT NULL CONSTRAINT DF_DispatchOrder_BillYear DEFAULT (0),
@@ -328,7 +388,24 @@ CREATE TABLE dbo.DispatchOrder (
     UnitPrice DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Unit DEFAULT (0),
     Surcharge DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Surcharge DEFAULT (0),
     ExtraCost DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Extra DEFAULT (0),
+    ApprovedExceptionRevenue DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_ExceptionRevenue DEFAULT (0),
     TotalAmount DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Total DEFAULT (0),
+    PriceListItemId INT NULL CONSTRAINT FK_DispatchOrder_PriceListItem REFERENCES dbo.PriceListItem (Id),
+    PriceSourceSnapshot NVARCHAR(500) NULL,
+    IsFreightManual BIT NOT NULL CONSTRAINT DF_DispatchOrder_FreightManual DEFAULT (0),
+    FreightOverrideReason NVARCHAR(500) NULL,
+    PartnerRateId INT NULL CONSTRAINT FK_DispatchOrder_PartnerRate REFERENCES dbo.PartnerRate (Id),
+    BuyUnitPrice DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_BuyUnit DEFAULT (0),
+    BuySurcharge DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_BuySurcharge DEFAULT (0),
+    BuyExtraCost DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_BuyExtra DEFAULT (0),
+    ApprovedExceptionCost DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_ExceptionCost DEFAULT (0),
+    BuyTotal DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_BuyTotal DEFAULT (0),
+    PartnerOperatingFeePercent DECIMAL(9,2) NOT NULL CONSTRAINT DF_DispatchOrder_PartnerFee DEFAULT (0),
+    PartnerPayableAmount DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_PartnerPayable DEFAULT (0),
+    GrossMargin DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_GrossMargin DEFAULT (0),
+    BuyRateSourceSnapshot NVARCHAR(500) NULL,
+    IsBuyManual BIT NOT NULL CONSTRAINT DF_DispatchOrder_BuyManual DEFAULT (0),
+    BuyOverrideReason NVARCHAR(500) NULL,
     AmountInWords NVARCHAR(500) NULL,
     Notes NVARCHAR(500) NULL,
     LegacyId INT NULL,
@@ -336,10 +413,15 @@ CREATE TABLE dbo.DispatchOrder (
     RowVersion ROWVERSION NOT NULL
 );
 
-CREATE INDEX IX_DispatchOrder_Code ON dbo.DispatchOrder (Code);
+CREATE UNIQUE INDEX IX_DispatchOrder_Code ON dbo.DispatchOrder (Code);
 CREATE INDEX IX_DispatchOrder_PickupAt ON dbo.DispatchOrder (PickupAt);
 CREATE INDEX IX_DispatchOrder_Customer ON dbo.DispatchOrder (CustomerId);
 CREATE INDEX IX_DispatchOrder_Route ON dbo.DispatchOrder (RouteId);
+CREATE INDEX IX_DispatchOrder_PriceListItem ON dbo.DispatchOrder (PriceListItemId);
+CREATE INDEX IX_DispatchOrder_Partner ON dbo.DispatchOrder (PartnerId);
+CREATE INDEX IX_DispatchOrder_PartnerRate ON dbo.DispatchOrder (PartnerRateId);
+CREATE INDEX IX_DispatchOrder_ReconSubmittedBy ON dbo.DispatchOrder (ReconciliationSubmittedByUserId);
+CREATE INDEX IX_DispatchOrder_ReconRejectedBy ON dbo.DispatchOrder (ReconciliationRejectedByUserId);
 
 CREATE TABLE dbo.DispatchOrderStop (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DispatchOrderStop PRIMARY KEY,
@@ -375,6 +457,85 @@ CREATE TABLE dbo.DispatchDocument (
     LegacyId INT NULL
 );
 
+CREATE TABLE dbo.TransportException (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_TransportException PRIMARY KEY,
+    DispatchOrderId INT NOT NULL CONSTRAINT FK_TransportException_Dispatch REFERENCES dbo.DispatchOrder (Id),
+    TransportExceptionCodeId INT NOT NULL CONSTRAINT FK_TransportException_Code REFERENCES dbo.TransportExceptionCode (Id),
+    CodeSnapshot NVARCHAR(50) NOT NULL,
+    NameSnapshot NVARCHAR(255) NOT NULL,
+    OccurredAt DATETIME2 NOT NULL,
+    Description NVARCHAR(1000) NOT NULL,
+    CustomerCharge DECIMAL(20,2) NOT NULL,
+    PartnerCost DECIMAL(20,2) NOT NULL,
+    Status INT NOT NULL CONSTRAINT DF_TransportException_Status DEFAULT (0),
+    CreatedAt DATETIME2 NOT NULL,
+    CreatedByUserId INT NULL CONSTRAINT FK_TransportException_CreatedBy REFERENCES dbo.AppUser (Id),
+    SubmittedAt DATETIME2 NULL,
+    SubmittedByUserId INT NULL CONSTRAINT FK_TransportException_SubmittedBy REFERENCES dbo.AppUser (Id),
+    ReviewedAt DATETIME2 NULL,
+    ReviewedByUserId INT NULL CONSTRAINT FK_TransportException_ReviewedBy REFERENCES dbo.AppUser (Id),
+    ReviewNote NVARCHAR(500) NULL,
+    VoidedAt DATETIME2 NULL,
+    VoidedByUserId INT NULL CONSTRAINT FK_TransportException_VoidedBy REFERENCES dbo.AppUser (Id),
+    VoidReason NVARCHAR(500) NULL,
+    RowVersion ROWVERSION NOT NULL,
+    LegacyId INT NULL
+);
+CREATE INDEX IX_TransportException_Dispatch ON dbo.TransportException (DispatchOrderId);
+CREATE INDEX IX_TransportException_Code ON dbo.TransportException (TransportExceptionCodeId);
+CREATE INDEX IX_TransportException_CreatedBy ON dbo.TransportException (CreatedByUserId);
+CREATE INDEX IX_TransportException_SubmittedBy ON dbo.TransportException (SubmittedByUserId);
+CREATE INDEX IX_TransportException_ReviewedBy ON dbo.TransportException (ReviewedByUserId);
+CREATE INDEX IX_TransportException_VoidedBy ON dbo.TransportException (VoidedByUserId);
+
+CREATE TABLE dbo.PartnerSettlement (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PartnerSettlement PRIMARY KEY,
+    Code NVARCHAR(50) NOT NULL,
+    PartnerId INT NOT NULL CONSTRAINT FK_PartnerSettlement_Partner REFERENCES dbo.Partner (Id),
+    [Year] INT NOT NULL,
+    [Month] INT NOT NULL,
+    Status INT NOT NULL CONSTRAINT DF_PartnerSettlement_Status DEFAULT (0),
+    CreatedAt DATETIME2 NOT NULL,
+    CreatedByUserId INT NULL CONSTRAINT FK_PartnerSettlement_CreatedBy REFERENCES dbo.AppUser (Id),
+    SubmittedAt DATETIME2 NULL,
+    SubmittedByUserId INT NULL CONSTRAINT FK_PartnerSettlement_SubmittedBy REFERENCES dbo.AppUser (Id),
+    FinalizedAt DATETIME2 NULL,
+    FinalizedByUserId INT NULL CONSTRAINT FK_PartnerSettlement_FinalizedBy REFERENCES dbo.AppUser (Id),
+    VoidedAt DATETIME2 NULL,
+    VoidedByUserId INT NULL CONSTRAINT FK_PartnerSettlement_VoidedBy REFERENCES dbo.AppUser (Id),
+    VoidReason NVARCHAR(500) NULL,
+    TripCount INT NOT NULL CONSTRAINT DF_PartnerSettlement_Trips DEFAULT (0),
+    GrossAmount DECIMAL(20,2) NOT NULL CONSTRAINT DF_PartnerSettlement_Gross DEFAULT (0),
+    OperatingFeeAmount DECIMAL(20,2) NOT NULL CONSTRAINT DF_PartnerSettlement_Fee DEFAULT (0),
+    PayableAmount DECIMAL(20,2) NOT NULL CONSTRAINT DF_PartnerSettlement_Payable DEFAULT (0),
+    Notes NVARCHAR(500) NULL,
+    RowVersion ROWVERSION NOT NULL,
+    LegacyId INT NULL,
+    CONSTRAINT UQ_PartnerSettlement_Period UNIQUE (PartnerId, [Year], [Month])
+);
+CREATE INDEX IX_PartnerSettlement_CreatedBy ON dbo.PartnerSettlement (CreatedByUserId);
+CREATE INDEX IX_PartnerSettlement_SubmittedBy ON dbo.PartnerSettlement (SubmittedByUserId);
+CREATE INDEX IX_PartnerSettlement_FinalizedBy ON dbo.PartnerSettlement (FinalizedByUserId);
+CREATE INDEX IX_PartnerSettlement_VoidedBy ON dbo.PartnerSettlement (VoidedByUserId);
+
+CREATE TABLE dbo.PartnerSettlementLine (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PartnerSettlementLine PRIMARY KEY,
+    PartnerSettlementId INT NOT NULL CONSTRAINT FK_PartnerSettlementLine_Header REFERENCES dbo.PartnerSettlement (Id) ON DELETE CASCADE,
+    DispatchOrderId INT NOT NULL CONSTRAINT FK_PartnerSettlementLine_Dispatch REFERENCES dbo.DispatchOrder (Id),
+    TripDate DATETIME2 NOT NULL,
+    DispatchCode NVARCHAR(50) NOT NULL,
+    Route NVARCHAR(255) NULL,
+    PlateNumber NVARCHAR(50) NULL,
+    DriverName NVARCHAR(255) NULL,
+    BuyTotal DECIMAL(20,2) NOT NULL,
+    OperatingFeePercent DECIMAL(9,2) NOT NULL,
+    OperatingFeeAmount DECIMAL(20,2) NOT NULL,
+    PayableAmount DECIMAL(20,2) NOT NULL,
+    LegacyId INT NULL,
+    CONSTRAINT UQ_PartnerSettlementLine_DispatchOrder UNIQUE (DispatchOrderId)
+);
+CREATE INDEX IX_PartnerSettlementLine_Header ON dbo.PartnerSettlementLine (PartnerSettlementId);
+
 CREATE TABLE dbo.FreightStatement (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_FreightStatement PRIMARY KEY,
     Code NVARCHAR(50) NOT NULL,
@@ -382,6 +543,15 @@ CREATE TABLE dbo.FreightStatement (
     [Year] INT NOT NULL,
     [Month] INT NOT NULL,
     CreatedAt DATETIME2 NOT NULL,
+    CreatedByUserId INT NULL CONSTRAINT FK_FreightStatement_CreatedBy REFERENCES dbo.AppUser (Id),
+    Status INT NOT NULL CONSTRAINT DF_FreightStatement_Status DEFAULT (0),
+    SubmittedAt DATETIME2 NULL,
+    SubmittedByUserId INT NULL CONSTRAINT FK_FreightStatement_SubmittedBy REFERENCES dbo.AppUser (Id),
+    FinalizedAt DATETIME2 NULL,
+    FinalizedByUserId INT NULL CONSTRAINT FK_FreightStatement_FinalizedBy REFERENCES dbo.AppUser (Id),
+    VoidedAt DATETIME2 NULL,
+    VoidedByUserId INT NULL CONSTRAINT FK_FreightStatement_VoidedBy REFERENCES dbo.AppUser (Id),
+    VoidReason NVARCHAR(500) NULL,
     TripCount INT NOT NULL CONSTRAINT DF_FreightStatement_Trips DEFAULT (0),
     FreightTotal DECIMAL(20,2) NOT NULL CONSTRAINT DF_FreightStatement_Freight DEFAULT (0),
     SurchargeTotal DECIMAL(20,2) NOT NULL CONSTRAINT DF_FreightStatement_Surcharge DEFAULT (0),
@@ -395,6 +565,11 @@ CREATE TABLE dbo.FreightStatement (
     RowVersion ROWVERSION NOT NULL,
     CONSTRAINT UQ_FreightStatement_Customer_Period UNIQUE (CustomerId, [Year], [Month])
 );
+
+CREATE INDEX IX_FreightStatement_CreatedBy ON dbo.FreightStatement (CreatedByUserId);
+CREATE INDEX IX_FreightStatement_SubmittedBy ON dbo.FreightStatement (SubmittedByUserId);
+CREATE INDEX IX_FreightStatement_FinalizedBy ON dbo.FreightStatement (FinalizedByUserId);
+CREATE INDEX IX_FreightStatement_VoidedBy ON dbo.FreightStatement (VoidedByUserId);
 
 CREATE TABLE dbo.FreightStatementLine (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_FreightStatementLine PRIMARY KEY,
@@ -411,7 +586,8 @@ CREATE TABLE dbo.FreightStatementLine (
     ExtraCost DECIMAL(20,2) NOT NULL,
     LineTotal DECIMAL(20,2) NOT NULL,
     Notes NVARCHAR(255) NULL,
-    LegacyId INT NULL
+    LegacyId INT NULL,
+    CONSTRAINT UQ_FreightStatementLine_DispatchOrder UNIQUE (DispatchOrderId)
 );
 
 CREATE TABLE dbo.ChangeLog (

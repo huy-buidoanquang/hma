@@ -1,5 +1,7 @@
 # Database — Hà Minh Anh (`Hma`)
 
+> Cập nhật schema 11/09/2026: bổ sung `PartnerRate`, `PartnerSettlement`, `PartnerSettlementLine`, `TransportExceptionCode`, `TransportException`; snapshot giá bán/giá mua và hai tổng `ApprovedExceptionRevenue` / `ApprovedExceptionCost` trên `DispatchOrder`. Nguồn schema cutover vẫn là `database/001_schema.sql`; production nâng cấp bằng EF migrations.
+
 Thiết kế vật lý của database **Hma** (SQL Server 2016+). Khớp với `database/001_schema.sql` và entity trong `Hma.Domain`. Mapping DHXE → Hma: [`schema-mapping.md`](schema-mapping.md). Cutover: [`etl-cutover.md`](etl-cutover.md). Kiến trúc ứng dụng: [`Architecture.md`](Architecture.md).
 
 **Nguồn sự thật schema (code-first):** entity trong `Hma.Domain` + `HmaDbContext.OnModelCreating` + thư mục `src/Hma.Infrastructure.SqlServer/Migrations`. App gọi `MigrateAndSeedAsync` lúc start. [`database/001_schema.sql`](../database/001_schema.sql) giữ cho cutover/ETL — đổi cột thì cập nhật **cùng** migration EF.
@@ -251,7 +253,7 @@ Seed 9 loại (Id 1–9 khi chạy `002_seed.sql` với `IDENTITY_INSERT`): 1.25
 
 ### `PaymentMethod`
 
-`Id`, `Code` unique, `Name`. Chưa seed, chưa có màn Phase 1. `VatInvoice` dùng `PaymentMethodText` (chuỗi), không FK bảng này.
+`Id`, `Code` unique, `Name`. Seed idempotent ba hình thức: `TRA-SAU` (Trả sau), `LAI-XE-THU` (Lái xe thu), `DIEU-HANH-THU` (Điều hành thu). Chưa có màn quản trị Phase 1. `DispatchOrder.PaymentMethodId` tham chiếu danh mục này; `VatInvoice` vẫn dùng `PaymentMethodText` (chuỗi), không FK.
 
 ### `Employee`
 
@@ -387,13 +389,14 @@ Không có `ON DELETE CASCADE` từ header → revision trong script (default NO
 |-----|------|---------|
 | Id | INT IDENTITY PK | |
 | PriceListRevisionId | INT NOT NULL → Revision | |
-| RouteId | INT NOT NULL → Route Restrict | |
+| RouteId | INT NULL → Route Restrict | Dòng giá theo đúng tuyến; loại trừ lẫn nhau với `DeliveryLocationId` |
+| DeliveryLocationId | INT NULL → Location Restrict | Fallback theo điểm đến cho bảng giá legacy |
 | VehicleTypeId | INT NOT NULL → VehicleType | |
 | UnitPrice | DECIMAL(20,2) NOT NULL default 0 | |
 | Surcharge | DECIMAL(20,2) NOT NULL default 0 | |
 | LegacyId | INT | |
 
-Không unique (tuyến × loại xe) ở SQL — app/ETL chịu trách nhiệm không nhân bản vô nghĩa. Tra cước: xem Architecture §5.2.
+SQL có hai filtered unique index: `(Revision, Route, VehicleType)` khi có tuyến và `(Revision, DeliveryLocation, VehicleType)` khi dùng fallback điểm đến. Domain bắt buộc đúng một trong `RouteId` / `DeliveryLocationId`. Tra cước: xem Architecture §5.2.
 
 ---
 
@@ -406,7 +409,7 @@ Một lệnh = dữ liệu gốc cho chuyến, cước, chứng từ, đối so�
 | Cột | Kiểu | Ghi chú |
 |-----|------|---------|
 | Id | INT IDENTITY PK | ETL = `nil_id` |
-| Code | NVARCHAR(50) NOT NULL | `IX_DispatchOrder_Code` **không unique SQL**. Sequence `dispatch-order` format `000` |
+| Code | NVARCHAR(50) NOT NULL | Unique SQL. Sequence `dispatch-order` format `000` và retry `rowversion` |
 | CreatedAt | DATETIME2 NOT NULL | |
 | CreatedByUserId | INT NULL → AppUser Restrict | |
 | Status | INT NOT NULL default **1** (Issued) | Mục 5 |
@@ -425,18 +428,29 @@ Một lệnh = dữ liệu gốc cho chuyến, cước, chứng từ, đối so�
 | VehicleId | INT NULL → Vehicle | App bắt buộc lúc save |
 | DriverId | INT NULL → Driver | App bắt buộc lúc save |
 | VehicleTypeId | INT NULL → VehicleType | Có thể copy từ xe |
+| PartnerId / PartnerNameSnapshot | INT NULL / NVARCHAR(255) | Nhà xe thực hiện và tên tại thời điểm lưu |
 | EmployeeId | INT NULL → Employee Restrict | NV lập lệnh (legacy `nhanvien_id`) |
 | UnitPrice | DECIMAL(20,2) NOT NULL default 0 | `cuocdv` |
 | Surcharge | DECIMAL(20,2) NOT NULL default 0 | Không có cột legacy tương đương; ETL = 0 |
 | ExtraCost | DECIMAL(20,2) NOT NULL default 0 | `thukhac` |
-| TotalAmount | DECIMAL(20,2) NOT NULL default 0 | App: Unit + Surcharge + Extra. ETL: `tongthu` |
+| ApprovedExceptionRevenue | DECIMAL(20,2) NOT NULL default 0 | Tổng khoản thu exception đã duyệt; chỉ `TransportExceptionService` cập nhật |
+| TotalAmount | DECIMAL(20,2) NOT NULL default 0 | Unit + Surcharge + ExtraCost + ApprovedExceptionRevenue |
+| PriceListItemId / PriceSourceSnapshot | INT NULL / NVARCHAR(500) | Nguồn giá bán lịch sử |
+| IsFreightManual / FreightOverrideReason | BIT / NVARCHAR(500) | Bắt buộc lý do khi không khớp giá bán |
+| PartnerRateId / BuyRateSourceSnapshot | INT NULL / NVARCHAR(500) | Nguồn giá mua lịch sử |
+| BuyUnitPrice / BuySurcharge / BuyExtraCost | DECIMAL(20,2) | Thành phần giá mua |
+| ApprovedExceptionCost | DECIMAL(20,2) NOT NULL default 0 | Chi phí exception đã duyệt cho nhà xe |
+| BuyTotal | DECIMAL(20,2) | Tổng mua gồm exception |
+| PartnerOperatingFeePercent / PartnerPayableAmount | DECIMAL(9,2) / DECIMAL(20,2) | Snapshot phí điều hành và số thực trả |
+| GrossMargin | DECIMAL(20,2) | `TotalAmount - PartnerPayableAmount` |
+| IsBuyManual / BuyOverrideReason | BIT / NVARCHAR(500) | Bắt buộc lý do khi không khớp giá mua |
 | AmountInWords | NVARCHAR(500) | `docso` |
 | Notes | NVARCHAR(500) | |
 | LegacyId | INT | `nil_id` |
 | IsDeleted | BIT NOT NULL default 0 | Soft-delete. Query filter ẩn khỏi search/bảng kê/dashboard |
 | RowVersion | ROWVERSION NOT NULL | `UPDATE … WHERE Id AND RowVersion`. Token lúc mở form phải gửi lại `OriginalValue` |
 
-EF **Ignore** (không cột): `HasDeliveryNote`, `RouteLabel`, `PickupLocationName`, `DeliveryLocationName`, `CanEdit`.
+EF **Ignore** (không cột): `HasDeliveryNote`, `BillableExtraCost`, `PartnerBillableExtraCost`, `RouteLabel`, `PickupLocationName`, `DeliveryLocationName`, `CanEdit`.
 
 Nhiều FK cùng `Customer` / `City` / `AppUser` → SQL + EF đều **Restrict** (không CASCADE), tránh multiple cascade paths.
 
@@ -473,6 +487,18 @@ Không unique `(DispatchOrderId, LineNumber)` ở SQL.
 
 Đường lưu Phase 1: `{root}/{key}` với root = `DocumentStorePath` hoặc `%LocalAppData%\Hma\Documents`. Key do `IFileStorage` ghi; Application không `File.Copy`. Backup `{root}` cùng SQL. Go-live nhiều máy: đặt UNC trong Tham số.
 
+### `PartnerRate`
+
+Giá mua theo `(PartnerId, RouteId, VehicleTypeId, EffectiveFrom)` unique; `EffectiveTo` nullable, `UnitPrice`/`Surcharge DECIMAL(20,2)`, người lập và `RowVersion`. Application chặn các khoảng hiệu lực giao nhau. Lệnh lưu `PartnerRateId` cùng snapshot nên thay bảng giá không đổi lịch sử.
+
+### `TransportExceptionCode` / `TransportException`
+
+Mã exception unique và có `IsActive`; seed: chờ, lưu đêm, cầu đường, quay đầu, giao thất bại, claim và khác. Dòng sự cố tham chiếu lệnh + mã, snapshot mã/tên, thời điểm, mô tả, `CustomerCharge`, `PartnerCost`, trạng thái Draft/Submitted/Approved/Rejected/Voided, đầy đủ maker/reviewer/void metadata và `RowVersion`. Tất cả FK dùng Restrict. Chỉ duyệt mới cộng tiền vào snapshot lệnh; hủy hoàn đúng số đã cộng.
+
+### `PartnerSettlement` / `PartnerSettlementLine`
+
+Header unique `(PartnerId, Year, Month)`, có workflow Draft/Submitted/Finalized/Voided, maker–checker, tổng mua/phí điều hành/phải trả và `RowVersion`. Dòng snapshot ngày, lệnh, tuyến, xe, tài xế và tiền; `DispatchOrderId` unique để một chuyến không vào hai quyết toán. Header → line CASCADE; line → order Restrict.
+
 ---
 
 ## 9. Bảng kê tháng
@@ -508,7 +534,7 @@ Snapshot: in/xuất không phụ thuộc lệnh bị sửa sau (trừ khi genera
 |-----|------|---------|
 | Id | INT IDENTITY PK | |
 | FreightStatementId | INT NOT NULL | **ON DELETE CASCADE** |
-| DispatchOrderId | INT NOT NULL → DispatchOrder | **Không CASCADE**. Không unique — app không đưa một lệnh vào hai kỳ |
+| DispatchOrderId | INT NOT NULL → DispatchOrder | **Không CASCADE**, unique: một lệnh chỉ thuộc một bảng kê |
 | TripDate | DATETIME2 NOT NULL | Copy `PickupAt` |
 | DispatchCode | NVARCHAR(50) NOT NULL | Snapshot mã lệnh |
 | Route | NVARCHAR(255) | Snapshot `RouteLabel` |
@@ -552,6 +578,7 @@ Index `IX_ChangeLog_Entity (EntityName, EntityId)`. Không FK tới bảng entit
 |-----|----------|
 | `dispatch-order` | `DispatchOrder.Code` |
 | `freight-statement` | `FreightStatement.Code` |
+| `partner-settlement` | `PartnerSettlement.Code` |
 | `walk-in-customer` | `Customer.Code` = `VL-` + số |
 | `cash-receipt` / `cash-payment` / `vat-invoice` | Đóng băng |
 
@@ -585,7 +612,7 @@ Một dòng header in. Không `LegacyId`. ETL từ `congty` khi chạy `01_maste
 | Key | NVARCHAR(50) NOT NULL unique — trùng `ScreenKeys` |
 | Name | NVARCHAR(255) NOT NULL — nhãn tiếng Việt |
 
-17 key seed (không cash/VAT): `customers`, `partners`, `drivers`, `vehicles`, `employees`, `cities`, `departments`, `job-titles`, `price-lists`, `dispatch-orders`, `reconcile`, `statements`, `lookup`, `dashboard`, `reports`, `users`, `settings`.
+23 key seed (không cash/VAT), gồm catalog, giá bán/giá mua, lệnh, exception, đối soát khách, bảng kê, quyết toán đối tác, lookup, dashboard, report, user và settings.
 
 ### `AppUser`
 
@@ -593,12 +620,14 @@ Một dòng header in. Không `LegacyId`. ETL từ `congty` khi chạy `01_maste
 |-----|------|---------|
 | Id | INT IDENTITY PK | |
 | UserName | NVARCHAR(50) NOT NULL unique | |
-| PasswordHash | NVARCHAR(255) NOT NULL | PBKDF2 `pbkdf2:{salt}:{hash}`. ETL: `RESET:{plain}` — đổi sau go-live. **Không** copy plaintext DHXE vào production lâu dài |
+| PasswordHash | NVARCHAR(255) NOT NULL | PBKDF2 `pbkdf2:{salt}:{hash}`; ETL ghi `DISABLED`, không nhập mật khẩu plaintext legacy |
 | DisplayName | NVARCHAR(255) | |
 | EmployeeId | INT NULL → Employee | |
 | IsManager | BIT NOT NULL default 0 | Bypass mọi quyền |
 | IsSpecial | BIT NOT NULL default 0 | Port `is_dacbiet`; app gần như chưa dùng |
 | CreatedAt | DATETIME2 | |
+| FailedLoginCount / LockoutEnd | INT / DATETIME2 | Khóa 15 phút sau 5 lần sai |
+| LastLoginAt | DATETIME2 | Lần đăng nhập thành công gần nhất |
 | LegacyId | INT | |
 
 ### `UserPermission`
@@ -668,7 +697,7 @@ Giống phiếu thu về tiền/chữ; `Kind`; `CustomerId`; `DriverEmployeeId` 
 | `UQ_RouteAlias_Alias` | RouteAlias.Alias |
 | `UQ_CustomerAlias_Alias` | CustomerAlias.Alias |
 
-**Không unique SQL (app enforce):** `Customer.Code`, `DispatchOrder.Code`.
+**Không unique SQL (app enforce):** `Customer.Code`.
 
 ### Index không unique
 
@@ -728,9 +757,9 @@ Không CHECK constraint cho Status, Kind, VAT 0–100, hay TotalAmount = tổng 
 | `DatabaseSeeder` | `MigrateAndSeedAsync` lúc start WPF |
 | `DemoDataSeeder` | Chỉ khi **chưa có khách** (DB trống). Không đè ETL/production |
 
-Cùng nội dung catalog: 9 `VehicleType` (có `1.5T`, giữ `1.45T`), `UNASSIGNED`, 17 `AppScreen`, 6 sequence, 3 parameter, 1 `Company`.
+Cùng nội dung catalog: 9 `VehicleType` (có `1.5T`, giữ `1.45T`), `UNASSIGNED`, 3 `PaymentMethod`, 23 `AppScreen`, 7 sequence, 7 mã exception, 3 parameter, 1 `Company`.
 
-Seeder C# **thêm** user `admin` / `admin123` (manager) và `ketoan` / `ketoan123` + `UserPermission`. `002_seed.sql` **không** insert user — cutover lấy user từ `etl/06_security.sql` (`RESET:`). DB trống còn nhận danh mục từ bảng điều xe 11/08/2026 (`DemoDataSeeder` / `OpsBoardCatalogData`): khách, tài xế, xe (`UNASSIGNED`), điểm, tuyến, bí danh. **Không** seed lệnh, bảng giá, bảng kê. DB đã có khách (ETL/demo cũ) không bị đè — xóa khách hoặc CSDL rồi mở app.
+Seeder C# không chứa mật khẩu mặc định. Database chưa có user chỉ tạo `admin` khi cung cấp `HMA_BOOTSTRAP_ADMIN_PASSWORD`; `ketoan` là tùy chọn qua `HMA_BOOTSTRAP_ACCOUNTANT_PASSWORD`. ETL security nhập tài khoản legacy với `PasswordHash='DISABLED'`, không mang plaintext sang hệ mới. DB trống còn nhận catalog demo từ bảng điều xe 11/08/2026 (`DemoDataSeeder` / `OpsBoardCatalogData`), không seed lệnh/bảng giá/bảng kê.
 
 ---
 

@@ -13,11 +13,13 @@ Desktop app (.NET 10 + WPF) for Công ty TNHH DV vận tải & TM Hà Minh Anh. 
 `Infrastructure.SqlServer` and `Reporting` are adapters. A future web UI can reuse Application + Domain.
 
 ## Run
-1. SQL Server LocalDB (`MSSQLLocalDB`)
-2. `dotnet run --project src/Hma.Desktop.Wpf`
-3. Login `admin` / `admin123` (manager) or `ketoan` / `ketoan123` (accountant)
+1. Cài SQL Server LocalDB (`MSSQLLocalDB`) hoặc SQL Server 2016+, rồi đặt `HMA_CONNECTION`.
+2. Với database trống, đặt `HMA_BOOTSTRAP_ADMIN_PASSWORD` bằng mật khẩu mạnh (ít nhất 12 ký tự, có hoa/thường/số/ký tự đặc biệt).
+3. Chạy `dotnet run --project src/Hma.Desktop.Wpf`; đăng nhập `admin` bằng mật khẩu bootstrap và xóa biến bootstrap sau lần tạo đầu tiên.
 
-First start creates database `Hma`. If an older clone-schema database exists, it is dropped and recreated. An empty database (no customers yet) also loads realistic demo trips so Dashboard / Đối soát / Bảng kê have data; ETL or an existing customer list is left untouched.
+First start migrates and seeds database `Hma`. An empty database also loads realistic demo catalog data; ETL or an existing customer list is left untouched. The application never ships a default password.
 
 ## Cutover from DHXE
 Legacy MDF is SQL Server 2000 and cannot attach to modern LocalDB. See `docs/etl-cutover.md`.
+
+See `docs/Architecture.md` and `docs/Database.md` for the implemented design. Deployment, health checks, backup, restore, and rollback are covered by `docs/operations-runbook.md`.

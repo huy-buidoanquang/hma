@@ -55,8 +55,14 @@ public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentU
         if (Selected is null) return;
         Editor = new Partner
         {
-            Id = Selected.Id, Code = Selected.Code, Name = Selected.Name, TaxCode = Selected.TaxCode,
-            Address = Selected.Address, ContactName = Selected.ContactName, Phone = Selected.Phone, Email = Selected.Email,
+            Id = Selected.Id,
+            Code = Selected.Code,
+            Name = Selected.Name,
+            TaxCode = Selected.TaxCode,
+            Address = Selected.Address,
+            ContactName = Selected.ContactName,
+            Phone = Selected.Phone,
+            Email = Selected.Email,
             OperatingFeePercent = Selected.OperatingFeePercent
         };
         EnterExisting($"Xem đối tác — {Editor.Code}", $"Sửa đối tác — {Editor.Code}", Editor);
@@ -89,7 +95,7 @@ public partial class PartnerWorkspaceViewModel(CatalogService catalog, ICurrentU
     private void ExportExcel()
     {
         if (!CanPrint) return;
-        var path = Path.Combine(Path.GetTempPath(), "DS-DOI-TAC.xlsx");
+        var path = TemporaryReportFile.Create("DS-DOI-TAC.xlsx");
         printer.ExportPartnersExcel(Items.ToList(), path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         Status = "Đã xuất Excel đối tác.";

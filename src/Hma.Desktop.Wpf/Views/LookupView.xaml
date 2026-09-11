@@ -9,7 +9,7 @@
             <WrapPanel>
                 <StackPanel Style="{StaticResource FilterCluster}">
                     <Label Style="{StaticResource FilterLabel}" Content="Số LDX hoặc biển số"/>
-                    <TextBox Style="{StaticResource FilterField}" Width="240" Text="{Binding Query}"/>
+                    <TextBox Style="{StaticResource SearchField}" Width="240" Text="{Binding Query}"/>
                 </StackPanel>
             </WrapPanel>
             <WrapPanel Style="{StaticResource ActionBar}">

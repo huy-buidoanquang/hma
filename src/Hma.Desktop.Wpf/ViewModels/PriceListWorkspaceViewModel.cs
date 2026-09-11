@@ -19,16 +19,30 @@ public partial class PriceListWorkspaceViewModel(
     [ObservableProperty] private PriceListRevision? revision;
     [ObservableProperty] private PriceListItem? selectedItem;
     [ObservableProperty] private int? selectedRouteId;
+    [ObservableProperty] private int? selectedDeliveryLocationId;
     [ObservableProperty] private int? selectedVehicleTypeId;
     [ObservableProperty] private decimal unitPrice;
     [ObservableProperty] private decimal surcharge;
     public ObservableCollection<PriceList> Items { get; } = [];
     public ObservableCollection<Route> Routes { get; } = [];
+    public ObservableCollection<Location> Locations { get; } = [];
     public ObservableCollection<Customer> Customers { get; } = [];
     public ObservableCollection<VehicleType> VehicleTypes { get; } = [];
     public ObservableCollection<PriceListItem> RevisionItems { get; } = [];
     public override bool IsEditorReadOnly => IsViewMode || Editor.IsLocked;
     public override bool AreFieldsEnabled => !IsEditorReadOnly;
+    public bool CanLock => user.User?.IsManager == true && CanUpdate && Editor.Id != 0 && !Editor.IsLocked;
+    public bool CanAddRate => CanUpdate
+                              && IsEditing
+                              && Editor.Id != 0
+                              && !Editor.IsLocked
+                              && SelectedVehicleTypeId is not null
+                              && (SelectedRouteId is not null || SelectedDeliveryLocationId is not null);
+    public bool CanDeleteRate => CanDelete
+                                 && IsEditing
+                                 && !Editor.IsLocked
+                                 && SelectedItem is not null;
+    public bool NeedsSavedHeader => IsEditing && Editor.Id == 0;
 
     public override async Task LoadAsync()
     {
@@ -38,6 +52,8 @@ public partial class PriceListWorkspaceViewModel(
         foreach (var p in await prices.ListAsync()) Items.Add(p);
         Routes.Clear();
         foreach (var r in await catalog.RoutesAsync()) Routes.Add(r);
+        Locations.Clear();
+        foreach (var location in await catalog.LocationsAsync()) Locations.Add(location);
         Customers.Clear();
         foreach (var c in await customers.SearchAsync(null, null, null, null))
             if (!c.IsWalkIn) Customers.Add(c);
@@ -53,8 +69,7 @@ public partial class PriceListWorkspaceViewModel(
         Editor = new PriceList { EffectiveFrom = DateTime.Today };
         RevisionItems.Clear();
         Revision = null;
-        OnPropertyChanged(nameof(IsEditorReadOnly));
-        OnPropertyChanged(nameof(AreFieldsEnabled));
+        NotifyActions();
         EnterCreate("Thêm bảng giá", Editor, RevisionItems);
     }
 
@@ -77,8 +92,7 @@ public partial class PriceListWorkspaceViewModel(
         if (Revision is not null)
             foreach (var i in Revision.Items) RevisionItems.Add(i);
         OnPropertyChanged(nameof(Editor));
-        OnPropertyChanged(nameof(IsEditorReadOnly));
-        OnPropertyChanged(nameof(AreFieldsEnabled));
+        NotifyActions();
         if (!IsBrowsing)
             RecaptureBaseline(Editor, RevisionItems);
     }
@@ -102,8 +116,7 @@ public partial class PriceListWorkspaceViewModel(
     [RelayCommand]
     private async Task AddRate()
     {
-        if (!CanUpdate || Editor.IsLocked) { ShowToast(Editor.IsLocked ? "Bảng giá đã khóa." : "Không sửa được bảng giá.", isError: true); return; }
-        if (Editor.Id == 0 || SelectedRouteId is null || SelectedVehicleTypeId is null) return;
+        if (!CanAddRate || SelectedVehicleTypeId is not int vehicleTypeId) return;
         await RunAsync(async () =>
         {
             if (Revision is null || Revision.Id == 0)
@@ -114,8 +127,9 @@ public partial class PriceListWorkspaceViewModel(
             await prices.AddItemAsync(new PriceListItem
             {
                 PriceListRevisionId = Revision.Id,
-                RouteId = SelectedRouteId.Value,
-                VehicleTypeId = SelectedVehicleTypeId.Value,
+                RouteId = SelectedRouteId,
+                DeliveryLocationId = SelectedDeliveryLocationId,
+                VehicleTypeId = vehicleTypeId,
                 UnitPrice = UnitPrice,
                 Surcharge = Surcharge
             });
@@ -137,13 +151,41 @@ public partial class PriceListWorkspaceViewModel(
     [RelayCommand]
     private async Task LockList()
     {
-        if (!CanUpdate || Editor.Id == 0) return;
+        if (!CanLock) return;
         await RunAsync(async () =>
         {
-            Editor.IsLocked = true;
-            Editor.LockedAt = DateTime.Now;
-            await prices.SaveAsync(Editor);
+            await prices.LockAsync(Editor.Id, Editor.LockReason);
             await OpenAsync(Editor.Id);
         }, "Đã khóa bảng giá.");
+    }
+
+    partial void OnSelectedRouteIdChanged(int? value)
+    {
+        if (value is not null)
+            SelectedDeliveryLocationId = null;
+        OnPropertyChanged(nameof(CanAddRate));
+    }
+
+    partial void OnSelectedDeliveryLocationIdChanged(int? value)
+    {
+        if (value is not null)
+            SelectedRouteId = null;
+        OnPropertyChanged(nameof(CanAddRate));
+    }
+
+    partial void OnSelectedVehicleTypeIdChanged(int? value) => OnPropertyChanged(nameof(CanAddRate));
+    partial void OnSelectedItemChanged(PriceListItem? value) => OnPropertyChanged(nameof(CanDeleteRate));
+    partial void OnEditorChanged(PriceList value) => NotifyActions();
+
+    protected override void OnWorkspaceModeChanged() => NotifyActions();
+
+    private void NotifyActions()
+    {
+        OnPropertyChanged(nameof(IsEditorReadOnly));
+        OnPropertyChanged(nameof(AreFieldsEnabled));
+        OnPropertyChanged(nameof(CanLock));
+        OnPropertyChanged(nameof(CanAddRate));
+        OnPropertyChanged(nameof(CanDeleteRate));
+        OnPropertyChanged(nameof(NeedsSavedHeader));
     }
 }

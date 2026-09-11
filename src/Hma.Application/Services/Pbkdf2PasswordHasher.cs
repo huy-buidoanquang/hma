@@ -14,15 +14,19 @@ public sealed class Pbkdf2PasswordHasher : IPasswordHasher
 
     public bool Verify(string hash, string password)
     {
-        if (hash.StartsWith("RESET:", StringComparison.Ordinal))
-            return hash[6..] == password;
-
-        var parts = hash.Split(':');
-        if (parts.Length != 3 || parts[0] != "pbkdf2") return false;
-        var salt = Convert.FromBase64String(parts[1]);
-        var expected = Convert.FromBase64String(parts[2]);
-        var actual = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
-            password, salt, 100_000, System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
-        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(expected, actual);
+        try
+        {
+            var parts = hash.Split(':');
+            if (parts.Length != 3 || parts[0] != "pbkdf2") return false;
+            var salt = Convert.FromBase64String(parts[1]);
+            var expected = Convert.FromBase64String(parts[2]);
+            var actual = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+                password, salt, 100_000, System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
+            return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(expected, actual);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 }

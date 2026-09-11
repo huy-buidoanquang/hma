@@ -10,6 +10,11 @@ if (-not (Test-Path (Join-Path $root "src\Hma.Desktop.Wpf\Hma.Desktop.Wpf.csproj
 }
 $outDir = Join-Path $root "docs\product-tour\images"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+$tourPassword = $env:HMA_TOUR_PASSWORD
+if ([string]::IsNullOrWhiteSpace($tourPassword)) {
+    throw "Set HMA_TOUR_PASSWORD for the non-production account used to capture the product tour."
+}
+$tourPasswordKeys = [regex]::Replace($tourPassword, '([+^%~(){}\[\]])', '{$1}')
 
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
@@ -212,11 +217,11 @@ try {
     if ($null -ne $pwd) {
         $pwd.SetFocus()
         Start-Sleep -Milliseconds 150
-        [System.Windows.Forms.SendKeys]::SendWait("admin123")
+        [System.Windows.Forms.SendKeys]::SendWait($tourPasswordKeys)
     } else {
         [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
         Start-Sleep -Milliseconds 150
-        [System.Windows.Forms.SendKeys]::SendWait("admin123")
+        [System.Windows.Forms.SendKeys]::SendWait($tourPasswordKeys)
     }
     Start-Sleep -Milliseconds 250
     Invoke-FirstButton $login

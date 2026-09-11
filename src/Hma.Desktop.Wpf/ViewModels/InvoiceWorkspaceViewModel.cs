@@ -95,7 +95,7 @@ public partial class InvoiceWorkspaceViewModel(
     private async Task ExportExcel()
     {
         var list = await invoices.SearchAsync(null, null, null);
-        var path = Path.Combine(Path.GetTempPath(), "HDGTGT.xlsx");
+        var path = TemporaryReportFile.Create("HDGTGT.xlsx");
         printer.ExportVatExcel(list, path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
     }

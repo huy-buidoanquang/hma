@@ -15,7 +15,8 @@ public static class PriceListMatchRules
     public static PriceListItem? Pick(
         IEnumerable<PriceListItem> items,
         int? customerId,
-        DateTime asOf)
+        DateTime asOf,
+        int? exactRouteId = null)
     {
         var effective = items.Where(i =>
             i.PriceListRevision?.PriceList is { } list && IsEffective(list, asOf)).ToList();
@@ -26,7 +27,8 @@ public static class PriceListMatchRules
             if (fluctuation is { } flag)
                 subset = subset.Where(i => i.PriceListRevision!.PriceList!.HasPriceFluctuation == flag);
             return subset
-                .OrderByDescending(i => i.PriceListRevision!.CreatedAt)
+                .OrderByDescending(i => exactRouteId is not null && i.RouteId == exactRouteId)
+                .ThenByDescending(i => i.PriceListRevision!.CreatedAt)
                 .FirstOrDefault();
         }
 
@@ -44,10 +46,12 @@ public static class PriceListMatchRules
             : $"Giá riêng {list.Customer?.Code ?? list.Code}";
         if (list?.HasPriceFluctuation == true)
             kind += " · biến động";
-        var route = hit.Route?.Name ?? "";
+        var route = hit.Route?.Name
+                    ?? (hit.DeliveryLocation is null ? "" : $"đến {hit.DeliveryLocation.Name}");
         var vehicle = hit.VehicleType?.Name ?? "";
         return new FreightQuote
         {
+            PriceListItemId = hit.Id,
             UnitPrice = hit.UnitPrice,
             Surcharge = hit.Surcharge,
             SourceLabel = $"{kind} · {route} · {vehicle} · {hit.UnitPrice:N0}"

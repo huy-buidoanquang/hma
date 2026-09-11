@@ -15,7 +15,7 @@
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="80"/>
+                    <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="130" ElementStyle="{StaticResource DataGridCodeCell}"/>
                     <DataGridTextColumn Header="Tên bảng giá" Binding="{Binding Name}" Width="*"/>
                     <DataGridTextColumn Header="Khách hàng" Binding="{Binding Customer.Name}" Width="140"/>
                     <DataGridTextColumn Header="Hiệu lực từ" Binding="{Binding EffectiveFrom, StringFormat=dd/MM/yyyy}" Width="90"/>
@@ -37,7 +37,7 @@
             <WrapPanel DockPanel.Dock="Bottom" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Lưu bảng giá" Command="{Binding SaveListCommand}" IsEnabled="{Binding CanSave}"/>
                 <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
-                <Button Content="Khóa" Style="{StaticResource SecondaryButton}" Command="{Binding LockListCommand}" IsEnabled="{Binding CanUpdate}"/>
+                <Button Content="Khóa" Style="{StaticResource SecondaryButton}" Command="{Binding LockListCommand}" IsEnabled="{Binding CanLock}"/>
             </WrapPanel>
             <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
@@ -109,10 +109,17 @@
                         </StackPanel>
                     </Border>
                     <TextBlock Text="Dòng giá: tuyến × loại xe" Style="{StaticResource BodyText}" Margin="0,0,0,8"/>
+                    <TextBlock Text="Lưu thông tin bảng giá trước, sau đó mở lại để thêm dòng cước."
+                               Foreground="{DynamicResource InkSecondaryBrush}" Margin="0,0,0,8"
+                               Visibility="{Binding NeedsSavedHeader, Converter={StaticResource BoolToVisibility}}"/>
                     <WrapPanel Style="{StaticResource ToolbarPanel}">
                         <StackPanel Style="{StaticResource FilterCluster}">
                             <Label Style="{StaticResource FilterLabel}" Content="Tuyến"/>
                             <ComboBox Style="{StaticResource FilterCombo}" Width="220" ItemsSource="{Binding Routes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedRouteId}"/>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource FilterCluster}">
+                            <Label Style="{StaticResource FilterLabel}" Content="Hoặc điểm đến"/>
+                            <ComboBox Style="{StaticResource FilterCombo}" Width="180" ItemsSource="{Binding Locations}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeliveryLocationId}"/>
                         </StackPanel>
                         <StackPanel Style="{StaticResource FilterCluster}">
                             <Label Style="{StaticResource FilterLabel}" Content="Loại xe"/>
@@ -126,12 +133,13 @@
                             <Label Style="{StaticResource FilterLabel}" Content="Phụ phí"/>
                             <TextBox Style="{StaticResource FilterMoney}" Text="{Binding Surcharge, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money"/>
                         </StackPanel>
-                        <Button Content="Thêm cước" Style="{StaticResource SecondaryButton}" Command="{Binding AddRateCommand}" IsEnabled="{Binding CanUpdate}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
-                        <Button Content="Xóa dòng" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteRateCommand}" IsEnabled="{Binding CanDelete}" VerticalAlignment="Bottom" Margin="16,0,0,8"/>
+                        <Button Content="Thêm cước" Style="{StaticResource SecondaryButton}" Command="{Binding AddRateCommand}" IsEnabled="{Binding CanAddRate}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
+                        <Button Content="Xóa dòng" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteRateCommand}" IsEnabled="{Binding CanDeleteRate}" VerticalAlignment="Bottom" Margin="16,0,0,8"/>
                     </WrapPanel>
                     <DataGrid ItemsSource="{Binding RevisionItems}" SelectedItem="{Binding SelectedItem}" MinHeight="200">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Tuyến" Binding="{Binding Route.Name}" Width="*"/>
+                            <DataGridTextColumn Header="Giá theo điểm đến" Binding="{Binding DeliveryLocation.Name}" Width="160"/>
                             <DataGridTextColumn Header="Loại xe" Binding="{Binding VehicleType.Name}" Width="*"/>
                             <DataGridTextColumn Header="Đơn giá" Binding="{Binding UnitPrice, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
                             <DataGridTextColumn Header="Phụ phí" Binding="{Binding Surcharge, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>

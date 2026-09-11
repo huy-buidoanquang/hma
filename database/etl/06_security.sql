@@ -4,13 +4,14 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 BEGIN TRAN;
 
--- Passwords are stored plaintext in legacy. Import as a marker hash; force reset at first login.
+-- Never import plaintext legacy passwords. Imported accounts stay disabled until a manager
+-- assigns a strong password in the HMA user-management screen.
 SET IDENTITY_INSERT dbo.AppUser ON;
 INSERT INTO dbo.AppUser (Id, UserName, PasswordHash, DisplayName, EmployeeId, IsManager, IsSpecial, CreatedAt, LegacyId)
 SELECT
     username_id,
     username,
-    N'RESET:' + ISNULL([password], N''),
+    N'DISABLED',
     mota,
     nhanvien_id,
     ISNULL(quyenquanly, 0),

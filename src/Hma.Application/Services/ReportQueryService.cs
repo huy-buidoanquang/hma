@@ -19,6 +19,7 @@ public class ReportQueryService(IHmaDbContext db)
 
     public Task<List<DispatchOrder>> PeriodDispatchAsync(DateTime from, DateTime to, int? customerId = null, CancellationToken ct = default)
     {
+        var period = ReportingPeriod.InclusiveDays(from, to);
         var q = db.DispatchOrders.AsNoTracking()
             .Include(d => d.Customer)
             .Include(d => d.Driver)
@@ -26,7 +27,7 @@ public class ReportQueryService(IHmaDbContext db)
             .Include(d => d.Stops)
             .Include(d => d.Route)
             .Include(d => d.PaymentMethod)
-            .Where(d => d.PickupAt >= from && d.PickupAt <= to);
+            .Where(d => d.PickupAt >= period.StartInclusive && d.PickupAt < period.EndExclusive);
         if (customerId is not null) q = q.Where(d => d.CustomerId == customerId);
         return q.OrderBy(d => d.PickupAt).ThenBy(d => d.Code).ToListAsync(ct);
     }

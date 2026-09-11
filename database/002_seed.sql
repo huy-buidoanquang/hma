@@ -22,6 +22,13 @@ BEGIN
     INSERT INTO dbo.Partner (Code, Name) VALUES (N'UNASSIGNED', N'Chưa gán đối tác');
 END
 
+IF NOT EXISTS (SELECT 1 FROM dbo.PaymentMethod WHERE Code = N'TRA-SAU')
+    INSERT INTO dbo.PaymentMethod (Code, Name) VALUES (N'TRA-SAU', N'Trả sau');
+IF NOT EXISTS (SELECT 1 FROM dbo.PaymentMethod WHERE Code = N'LAI-XE-THU')
+    INSERT INTO dbo.PaymentMethod (Code, Name) VALUES (N'LAI-XE-THU', N'Lái xe thu');
+IF NOT EXISTS (SELECT 1 FROM dbo.PaymentMethod WHERE Code = N'DIEU-HANH-THU')
+    INSERT INTO dbo.PaymentMethod (Code, Name) VALUES (N'DIEU-HANH-THU', N'Điều hành thu');
+
 IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen)
 BEGIN
     INSERT INTO dbo.AppScreen ([Key], Name) VALUES
@@ -58,6 +65,25 @@ BEGIN
         INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'dispatch-grid-edit', N'Sửa lệnh theo khách');
 END
 
+IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen WHERE [Key] = N'partner-rates')
+    INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'partner-rates', N'Giá mua đối tác');
+IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen WHERE [Key] = N'partner-settlements')
+    INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'partner-settlements', N'Quyết toán đối tác');
+IF NOT EXISTS (SELECT 1 FROM dbo.AppScreen WHERE [Key] = N'transport-exceptions')
+    INSERT INTO dbo.AppScreen ([Key], Name) VALUES (N'transport-exceptions', N'Sự cố vận tải');
+
+IF NOT EXISTS (SELECT 1 FROM dbo.TransportExceptionCode)
+BEGIN
+    INSERT INTO dbo.TransportExceptionCode (Code, Name, IsActive) VALUES
+        (N'WAIT', N'Chờ bốc/dỡ hàng', 1),
+        (N'OVERNIGHT', N'Lưu xe qua đêm', 1),
+        (N'TOLL', N'Cầu đường phát sinh', 1),
+        (N'RETURN', N'Quay đầu / đổi hành trình', 1),
+        (N'FAILED_DELIVERY', N'Giao hàng thất bại', 1),
+        (N'CLAIM', N'Tổn thất / khiếu nại', 1),
+        (N'OTHER', N'Sự cố khác', 1);
+END
+
 IF NOT EXISTS (SELECT 1 FROM dbo.DocumentSequence)
 BEGIN
     INSERT INTO dbo.DocumentSequence ([Key], LastValue) VALUES
@@ -68,6 +94,9 @@ BEGIN
         (N'cash-payment', 0),
         (N'vat-invoice', 0);
 END
+
+IF NOT EXISTS (SELECT 1 FROM dbo.DocumentSequence WHERE [Key] = N'partner-settlement')
+    INSERT INTO dbo.DocumentSequence ([Key], LastValue) VALUES (N'partner-settlement', 0);
 
 IF NOT EXISTS (SELECT 1 FROM dbo.SystemParameter)
 BEGIN

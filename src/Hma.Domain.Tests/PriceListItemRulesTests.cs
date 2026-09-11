@@ -28,4 +28,28 @@ public class PriceListItemRulesTests
             Surcharge = 0
         });
     }
+
+    [Fact]
+    public void Accepts_destination_fallback_without_route()
+    {
+        PriceListItemRules.EnsureCanSave(new PriceListItem
+        {
+            DeliveryLocationId = 10,
+            VehicleTypeId = 2,
+            UnitPrice = 1_000_000
+        });
+    }
+
+    [Fact]
+    public void Rejects_route_and_destination_together()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            PriceListItemRules.EnsureCanSave(new PriceListItem
+            {
+                RouteId = 4,
+                DeliveryLocationId = 10,
+                VehicleTypeId = 2,
+                UnitPrice = 1_000_000
+            }));
+    }
 }

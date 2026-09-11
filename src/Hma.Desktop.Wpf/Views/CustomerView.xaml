@@ -9,19 +9,19 @@
                 <WrapPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Mã"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="112" Text="{Binding FilterCode}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="112" Text="{Binding FilterCode}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Tên"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="200" Text="{Binding FilterName}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="200" Text="{Binding FilterName}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Địa chỉ"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="200" Text="{Binding FilterAddress}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="200" Text="{Binding FilterAddress}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="MST"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="140" Text="{Binding FilterTaxCode}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="140" Text="{Binding FilterTaxCode}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Từ ngày"/>
@@ -47,7 +47,7 @@
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="80"/>
+                    <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="130" ElementStyle="{StaticResource DataGridCodeCell}"/>
                     <DataGridTextColumn Header="Tên" Binding="{Binding Name}" Width="*"/>
                     <DataGridTextColumn Header="Địa chỉ" Binding="{Binding Address}" Width="160"/>
                     <DataGridTextColumn Header="Liên hệ" Binding="{Binding ContactName}" Width="110"/>

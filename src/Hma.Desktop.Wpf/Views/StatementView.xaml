@@ -16,9 +16,18 @@
                 </StackPanel>
             </WrapPanel>
             <WrapPanel Style="{StaticResource ActionBar}">
-                <Button Content="Tổng hợp" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanCreate}"/>
+                <Button Content="Tổng hợp" Command="{Binding GenerateCommand}" IsEnabled="{Binding CanGenerate}"/>
+                <Button Content="Gửi duyệt" Style="{StaticResource SecondaryButton}" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}"/>
+                <Button Content="Chốt bảng kê" Style="{StaticResource SecondaryButton}" Command="{Binding FinalizeStatementCommand}" IsEnabled="{Binding CanFinalize}"/>
                 <Button Content="Xuất PDF" Style="{StaticResource SecondaryButton}" Command="{Binding ExportPdfCommand}" IsEnabled="{Binding CanPrint}"/>
                 <Button Content="Xuất Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
+            </WrapPanel>
+            <WrapPanel Style="{StaticResource ActionBar}">
+                <StackPanel Style="{StaticResource FilterCluster}">
+                    <Label Style="{StaticResource FilterLabel}" Content="Lý do hủy"/>
+                    <TextBox Style="{StaticResource FilterField}" Width="300" Text="{Binding VoidReason, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanVoid}"/>
+                </StackPanel>
+                <Button Content="Hủy bảng kê" Style="{StaticResource DestructiveButton}" Command="{Binding VoidStatementCommand}" IsEnabled="{Binding CanVoid}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
             </WrapPanel>
         </StackPanel>
         <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Top"
@@ -26,6 +35,7 @@
             <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
         </Border>
         <TextBlock DockPanel.Dock="Top" Style="{StaticResource TabularText}" Margin="0,8,0,16" TextWrapping="Wrap">
+            <Run Text="Trạng thái:"/> <Run Text="{Binding Current.Status, Mode=OneWay, Converter={StaticResource BusinessEnumLabel}}"/>
             <Run Text="Chuyến:"/> <Run Text="{Binding Current.TripCount, Mode=OneWay}"/>
             <Run Text="  Cước:"/> <Run Text="{Binding Current.FreightTotal, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
             <Run Text="  Phụ phí:"/> <Run Text="{Binding Current.SurchargeTotal, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
@@ -34,6 +44,16 @@
             <Run Text="  VAT:"/> <Run Text="{Binding Current.VatAmount, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
             <Run Text="  Sau VAT:"/> <Run Text="{Binding Current.TotalWithVat, Mode=OneWay, Converter={StaticResource VndMoney}}"/>
         </TextBlock>
+        <DataGrid DockPanel.Dock="Top" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" MaxHeight="180" Margin="0,0,0,12">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="100"/>
+                <DataGridTextColumn Header="Khách hàng" Binding="{Binding Customer.Name}" Width="*"/>
+                <DataGridTextColumn Header="Kỳ" Binding="{Binding Month, StringFormat={}{0:00}}" Width="55"/>
+                <DataGridTextColumn Header="Năm" Binding="{Binding Year}" Width="70"/>
+                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status, Converter={StaticResource BusinessEnumLabel}}" Width="100"/>
+                <DataGridTextColumn Header="Tổng" Binding="{Binding TotalWithVat, Converter={StaticResource VndMoney}}" Width="120" ElementStyle="{StaticResource TabularMoneyCell}"/>
+            </DataGrid.Columns>
+        </DataGrid>
         <DataGrid ItemsSource="{Binding Lines}">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Ngày" Binding="{Binding TripDate, StringFormat=dd/MM/yyyy}" Width="90"/>

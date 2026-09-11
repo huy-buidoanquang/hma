@@ -20,7 +20,7 @@
                 <Button Content="Lưu lưới" Command="{Binding SaveGridCommand}" IsEnabled="{Binding CanUpdate}"/>
                 <Button Content="Chuyển sang tháng sau" Style="{StaticResource SecondaryButton}" Command="{Binding ShiftNextMonthCommand}" IsEnabled="{Binding CanUpdate}"/>
             </WrapPanel>
-            <TextBlock Text="Chọn khách và kỳ kế toán. Không đổi ngày chạy. Lệnh đã chốt không sửa trên lưới (vào form lệnh nếu là PIC hoặc quản lý)."
+            <TextBlock Text="Chọn khách và kỳ kế toán. Không đổi ngày chạy. Lệnh đã chốt, đã gửi/duyệt đối soát hoặc đã hủy không sửa trên lưới."
                        TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource InkSecondaryBrush}"/>
         </StackPanel>
         <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
@@ -79,7 +79,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Cước" Width="100">
+                <DataGridTemplateColumn Header="Cước" Width="130">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBox Style="{StaticResource MoneyField}" Text="{Binding UnitPrice, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}"
@@ -87,7 +87,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Phát sinh" Width="90">
+                <DataGridTemplateColumn Header="Phát sinh" Width="120">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBox Style="{StaticResource MoneyField}" Text="{Binding ExtraCost, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}"

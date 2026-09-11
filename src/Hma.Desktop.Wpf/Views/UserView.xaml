@@ -82,7 +82,9 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Label Style="{StaticResource FormLabel}" Content="Mật khẩu mới (trống = giữ)"/>
-                            <TextBox Grid.Column="1" Margin="0" Text="{Binding NewPassword}"/>
+                            <PasswordBox Grid.Column="1" Margin="0"
+                                         b:PasswordBoxBehaviors.BindPassword="True"
+                                         b:PasswordBoxBehaviors.Password="{Binding NewPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         </Grid>
                         <CheckBox Style="{StaticResource GridCheckBox}"
                                   HorizontalAlignment="Left"

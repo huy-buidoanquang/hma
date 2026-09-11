@@ -9,6 +9,7 @@ using Hma.Reporting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Hma.Desktop.Wpf;
 
@@ -16,6 +17,7 @@ public partial class App : System.Windows.Application
 {
     private IHost? _host;
     private IServiceScope? _sessionScope;
+    private ILogger<App>? _logger;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -25,6 +27,7 @@ public partial class App : System.Windows.Application
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         DispatcherUnhandledException += (_, args) =>
         {
+            _logger?.LogError(args.Exception, "Unhandled WPF dispatcher exception");
             MessageBox.Show(args.Exception.Message, "Lỗi ứng dụng");
             args.Handled = true;
         };
@@ -34,10 +37,17 @@ public partial class App : System.Windows.Application
                 cfg.SetBasePath(AppContext.BaseDirectory);
                 cfg.AddJsonFile("appsettings.json", optional: false);
             })
+            // The default Windows Event Log provider can throw for standard user accounts
+            // when its source is unavailable, masking the original startup exception.
+            .ConfigureLogging(logging => logging.ClearProviders().AddDebug())
             .ConfigureServices((ctx, services) =>
             {
-                var cs = ctx.Configuration.GetConnectionString("Hma")
-                         ?? throw new InvalidOperationException("Thiếu chuỗi kết nối Hma.");
+                var cs = Environment.GetEnvironmentVariable("HMA_CONNECTION");
+                if (string.IsNullOrWhiteSpace(cs))
+                    cs = ctx.Configuration.GetConnectionString("Hma");
+                if (string.IsNullOrWhiteSpace(cs))
+                    throw new InvalidOperationException(
+                        "Thiếu chuỗi kết nối Hma. Đặt biến HMA_CONNECTION hoặc ConnectionStrings__Hma trên máy triển khai.");
                 services.AddHmaApplication();
                 services.AddHmaInfrastructure(cs);
                 services.AddHmaReporting();
@@ -61,6 +71,9 @@ public partial class App : System.Windows.Application
                 services.AddScoped<LocationWorkspaceViewModel>();
                 services.AddScoped<RouteWorkspaceViewModel>();
                 services.AddScoped<PriceListWorkspaceViewModel>();
+                services.AddScoped<PartnerRateWorkspaceViewModel>();
+                services.AddScoped<PartnerSettlementWorkspaceViewModel>();
+                services.AddScoped<TransportExceptionWorkspaceViewModel>();
                 services.AddScoped<DispatchWorkspaceViewModel>();
                 services.AddScoped<DispatchGridEditWorkspaceViewModel>();
                 services.AddScoped<DispatchImportWorkspaceViewModel>();
@@ -81,6 +94,7 @@ public partial class App : System.Windows.Application
                 services.AddScoped<InvoiceWorkspaceViewModel>();
             })
             .Build();
+        _logger = _host.Services.GetRequiredService<ILogger<App>>();
 
         await _host.StartAsync();
         _host.Services.GetRequiredService<ThemeService>().LoadAndApply();
@@ -94,6 +108,7 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
+            _logger?.LogCritical(ex, "Database migration or seed failed during startup");
             MessageBox.Show(ex.ToString(), "Không kết nối được cơ sở dữ liệu");
             Shutdown();
             return;

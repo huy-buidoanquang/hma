@@ -120,7 +120,7 @@ public partial class CustomerWorkspaceViewModel(
     private void ExportExcel()
     {
         if (!CanPrint) return;
-        var path = Path.Combine(Path.GetTempPath(), "KH.xlsx");
+        var path = TemporaryReportFile.Create("KH.xlsx");
         printer.ExportCustomersExcel(Items.ToList(), path);
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         Status = "Đã xuất Excel danh sách khách.";

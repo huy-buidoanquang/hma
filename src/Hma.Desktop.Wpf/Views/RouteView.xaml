@@ -10,7 +10,7 @@
                 <WrapPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Mã / tên"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="200" Text="{Binding FilterName}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="200" Text="{Binding FilterName}"/>
                     </StackPanel>
                 </WrapPanel>
                 <WrapPanel Style="{StaticResource ActionBar}">

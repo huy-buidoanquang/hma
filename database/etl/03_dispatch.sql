@@ -53,8 +53,12 @@ INSERT INTO dbo.DispatchOrder (
     SenderCustomerId, SenderName, SenderPhone, SenderAddress, SenderTaxCode,
     ReceiverCustomerId, ReceiverName, ReceiverPhone, ReceiverAddress, ReceiverTaxCode,
     PickupAt, PickupAddress, DeliveryAddress, RouteId,
-    VehicleId, DriverId, VehicleTypeId, EmployeeId,
-    UnitPrice, Surcharge, ExtraCost, TotalAmount, AmountInWords, Notes, LegacyId)
+    VehicleId, DriverId, VehicleTypeId, EmployeeId, PaymentMethodId,
+    BillingYear, BillingMonth,
+    UnitPrice, Surcharge, ExtraCost, TotalAmount,
+    IsFreightManual, FreightOverrideReason,
+    GrossMargin,
+    AmountInWords, Notes, LegacyId)
 SELECT
     n.nil_id,
     ISNULL(n.nil_ud, CAST(n.nil_id AS NVARCHAR(50))),
@@ -80,9 +84,15 @@ SELECT
     d.Id,
     n.loaixe_id,
     n.nhanvien_id,
+    pm.Id,
+    YEAR(ISNULL(n.ngaylap, GETDATE())),
+    MONTH(ISNULL(n.ngaylap, GETDATE())),
     ISNULL(n.cuocdv, 0),
     0,
     ISNULL(n.thukhac, 0),
+    ISNULL(n.tongthu, ISNULL(n.cuocdv, 0) + ISNULL(n.thukhac, 0)),
+    1,
+    N'Cước kế thừa từ lệnh điều xe legacy.',
     ISNULL(n.tongthu, ISNULL(n.cuocdv, 0) + ISNULL(n.thukhac, 0)),
     n.docso,
     n.ghichu,
@@ -93,6 +103,12 @@ LEFT JOIN LEGACY.DHXE.dbo.khachhang nn ON nn.kh_id = n.nguoinhan_id
 LEFT JOIN LEGACY.DHXE.dbo.nhanvien nv ON nv.nhanvien_id = n.bienso_id
 LEFT JOIN dbo.Vehicle v ON v.PlateNumber = LTRIM(RTRIM(nv.biensoxe))
 LEFT JOIN dbo.Driver d ON d.LegacyId = n.bienso_id
+LEFT JOIN LEGACY.DHXE.dbo.hinhthuc_tt htt ON htt.hinhthuc_tt_id = n.hinhthuc_tt_id
+LEFT JOIN dbo.PaymentMethod pm ON pm.Code = CASE LTRIM(RTRIM(htt.hinhthuc_tt_nm))
+    WHEN N'Điều hành thu' THEN N'DIEU-HANH-THU'
+    WHEN N'Lái xe thu' THEN N'LAI-XE-THU'
+    WHEN N'Trả sau' THEN N'TRA-SAU'
+END
 LEFT JOIN dbo.Location pl ON pl.CityId = sg.thanhpho_id
 LEFT JOIN dbo.Location dl ON dl.CityId = ISNULL(nn.thanhpho_id, n.hanhtrinh_id)
 LEFT JOIN dbo.Route r ON r.Fingerprint = CONCAT(ISNULL(pl.Id, dl.Id), N'-', ISNULL(dl.Id, pl.Id));

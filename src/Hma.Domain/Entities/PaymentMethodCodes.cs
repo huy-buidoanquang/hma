@@ -4,4 +4,5 @@ public static class PaymentMethodCodes
 {
     public const string Credit = "TRA-SAU";
     public const string DriverCollect = "LAI-XE-THU";
+    public const string DispatcherCollect = "DIEU-HANH-THU";
 }

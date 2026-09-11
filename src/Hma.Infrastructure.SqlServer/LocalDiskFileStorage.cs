@@ -12,13 +12,46 @@ public sealed class LocalDiskFileStorage(IHmaDbContext db) : IFileStorage
         return string.IsNullOrWhiteSpace(configured);
     }
 
+    public async Task CheckHealthAsync(CancellationToken cancellationToken = default)
+    {
+        var root = Path.GetFullPath(await ResolveRootAsync(cancellationToken));
+        Directory.CreateDirectory(root);
+        var probe = Path.Combine(root, $".hma-health-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(probe, "ok", cancellationToken);
+            await using var stream = new FileStream(probe, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (stream.Length != 2)
+                throw new IOException("Không thể xác nhận kho chứng từ.");
+        }
+        finally
+        {
+            if (File.Exists(probe))
+                File.Delete(probe);
+        }
+    }
+
     public async Task<string> SaveAsync(string key, Stream content, CancellationToken cancellationToken = default)
     {
         var relative = FileStorageKey.Normalize(key);
         var dest = await CombineAsync(relative, cancellationToken);
         Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-        await using var output = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None);
-        await content.CopyToAsync(output, cancellationToken);
+        var temporary = $"{dest}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                await content.CopyToAsync(output, cancellationToken);
+                await output.FlushAsync(cancellationToken);
+            }
+            File.Move(temporary, dest, overwrite: false);
+        }
+        catch
+        {
+            try { File.Delete(temporary); }
+            catch { /* Preserve the original storage error. */ }
+            throw;
+        }
         return relative;
     }
 

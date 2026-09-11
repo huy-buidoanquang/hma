@@ -24,9 +24,25 @@
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
 
+    <Style x:Key="DataGridCodeCell" TargetType="TextBlock" BasedOn="{StaticResource DataGridTextCell}">
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style x:Key="DataGridSingleLineCell" TargetType="TextBlock" BasedOn="{StaticResource DataGridCodeCell}"/>
+
+    <Style x:Key="TabularSingleLineCell" TargetType="TextBlock" BasedOn="{StaticResource DataGridSingleLineCell}">
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+
     <Style x:Key="TabularMoneyCell" TargetType="TextBlock" BasedOn="{StaticResource TabularCell}">
         <Setter Property="TextAlignment" Value="Right"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <Style x:Key="TabularMoneySingleLineCell" TargetType="TextBlock" BasedOn="{StaticResource TabularMoneyCell}">
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
 
     <Style TargetType="DataGrid">

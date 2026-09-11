@@ -6,7 +6,7 @@ namespace Hma.Desktop.Wpf.ViewModels;
 
 public partial class LoginViewModel(IAuthService auth) : ObservableObject
 {
-    [ObservableProperty] private string userName = "admin";
+    [ObservableProperty] private string userName = "";
     [ObservableProperty] private string? error;
 
     public event Action? LoggedIn;

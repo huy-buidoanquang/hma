@@ -57,6 +57,7 @@ public partial class StatusBadge : UserControl
                 DispatchStatus.Issued => ("Đã phát hành", ThemeBrush("AccentHoverBrush"), ThemeBrush("AccentDeepBrush")),
                 DispatchStatus.Completed => ("Hoàn thành", ThemeBrush("SuccessBgBrush"), ThemeBrush("SuccessBrush")),
                 DispatchStatus.Locked => ("Đã khóa", ThemeBrush("ErrorBgBrush"), ThemeBrush("ErrorBrush")),
+                DispatchStatus.Cancelled => ("Đã hủy", ThemeBrush("ErrorBgBrush"), ThemeBrush("ErrorBrush")),
                 _ => ("", ThemeBrush("MutedBrush"), ThemeBrush("InkMutedBrush"))
             };
             return;
@@ -69,6 +70,8 @@ public partial class StatusBadge : UserControl
             {
                 ReconciliationStatus.Pending => ("Chưa đối soát", ThemeBrush("WarningBgBrush"), ThemeBrush("WarningBrush")),
                 ReconciliationStatus.Reconciled => ("Đã đối soát", ThemeBrush("SuccessBgBrush"), ThemeBrush("SuccessBrush")),
+                ReconciliationStatus.Submitted => ("Chờ duyệt", ThemeBrush("AccentHoverBrush"), ThemeBrush("AccentDeepBrush")),
+                ReconciliationStatus.Rejected => ("Bị từ chối", ThemeBrush("ErrorBgBrush"), ThemeBrush("ErrorBrush")),
                 _ => ("", ThemeBrush("MutedBrush"), ThemeBrush("InkMutedBrush"))
             };
             return;

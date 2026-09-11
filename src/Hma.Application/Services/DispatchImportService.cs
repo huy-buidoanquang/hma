@@ -236,6 +236,7 @@ public class DispatchImportService(
 
         decimal unit = freight ?? 0;
         decimal surcharge = 0;
+        FreightQuote? appliedQuote = null;
         if (freight is null or 0)
         {
             var quote = await prices.GetFreightAsync(customer.Id, route.Id, vehicleTypeId, pickupAt, ct);
@@ -243,6 +244,7 @@ public class DispatchImportService(
                 errors.Add("Để trống cước và không khớp bảng giá (tuyến × loại xe).");
             else
             {
+                appliedQuote = quote;
                 unit = quote.UnitPrice;
                 surcharge = quote.Surcharge;
             }
@@ -266,6 +268,10 @@ public class DispatchImportService(
             ExtraCost = extra,
             UnitPrice = unit,
             Surcharge = surcharge,
+            PriceListItemId = appliedQuote?.PriceListItemId,
+            PriceSourceSnapshot = appliedQuote?.SourceLabel,
+            IsFreightManual = appliedQuote is null,
+            FreightOverrideReason = appliedQuote is null ? "Cước nhập từ bảng điều xe Excel." : null,
             Status = DispatchStatus.Issued,
             CreatedAt = DateTime.Now,
             CreatedByUserId = current.User?.Id

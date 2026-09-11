@@ -9,11 +9,11 @@
                 <WrapPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Mã"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="112" Text="{Binding FilterCode}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="112" Text="{Binding FilterCode}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource FilterCluster}">
                         <Label Style="{StaticResource FilterLabel}" Content="Tên"/>
-                        <TextBox Style="{StaticResource FilterField}" Width="200" Text="{Binding FilterName}"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="200" Text="{Binding FilterName}"/>
                     </StackPanel>
                 </WrapPanel>
                 <WrapPanel Style="{StaticResource ActionBar}">

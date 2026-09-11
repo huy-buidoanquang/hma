@@ -4,8 +4,8 @@
         xmlns:vm="clr-namespace:Hma.Desktop.Wpf.ViewModels"
         xmlns:views="clr-namespace:Hma.Desktop.Wpf.Views"
         Title="Hà Minh Anh — Điều hành xe"
-        Height="900" Width="1440"
-        MinHeight="900" MinWidth="1440"
+        Height="768" Width="1366"
+        MinHeight="700" MinWidth="1180"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource PaperBrush}"
         Foreground="{DynamicResource InkBrush}">
@@ -49,6 +49,12 @@
         <DataTemplate DataType="{x:Type vm:PriceListWorkspaceViewModel}">
             <views:PriceListView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PartnerRateWorkspaceViewModel}">
+            <views:PartnerRateView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PartnerSettlementWorkspaceViewModel}">
+            <views:PartnerSettlementView/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:DispatchWorkspaceViewModel}">
             <views:DispatchView/>
         </DataTemplate>
@@ -84,6 +90,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:InvoiceWorkspaceViewModel}">
             <views:InvoiceView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TransportExceptionWorkspaceViewModel}">
+            <views:TransportExceptionView/>
         </DataTemplate>
     </Window.Resources>
     <Grid Background="{DynamicResource PaperBrush}">
