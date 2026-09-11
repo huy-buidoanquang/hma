@@ -77,6 +77,6 @@ public class RouteService(IHmaDbContext db, ICurrentUser current)
         var entity = await db.FindAsync<Route>(id, ct)
             ?? throw new InvalidOperationException("Không tìm thấy tuyến.");
         db.Remove(entity);
-        await ReferentialConflict.SaveAsync(db, ct);
+        await ReferentialConflict.SaveAsync(db, entity, ct);
     }
 }

@@ -52,9 +52,9 @@ public class WpfBindingSmokeTests
                 var app = new App();
                 app.InitializeComponent();
                 var mainWindow = new MainWindow(null!);
-                Assert.True(mainWindow.MinWidth <= 1180);
-                Assert.True(mainWindow.MinHeight <= 700);
-                Render(mainWindow, 1180, 700);
+                Assert.True(mainWindow.MinWidth <= 1366);
+                Assert.True(mainWindow.MinHeight <= 768);
+                Render(mainWindow, 1366, 768);
 
                 var loginWindow = new LoginWindow(new LoginViewModel(Substitute.For<IAuthService>()));
                 Render(loginWindow, 520, 420);

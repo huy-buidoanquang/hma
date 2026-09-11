@@ -1,5 +1,6 @@
 using Hma.Application.Services;
 using Hma.Domain.Entities;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -8,6 +9,80 @@ namespace Hma.Infrastructure.SqlServer.Tests;
 
 public class SqlServerWorkflowTests
 {
+    [Fact]
+    public async Task Failed_location_delete_does_not_poison_later_price_list_save_in_same_context()
+    {
+        var options = CreateOptions();
+        try
+        {
+            int managerId;
+            int locationId;
+            int priceListId;
+            await using (var setup = new HmaDbContext(options))
+            {
+                await setup.Database.MigrateAsync();
+
+                var seededManager = new AppUser
+                {
+                    UserName = "referential-conflict-manager",
+                    PasswordHash = "test",
+                    IsManager = true
+                };
+                var seededLocation = new Location { Code = "USED-LOCATION", Name = "Điểm đang dùng" };
+                var order = new DispatchOrder
+                {
+                    Code = "REFERENTIAL-CONFLICT-ORDER",
+                    PickupAt = new DateTime(2026, 9, 12),
+                    BillingYear = 2026,
+                    BillingMonth = 9
+                };
+                order.Stops.Add(new DispatchOrderStop
+                {
+                    Sequence = 0,
+                    Location = seededLocation,
+                    NameSnapshot = seededLocation.Name
+                });
+                var seededPriceList = new PriceList
+                {
+                    Code = "REFERENTIAL-CONFLICT-PRICE",
+                    Name = "Bảng giá ban đầu"
+                };
+                setup.AddRange(seededManager, order, seededPriceList);
+                await setup.SaveChangesAsync();
+                managerId = seededManager.Id;
+                locationId = seededLocation.Id;
+                priceListId = seededPriceList.Id;
+            }
+
+            await using var db = new HmaDbContext(options);
+            var manager = await db.Users.SingleAsync(x => x.Id == managerId);
+            var priceList = await db.PriceLists.SingleAsync(x => x.Id == priceListId);
+
+            var current = new CurrentUser { User = manager };
+            var locationService = new LocationService(db, current);
+            var priceListService = new PriceListService(db, current);
+
+            var error = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => locationService.DeleteAsync(locationId));
+
+            Assert.Equal(ReferentialConflict.Message, error.Message);
+            var location = db.ChangeTracker.Entries<Location>().Single(x => x.Entity.Id == locationId);
+            Assert.Equal(EntityState.Unchanged, location.State);
+
+            priceList.Name = "Bảng giá sau lỗi xóa";
+            await priceListService.SaveAsync(priceList);
+
+            Assert.True(await db.Locations.AnyAsync(x => x.Id == locationId));
+            Assert.Equal(
+                "Bảng giá sau lỗi xóa",
+                await db.PriceLists.Where(x => x.Id == priceList.Id).Select(x => x.Name).SingleAsync());
+        }
+        finally
+        {
+            await DeleteDatabaseAsync(options);
+        }
+    }
+
     [Fact]
     public async Task Report_queries_include_completed_orders_on_the_end_date()
     {
@@ -261,8 +336,14 @@ public class SqlServerWorkflowTests
     private static DbContextOptions<HmaDbContext> CreateOptions()
     {
         var database = $"HmaIntegration_{Guid.NewGuid():N}";
-        var connection = $"Server=(localdb)\\MSSQLLocalDB;Database={database};Trusted_Connection=True;TrustServerCertificate=True";
-        return new DbContextOptionsBuilder<HmaDbContext>().UseSqlServer(connection).Options;
+        var connection = Environment.GetEnvironmentVariable("HMA_TEST_CONNECTION")
+            ?? "Server=(localdb)\\MSSQLLocalDB;Trusted_Connection=True;TrustServerCertificate=True";
+        var builder = new SqlConnectionStringBuilder(connection)
+        {
+            InitialCatalog = database,
+            TrustServerCertificate = true
+        };
+        return new DbContextOptionsBuilder<HmaDbContext>().UseSqlServer(builder.ConnectionString).Options;
     }
 
     private static async Task DeleteDatabaseAsync(DbContextOptions<HmaDbContext> options)

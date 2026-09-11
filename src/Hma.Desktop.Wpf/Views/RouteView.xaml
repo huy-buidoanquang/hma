@@ -49,47 +49,46 @@
         <controls:EditorOverlay Visibility="{Binding IsBrowsing, Converter={StaticResource InverseBoolToVisibility}}">
             <StackPanel>
                 <StackPanel IsEnabled="{Binding AreFieldsEnabled}">
-                <Grid Style="{StaticResource FormRow}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Label Style="{StaticResource FormLabel}" Content="Mã"/>
-                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Code, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Required"/>
-                </Grid>
-                <Grid Style="{StaticResource FormRow}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Label Style="{StaticResource FormLabel}" Content="Mô tả"/>
-                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Description}"/>
-                </Grid>
-                <TextBlock Text="Điểm theo thứ tự (ít nhất hai). Tên tuyến tự ghép khi lưu." Margin="0,0,0,8" Opacity="0.75"/>
-                <ItemsControl ItemsSource="{Binding EditorStops}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel Margin="0,0,0,8">
-                                <Button DockPanel.Dock="Right" Content="Xóa" Style="{StaticResource SecondaryButton}"
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Width="60" Style="{StaticResource FormLabel}" Content="Mã"/>
+                        <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Code, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Required"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Width="60" Style="{StaticResource FormLabel}" Content="Mô tả"/>
+                        <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Description}"/>
+                    </Grid>
+                    <TextBlock Text="Điểm theo thứ tự (ít nhất hai). Tên tuyến tự ghép khi lưu." Margin="0,0,0,8" Opacity="0.75"/>
+                    <ItemsControl ItemsSource="{Binding EditorStops}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,0,0,8">
+                                    <Button Width="120" DockPanel.Dock="Right" Content="Xóa" Style="{StaticResource DestructiveButton}"
                                         Command="{Binding DataContext.RemoveStopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}" Margin="8,0,0,0"/>
-                                <ComboBox ItemsSource="{Binding DataContext.Locations, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" Margin="8,0,0,16"/>
+                                    <ComboBox ItemsSource="{Binding DataContext.Locations, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                           DisplayMemberPath="Name" SelectedValuePath="Id"
                                           SelectedValue="{Binding LocationId, UpdateSourceTrigger=PropertyChanged}"/>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Button Content="Thêm điểm" Style="{StaticResource SecondaryButton}" Command="{Binding AddStopCommand}"
-                        HorizontalAlignment="Left" Margin="0,0,0,8"/>
-                <Grid Style="{StaticResource FormRow}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Label Style="{StaticResource FormLabel}" Content="Tên"/>
-                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Name}" IsReadOnly="True"/>
-                </Grid>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Width="120" Content="Thêm điểm" Style="{StaticResource SecondaryButton}" Command="{Binding AddStopCommand}" HorizontalAlignment="Right" Margin="0,0,0,8"/>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Width="60" Style="{StaticResource FormLabel}" Content="Tuyến"/>
+                        <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Name}" IsReadOnly="True"/>
+                    </Grid>
                 </StackPanel>
                 <StackPanel Style="{StaticResource EditorActions}">
                     <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>

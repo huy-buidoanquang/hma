@@ -221,7 +221,7 @@ public class CatalogService(IHmaDbContext db, ICurrentUser current)
         PermissionGuard.Require(current, ScreenKeyFor<T>(), PermissionAction.Delete);
         var entity = await db.FindAsync<T>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy bản ghi.");
         db.Remove(entity);
-        await ReferentialConflict.SaveAsync(db, ct);
+        await ReferentialConflict.SaveAsync(db, entity, ct);
     }
 
     public Task<List<DispatchOrder>> TripsByVehicleAsync(int vehicleId, CancellationToken ct = default) =>

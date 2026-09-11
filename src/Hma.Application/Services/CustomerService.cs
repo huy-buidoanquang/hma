@@ -57,6 +57,6 @@ public class CustomerService(IHmaDbContext db, ICurrentUser current)
         PermissionGuard.Require(current, ScreenKeys.Customers, PermissionAction.Delete);
         var entity = await db.FindAsync<Customer>(id, ct) ?? throw new InvalidOperationException("Không tìm thấy khách hàng.");
         db.Remove(entity);
-        await ReferentialConflict.SaveAsync(db, ct);
+        await ReferentialConflict.SaveAsync(db, entity, ct);
     }
 }

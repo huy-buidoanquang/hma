@@ -44,7 +44,7 @@ public class RouteAliasService(IHmaDbContext db, ICurrentUser current)
         var entity = await db.FindAsync<RouteAlias>(id, ct)
             ?? throw new InvalidOperationException("Không tìm thấy bí danh tuyến.");
         db.Remove(entity);
-        await ReferentialConflict.SaveAsync(db, ct);
+        await ReferentialConflict.SaveAsync(db, entity, ct);
     }
 
     internal static async Task<List<string>> LoadKeysAsync(IHmaDbContext db, int ignoreId, bool ignoreLocation, CancellationToken ct)

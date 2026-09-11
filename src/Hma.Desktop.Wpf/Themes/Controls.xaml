@@ -287,7 +287,7 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
                         <TabPanel Grid.Row="0"
-                                  Margin="0,0,0,-1"
+                                  Margin="0"
                                   IsItemsHost="True"
                                   KeyboardNavigation.TabIndex="1"/>
                         <Border Grid.Row="1"
@@ -313,8 +313,8 @@
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderDefaultBrush}"/>
-        <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="Padding" Value="8,8"/>
+        <Setter Property="Margin" Value="0"/>
         <Setter Property="MinHeight" Value="36"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>

@@ -130,15 +130,33 @@
             <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True" HorizontalScrollBarVisibility="Disabled">
                 <Border Style="{StaticResource EditorCard}">
                     <TabControl>
-                        <TabItem Header="Thông tin chuyến">
+                        <TabItem Header="Thông tin chuyến" HorizontalContentAlignment="Left" VerticalContentAlignment="Top">
                             <StackPanel Margin="16">
                                 <WrapPanel>
-                                    <StackPanel Width="140" Margin="0,0,8,8"><Label Content="Số lệnh"/><TextBox Text="{Binding CodeLabel, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="150" Margin="0,0,8,8"><Label Content="Ngày chạy"/><DatePicker SelectedDate="{Binding PickupDate}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="90" Margin="0,0,8,8"><Label Content="Giờ"/><ComboBox ItemsSource="{Binding Hours}" SelectedItem="{Binding PickupHour}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="90" Margin="0,0,8,8"><Label Content="Phút"/><ComboBox ItemsSource="{Binding Minutes}" SelectedItem="{Binding PickupMinute}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="260" Margin="0,0,8,8"><Label Content="Khách hàng tính cước"/><ComboBox ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding EditorCustomerId}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="260" Margin="0,0,8,8"><Label Content="Tuyến"/><ComboBox ItemsSource="{Binding Routes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EditorRouteId}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
+                                    <StackPanel Width="140" Margin="0,0,8,8">
+                                        <Label Content="Số lệnh"/>
+                                        <TextBox Text="{Binding CodeLabel, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="180" Margin="0,0,8,8">
+                                        <Label Content="Ngày chạy"/>
+                                        <DatePicker SelectedDate="{Binding PickupDate}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="90" Margin="0,0,8,8">
+                                        <Label Content="Giờ"/>
+                                        <ComboBox ItemsSource="{Binding Hours}" SelectedItem="{Binding PickupHour}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="90" Margin="0,0,8,8">
+                                        <Label Content="Phút"/>
+                                        <ComboBox ItemsSource="{Binding Minutes}" SelectedItem="{Binding PickupMinute}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="260" Margin="0,0,8,8">
+                                        <Label Content="Khách hàng tính cước"/>
+                                        <ComboBox ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding EditorCustomerId}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="260" Margin="0,0,8,8">
+                                        <Label Content="Tuyến"/>
+                                        <ComboBox ItemsSource="{Binding Routes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EditorRouteId}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
                                 </WrapPanel>
                                 <WrapPanel>
                                     <StackPanel Width="250" Margin="0,0,8,8">
@@ -148,7 +166,10 @@
                                             <ComboBox Margin="0,0,0,16" IsEditable="False" ItemsSource="{Binding Vehicles}" DisplayMemberPath="PlateNumber" SelectedValuePath="Id" SelectedValue="{Binding EditorVehicleId}" IsEnabled="{Binding AreFieldsEnabled}"/>
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Width="110" Margin="0,0,8,8"><Label Content="Trọng tải"/><TextBox Text="{Binding TonnageLabel, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
+                                    <StackPanel Width="110" Margin="0,0,8,8">
+                                        <Label Content="Trọng tải"/>
+                                        <TextBox Text="{Binding TonnageLabel, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
                                     <StackPanel Width="300" Margin="0,0,8,8">
                                         <Label Content="Tài xế — tìm / chọn"/>
                                         <DockPanel>
@@ -156,35 +177,158 @@
                                             <ComboBox Margin="0,0,0,16" IsEditable="False" ItemsSource="{Binding Drivers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EditorDriverId}" IsEnabled="{Binding AreFieldsEnabled}"/>
                                         </DockPanel>
                                     </StackPanel>
-                                    <StackPanel Width="140" Margin="0,0,8,8"><Label Content="SĐT tài xế"/><TextBox Text="{Binding DriverPhone, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="180" Margin="0,0,8,8"><Label Content="Hình thức thanh toán"/><ComboBox ItemsSource="{Binding PaymentMethods}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EditorPaymentMethodId}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="160" Margin="0,0,8,8"><Label Content="Kỳ kế toán"/><controls:MonthYearPicker Month="{Binding Editor.BillingMonth}" Year="{Binding Editor.BillingYear}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="140" Margin="0,0,8,8"><Label Content="Số AR"/><TextBox Text="{Binding Editor.ArNumber}" IsReadOnly="{Binding IsEditorReadOnly}"/></StackPanel>
+                                    <StackPanel Width="140" Margin="0,0,8,8">
+                                        <Label Content="SĐT tài xế"/>
+                                        <TextBox Text="{Binding DriverPhone, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="180" Margin="0,0,8,8">
+                                        <Label Content="Hình thức thanh toán"/>
+                                        <ComboBox ItemsSource="{Binding PaymentMethods}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding EditorPaymentMethodId}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="160" Margin="0,0,8,8">
+                                        <Label Content="Kỳ kế toán"/>
+                                        <controls:MonthYearPicker Month="{Binding Editor.BillingMonth}" Year="{Binding Editor.BillingYear}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="140" Margin="0,0,8,8">
+                                        <Label Content="Số AR"/>
+                                        <TextBox Text="{Binding Editor.ArNumber}" IsReadOnly="{Binding IsEditorReadOnly}"/>
+                                    </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Text="Người gửi và người nhận" Style="{StaticResource SectionTitle}" Margin="0,8,0,8"/>
                                 <WrapPanel>
-                                    <StackPanel Width="320" Margin="0,0,12,8"><Label Content="Người gửi"/><ComboBox ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding EditorSenderId}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="240" Margin="0,0,12,8"><Label Content="Tên người gửi (snapshot)"/><TextBox Text="{Binding Editor.SenderName}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="150" Margin="0,0,12,8"><Label Content="SĐT người gửi"/><TextBox Text="{Binding Editor.SenderPhone}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="320" Margin="0,0,12,8"><Label Content="Địa chỉ lấy hàng"/><TextBox Text="{Binding Editor.PickupAddress}" IsReadOnly="{Binding IsEditorReadOnly}"/></StackPanel>
-                                    <StackPanel Width="320" Margin="0,0,12,8"><Label Content="Người nhận"/><ComboBox ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding EditorReceiverId}" IsEnabled="{Binding AreFieldsEnabled}"/></StackPanel>
-                                    <StackPanel Width="240" Margin="0,0,12,8"><Label Content="Tên người nhận (snapshot)"/><TextBox Text="{Binding Editor.ReceiverName}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="150" Margin="0,0,12,8"><Label Content="SĐT người nhận"/><TextBox Text="{Binding Editor.ReceiverPhone}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="320" Margin="0,0,12,8"><Label Content="Địa chỉ giao hàng"/><TextBox Text="{Binding Editor.DeliveryAddress}" IsReadOnly="{Binding IsEditorReadOnly}"/></StackPanel>
+                                    <StackPanel Width="320" Margin="0,0,12,8">
+                                        <Label Content="Người gửi"/>
+                                        <ComboBox ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding EditorSenderId}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="240" Margin="0,0,12,8">
+                                        <Label Content="Tên người gửi (snapshot)"/>
+                                        <TextBox Text="{Binding Editor.SenderName}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="150" Margin="0,0,12,8">
+                                        <Label Content="SĐT người gửi"/>
+                                        <TextBox Text="{Binding Editor.SenderPhone}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="320" Margin="0,0,12,8">
+                                        <Label Content="Địa chỉ lấy hàng"/>
+                                        <TextBox Text="{Binding Editor.PickupAddress}" IsReadOnly="{Binding IsEditorReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="320" Margin="0,0,12,8">
+                                        <Label Content="Người nhận"/>
+                                        <ComboBox ItemsSource="{Binding CustomerOptions}" DisplayMemberPath="CodeName" SelectedValuePath="Id" SelectedValue="{Binding EditorReceiverId}" IsEnabled="{Binding AreFieldsEnabled}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="240" Margin="0,0,12,8">
+                                        <Label Content="Tên người nhận (snapshot)"/>
+                                        <TextBox Text="{Binding Editor.ReceiverName}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="150" Margin="0,0,12,8">
+                                        <Label Content="SĐT người nhận"/>
+                                        <TextBox Text="{Binding Editor.ReceiverPhone}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="320" Margin="0,0,12,8">
+                                        <Label Content="Địa chỉ giao hàng"/>
+                                        <TextBox Text="{Binding Editor.DeliveryAddress}" IsReadOnly="{Binding IsEditorReadOnly}"/>
+                                    </StackPanel>
                                 </WrapPanel>
                                 <TextBlock Text="Thêm nhanh người gửi/người nhận" Style="{StaticResource SectionTitle}" Margin="0,8,0,8" Visibility="{Binding AreFieldsEnabled, Converter={StaticResource BoolToVisibility}}"/>
                                 <WrapPanel IsEnabled="{Binding AreFieldsEnabled}" Visibility="{Binding AreFieldsEnabled, Converter={StaticResource BoolToVisibility}}">
-                                    <StackPanel Width="220" Margin="0,0,8,8"><Label Content="Tên"/><TextBox Text="{Binding NewPartyName}"/></StackPanel>
-                                    <StackPanel Width="140" Margin="0,0,8,8"><Label Content="Điện thoại"/><TextBox Text="{Binding NewPartyPhone}"/></StackPanel>
-                                    <StackPanel Width="260" Margin="0,0,8,8"><Label Content="Địa chỉ"/><TextBox Text="{Binding NewPartyAddress}"/></StackPanel>
-                                    <StackPanel Width="140" Margin="0,0,8,8"><Label Content="Mã số thuế"/><TextBox Text="{Binding NewPartyTaxCode}"/></StackPanel>
-                                    <StackPanel Width="180" Margin="0,0,8,8"><Label Content="Tỉnh/thành"/><ComboBox ItemsSource="{Binding Cities}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding NewPartyCityId}"/></StackPanel>
+                                    <StackPanel Width="220" Margin="0,0,8,8">
+                                        <Label Content="Tên"/>
+                                        <TextBox Text="{Binding NewPartyName}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="140" Margin="0,0,8,8">
+                                        <Label Content="Điện thoại"/>
+                                        <TextBox Text="{Binding NewPartyPhone}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="260" Margin="0,0,8,8">
+                                        <Label Content="Địa chỉ"/>
+                                        <TextBox Text="{Binding NewPartyAddress}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="140" Margin="0,0,8,8">
+                                        <Label Content="Mã số thuế"/>
+                                        <TextBox Text="{Binding NewPartyTaxCode}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="180" Margin="0,0,8,8">
+                                        <Label Content="Tỉnh/thành"/>
+                                        <ComboBox ItemsSource="{Binding Cities}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding NewPartyCityId}"/>
+                                    </StackPanel>
                                     <Button Content="Làm người gửi" Command="{Binding AddSenderWalkInCommand}" VerticalAlignment="Bottom"/>
                                     <Button Content="Làm người nhận" Style="{StaticResource SecondaryButton}" Command="{Binding AddReceiverWalkInCommand}" VerticalAlignment="Bottom"/>
                                 </WrapPanel>
                             </StackPanel>
                         </TabItem>
-                        <TabItem Header="Hàng hóa">
+                        <TabItem Header="Cước phí" HorizontalContentAlignment="Left" VerticalContentAlignment="Top">
+                            <StackPanel Margin="16">
+                                <WrapPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Cước"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.UnitPrice, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Phụ phí"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.Surcharge, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Phát sinh"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.ExtraCost, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Tổng"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.TotalAmount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Text="{Binding FreightSourceLabel}" TextWrapping="Wrap" Margin="0,0,0,16" Foreground="{DynamicResource InkSecondaryBrush}"/>
+                                <WrapPanel Margin="0,0,0,8">
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Sự cố đã duyệt thu KH"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.ApprovedExceptionRevenue, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Sự cố đã duyệt chi ĐT"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.ApprovedExceptionCost, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Text="Chưa khớp bảng giá — nhập cước thủ công hoặc bổ sung dòng giá (tuyến × loại xe)." TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource BrushError}" Visibility="{Binding FreightMissing, Converter={StaticResource BoolToVisibility}}"/>
+                                <Label Content="Lý do cước thủ công / khác bảng giá"/>
+                                <TextBox Text="{Binding Editor.FreightOverrideReason}" IsReadOnly="{Binding IsFreightReadOnly}" Margin="0,0,0,8"/>
+                                <TextBlock Text="Giá mua và biên lợi nhuận" Style="{StaticResource SectionTitle}" Margin="0,12,0,8"/>
+                                <WrapPanel>
+                                    <StackPanel Width="220" Margin="0,0,12,8">
+                                        <Label Content="Đối tác vận tải"/>
+                                        <TextBox Text="{Binding Editor.PartnerNameSnapshot}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Giá mua"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.BuyUnitPrice, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Phụ phí mua"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.BuySurcharge, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Phát sinh mua"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.BuyExtraCost, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/>
+                                    </StackPanel>
+                                    <StackPanel Width="130" Margin="0,0,12,8">
+                                        <Label Content="Phí điều hành %"/>
+                                        <TextBox Text="{Binding Editor.PartnerOperatingFeePercent}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Phải trả đối tác"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.PartnerPayableAmount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                    <StackPanel Width="168" Margin="0,0,12,8">
+                                        <Label Content="Lãi gộp"/>
+                                        <TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.GrossMargin, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/>
+                                    </StackPanel>
+                                </WrapPanel>
+                                <TextBlock Text="{Binding Editor.BuyRateSourceSnapshot}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource InkSecondaryBrush}"/>
+                                <Label Content="Lý do giá mua thủ công / khác bảng giá"/>
+                                <TextBox Text="{Binding Editor.BuyOverrideReason}" IsReadOnly="{Binding IsFreightReadOnly}" Margin="0,0,0,8"/>
+                                <Label Content="Ghi chú"/>
+                                <TextBox Text="{Binding Editor.Notes}" AcceptsReturn="True" MinHeight="90" IsReadOnly="{Binding IsEditorReadOnly}"/>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Hàng hóa" HorizontalContentAlignment="Left" VerticalContentAlignment="Top">
                             <DockPanel Margin="16">
                                 <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                                     <Button Content="Thêm dòng" Command="{Binding AddLineCommand}" IsEnabled="{Binding AreFieldsEnabled}"/>
@@ -203,42 +347,10 @@
                                 </DataGrid>
                             </DockPanel>
                         </TabItem>
-                        <TabItem Header="Cước phí">
-                            <StackPanel Margin="16">
-                                <WrapPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Cước"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.UnitPrice, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Phụ phí"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.Surcharge, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Phát sinh"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.ExtraCost, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Tổng"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.TotalAmount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                </WrapPanel>
-                                <TextBlock Text="{Binding FreightSourceLabel}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource InkSecondaryBrush}"/>
-                                <WrapPanel Margin="0,0,0,8">
-                                    <StackPanel Width="210" Margin="0,0,12,8"><Label Content="Sự cố đã duyệt thu KH"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.ApprovedExceptionRevenue, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="210" Margin="0,0,12,8"><Label Content="Sự cố đã duyệt chi ĐT"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.ApprovedExceptionCost, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                </WrapPanel>
-                                <TextBlock Text="Chưa khớp bảng giá — nhập cước thủ công hoặc bổ sung dòng giá (tuyến × loại xe)." TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource BrushError}" Visibility="{Binding FreightMissing, Converter={StaticResource BoolToVisibility}}"/>
-                                <Label Content="Lý do cước thủ công / khác bảng giá"/>
-                                <TextBox Text="{Binding Editor.FreightOverrideReason}" IsReadOnly="{Binding IsFreightReadOnly}" Margin="0,0,0,8"/>
-                                <TextBlock Text="Giá mua và biên lợi nhuận" Style="{StaticResource SectionTitle}" Margin="0,12,0,8"/>
-                                <WrapPanel>
-                                    <StackPanel Width="220" Margin="0,0,12,8"><Label Content="Đối tác vận tải"/><TextBox Text="{Binding Editor.PartnerNameSnapshot}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Giá mua"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.BuyUnitPrice, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Phụ phí mua"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.BuySurcharge, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Phát sinh mua"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.BuyExtraCost, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money" IsReadOnly="{Binding IsFreightReadOnly}"/></StackPanel>
-                                    <StackPanel Width="130" Margin="0,0,12,8"><Label Content="Phí điều hành %"/><TextBox Text="{Binding Editor.PartnerOperatingFeePercent}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Phải trả đối tác"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.PartnerPayableAmount, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                    <StackPanel Width="168" Margin="0,0,12,8"><Label Content="Lãi gộp"/><TextBox Style="{StaticResource MoneyField}" Text="{Binding Editor.GrossMargin, Converter={StaticResource VndMoney}, Mode=OneWay}" IsReadOnly="True"/></StackPanel>
-                                </WrapPanel>
-                                <TextBlock Text="{Binding Editor.BuyRateSourceSnapshot}" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource InkSecondaryBrush}"/>
-                                <Label Content="Lý do giá mua thủ công / khác bảng giá"/>
-                                <TextBox Text="{Binding Editor.BuyOverrideReason}" IsReadOnly="{Binding IsFreightReadOnly}" Margin="0,0,0,8"/>
-                                <Label Content="Ghi chú"/><TextBox Text="{Binding Editor.Notes}" AcceptsReturn="True" MinHeight="90" IsReadOnly="{Binding IsEditorReadOnly}"/>
-                            </StackPanel>
-                        </TabItem>
-                        <TabItem Header="Chứng từ">
+                        <TabItem Header="Chứng từ" HorizontalContentAlignment="Left" VerticalContentAlignment="Top">
                             <DockPanel Margin="16">
                                 <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                                    <ComboBox Width="220" ItemsSource="{Binding DocKindOptions}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SelectedDocKind}" IsEnabled="{Binding CanAttachDocument}"/>
+                                    <ComboBox Margin="0,0,8,8" Width="220" ItemsSource="{Binding DocKindOptions}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SelectedDocKind}" IsEnabled="{Binding CanAttachDocument}"/>
                                     <Button Content="Đính kèm" Command="{Binding AttachCommand}" IsEnabled="{Binding CanAttachDocument}"/>
                                     <Button Content="Mở file" Style="{StaticResource SecondaryButton}" Command="{Binding OpenDocumentCommand}" IsEnabled="{Binding CanOpenDocument}"/>
                                     <Button Content="Xóa file" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteDocumentCommand}" IsEnabled="{Binding CanDeleteDocument}"/>

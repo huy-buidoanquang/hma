@@ -20,7 +20,11 @@ public static class ReferentialConflict
         return false;
     }
 
-    public static async Task SaveAsync(IHmaDbContext db, CancellationToken cancellationToken = default)
+    public static async Task SaveAsync<T>(
+        IHmaDbContext db,
+        T entity,
+        CancellationToken cancellationToken = default)
+        where T : class
     {
         try
         {
@@ -28,6 +32,7 @@ public static class ReferentialConflict
         }
         catch (DbUpdateException ex) when (IsConstraint(ex))
         {
+            await db.ReloadAsync(entity, cancellationToken);
             throw new InvalidOperationException(Message, ex);
         }
         catch (Exception ex)

@@ -44,6 +44,6 @@ public class LocationAliasService(IHmaDbContext db, ICurrentUser current)
         var entity = await db.FindAsync<LocationAlias>(id, ct)
             ?? throw new InvalidOperationException("Không tìm thấy bí danh điểm.");
         db.Remove(entity);
-        await ReferentialConflict.SaveAsync(db, ct);
+        await ReferentialConflict.SaveAsync(db, entity, ct);
     }
 }

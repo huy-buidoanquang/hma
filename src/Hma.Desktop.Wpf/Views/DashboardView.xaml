@@ -11,25 +11,25 @@
                 <Button Content="Làm mới" Command="{Binding RefreshCommand}"/>
             </WrapPanel>
             <WrapPanel Margin="0,0,0,16">
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Doanh thu chuyến hoàn thành" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.FreightTotal, Converter={StaticResource VndMoney}}" Style="{StaticResource WorkspaceTitle}" Typography.NumeralAlignment="Tabular" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Phải trả đối tác" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.PartnerPayableTotal, Converter={StaticResource VndMoney}}" Style="{StaticResource WorkspaceTitle}" Typography.NumeralAlignment="Tabular" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Lãi gộp chuyến hoàn thành" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.GrossMarginTotal, Converter={StaticResource VndMoney}}" Style="{StaticResource WorkspaceTitle}" Typography.NumeralAlignment="Tabular" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Nháp / đã phát hành" Style="{StaticResource CaptionText}"/>
                         <TextBlock Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0">
@@ -37,7 +37,7 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Hoàn thành / đã hủy" Style="{StaticResource CaptionText}"/>
                         <TextBlock Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0">
@@ -45,25 +45,25 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Chưa đối soát" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.PendingReconcile}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Đã đối soát" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.Reconciled}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Chờ chứng từ" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.WaitingDocuments}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource KpiCard}">
+                <Border Width="250" Style="{StaticResource KpiCard}">
                     <StackPanel>
                         <TextBlock Text="Sự cố chưa xử lý" Style="{StaticResource CaptionText}"/>
                         <TextBlock Text="{Binding Snapshot.PendingExceptions}" Style="{StaticResource WorkspaceTitle}" Margin="0,8,0,0"/>

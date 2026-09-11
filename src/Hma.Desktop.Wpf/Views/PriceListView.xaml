@@ -112,7 +112,7 @@
                     <TextBlock Text="Lưu thông tin bảng giá trước, sau đó mở lại để thêm dòng cước."
                                Foreground="{DynamicResource InkSecondaryBrush}" Margin="0,0,0,8"
                                Visibility="{Binding NeedsSavedHeader, Converter={StaticResource BoolToVisibility}}"/>
-                    <WrapPanel Style="{StaticResource ToolbarPanel}">
+                    <WrapPanel Margin="0,0,0,8" Style="{StaticResource ToolbarPanel}">
                         <StackPanel Style="{StaticResource FilterCluster}">
                             <Label Style="{StaticResource FilterLabel}" Content="Tuyến"/>
                             <ComboBox Style="{StaticResource FilterCombo}" Width="220" ItemsSource="{Binding Routes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedRouteId}"/>
@@ -133,8 +133,10 @@
                             <Label Style="{StaticResource FilterLabel}" Content="Phụ phí"/>
                             <TextBox Style="{StaticResource FilterMoney}" Text="{Binding Surcharge, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Money"/>
                         </StackPanel>
-                        <Button Content="Thêm cước" Style="{StaticResource SecondaryButton}" Command="{Binding AddRateCommand}" IsEnabled="{Binding CanAddRate}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
-                        <Button Content="Xóa dòng" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteRateCommand}" IsEnabled="{Binding CanDeleteRate}" VerticalAlignment="Bottom" Margin="16,0,0,8"/>
+                    </WrapPanel>
+                    <WrapPanel Margin="0,0,0,8" Style="{StaticResource ActionBar}">
+                        <Button Content="Thêm cước" Style="{StaticResource SecondaryButton}" Command="{Binding AddRateCommand}" IsEnabled="{Binding CanAddRate}" VerticalAlignment="Bottom"/>
+                        <Button Content="Xóa dòng" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteRateCommand}" IsEnabled="{Binding CanDeleteRate}" VerticalAlignment="Bottom"/>
                     </WrapPanel>
                     <DataGrid ItemsSource="{Binding RevisionItems}" SelectedItem="{Binding SelectedItem}" MinHeight="200">
                         <DataGrid.Columns>
