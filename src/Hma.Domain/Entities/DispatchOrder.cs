@@ -68,6 +68,8 @@ public class DispatchOrder : Entity
     public decimal TotalAmount { get; set; }
     public int? PriceListItemId { get; set; }
     public PriceListItem? PriceListItem { get; set; }
+    public int? PriceListFluctuationId { get; set; }
+    public PriceListFluctuation? PriceListFluctuation { get; set; }
     public string? PriceSourceSnapshot { get; set; }
     public bool IsFreightManual { get; set; }
     public string? FreightOverrideReason { get; set; }

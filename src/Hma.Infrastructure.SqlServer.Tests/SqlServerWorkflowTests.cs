@@ -11,6 +11,7 @@ using Hma.Application.Features.Dispatching;
 using Hma.Application.Features.Statements;
 using Hma.Application.Common.Security;
 using Hma.Domain.Entities;
+using Hma.Domain.Enums;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -95,6 +96,9 @@ public class SqlServerWorkflowTests
             var revisionId = await priceLists.EnsureRevisionAsync(priceList.Id);
             await priceLists.AddItemAsync(new AddPriceListItemCommand(
                 revisionId, route.Id, null, vehicleType.Id, 1_000_000, 100_000));
+            Assert.Null(await priceLists.GetFreightAsync(
+                customer.Id, route.Id, vehicleType.Id, new DateTime(2026, 9, 12)));
+            await priceLists.LockAsync(priceList.Id, "Phê duyệt áp dụng");
             var quote = await priceLists.GetFreightAsync(
                 customer.Id, route.Id, vehicleType.Id, new DateTime(2026, 9, 12));
             Assert.NotNull(quote);
@@ -172,6 +176,84 @@ public class SqlServerWorkflowTests
         {
             await DeleteDatabaseAsync(options);
             if (Directory.Exists(storageRoot)) Directory.Delete(storageRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Locked_price_list_applies_time_bound_percentage_and_fixed_fluctuations()
+    {
+        var options = CreateOptions();
+        try
+        {
+            await using (var setup = new HmaDbContext(options))
+            {
+                await setup.Database.MigrateAsync();
+                var manager = new AppUser
+                {
+                    UserName = "price-manager",
+                    DisplayName = "Quản lý giá",
+                    PasswordHash = "test",
+                    IsManager = true,
+                };
+                var customer = new Customer { Code = "PRICE-CUSTOMER", Name = "Khách bảng giá" };
+                var vehicleType = new VehicleType { Code = "PRICE-TRUCK", Name = "Xe giá" };
+                var pickup = new Location { Code = "PRICE-PICKUP", Name = "Điểm lấy" };
+                var delivery = new Location { Code = "PRICE-DELIVERY", Name = "Điểm giao" };
+                var route = new Route { Code = "PRICE-ROUTE", Name = "Tuyến giá" };
+                route.Stops.Add(new RouteStop { Sequence = 0, Location = pickup });
+                route.Stops.Add(new RouteStop { Sequence = 1, Location = delivery });
+                setup.AddRange(manager, customer, vehicleType, route);
+                await setup.SaveChangesAsync();
+            }
+
+            await using var db = new HmaDbContext(options);
+            var managerUser = await db.Users.SingleAsync(x => x.UserName == "price-manager");
+            var customerId = await db.Customers.Where(x => x.Code == "PRICE-CUSTOMER").Select(x => x.Id).SingleAsync();
+            var vehicleTypeId = await db.VehicleTypes.Where(x => x.Code == "PRICE-TRUCK").Select(x => x.Id).SingleAsync();
+            var routeId = await db.Routes.Where(x => x.Code == "PRICE-ROUTE").Select(x => x.Id).SingleAsync();
+            var service = new PriceListService(db, new MutableCurrentUser(managerUser), TimeProvider.System);
+            var list = await service.SaveAsync(new SavePriceListCommand(
+                0, "PRICE-LIST", "Bảng giá có biến động", null, customerId,
+                new DateTime(2026, 9, 1), null, false, null, []));
+            var revisionId = await service.EnsureRevisionAsync(list.Id);
+            await service.AddItemAsync(new AddPriceListItemCommand(
+                revisionId, routeId, null, vehicleTypeId, 1_000_000, 50_000));
+
+            Assert.Null(await service.GetFreightAsync(
+                customerId, routeId, vehicleTypeId, new DateTime(2026, 9, 12)));
+
+            await service.LockAsync(list.Id, "Duyệt bảng giá");
+            var percentage = await service.SaveFluctuationAsync(new SavePriceListFluctuationCommand(
+                0, list.Id, PriceFluctuationType.Percentage, 10,
+                new DateTime(2026, 9, 10), new DateTime(2026, 9, 20),
+                "Giá dầu tăng 10%", []));
+            var percentageQuote = await service.GetFreightAsync(
+                customerId, routeId, vehicleTypeId, new DateTime(2026, 9, 12));
+            Assert.NotNull(percentageQuote);
+            Assert.Equal(1_100_000, percentageQuote.UnitPrice);
+            Assert.Equal(100_000, percentageQuote.FluctuationAmount);
+            Assert.Equal(percentage.Id, percentageQuote.PriceListFluctuationId);
+
+            var overlapError = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.SaveFluctuationAsync(new SavePriceListFluctuationCommand(
+                    0, list.Id, PriceFluctuationType.FixedAmount, 100_000,
+                    new DateTime(2026, 9, 20), null, "Khoảng trùng", [])));
+            Assert.Contains("bị trùng", overlapError.Message, StringComparison.Ordinal);
+
+            var fixedAmount = await service.SaveFluctuationAsync(new SavePriceListFluctuationCommand(
+                percentage.Id, list.Id, PriceFluctuationType.FixedAmount, -100_000,
+                percentage.EffectiveFrom, percentage.EffectiveTo,
+                "Giá dầu giảm tương đương 100.000 đồng", percentage.VersionToken));
+            var fixedQuote = await service.GetFreightAsync(
+                customerId, routeId, vehicleTypeId, new DateTime(2026, 9, 12));
+            Assert.NotNull(fixedQuote);
+            Assert.Equal(900_000, fixedQuote.UnitPrice);
+            Assert.Equal(-100_000, fixedQuote.FluctuationAmount);
+            Assert.Equal(fixedAmount.Id, fixedQuote.PriceListFluctuationId);
+        }
+        finally
+        {
+            await DeleteDatabaseAsync(options);
         }
     }
 

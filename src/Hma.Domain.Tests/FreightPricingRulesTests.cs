@@ -19,6 +19,7 @@ public class FreightPricingRulesTests
         var quote = new FreightQuote
         {
             PriceListItemId = 9,
+            PriceListFluctuationId = 7,
             UnitPrice = 1_000,
             Surcharge = 100,
             SourceLabel = "BG-01"
@@ -28,6 +29,7 @@ public class FreightPricingRulesTests
 
         Assert.False(order.IsFreightManual);
         Assert.Equal(9, order.PriceListItemId);
+        Assert.Equal(7, order.PriceListFluctuationId);
         Assert.Equal("BG-01", order.PriceSourceSnapshot);
         Assert.Null(order.FreightOverrideReason);
     }

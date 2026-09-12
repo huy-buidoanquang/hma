@@ -27,6 +27,7 @@ public sealed record DispatchOrderDetails(
     int? EmployeeId,
     int? PaymentMethodId,
     int? PriceListItemId,
+    int? PriceListFluctuationId,
     string? PriceSourceSnapshot,
     bool IsFreightManual,
     string? FreightOverrideReason,

@@ -156,21 +156,24 @@ Tách so với legacy: `nhanvien` có biển số → `Driver` + `Vehicle`, gán
 ### 5.2 Bảng giá
 
 ```
-PriceList (optional CustomerId, EffectiveFrom/To, HasPriceFluctuation, IsLocked)
+PriceList (optional CustomerId, EffectiveFrom/To, HasPriceFluctuation legacy, IsLocked)
+  ├── PriceListFluctuation (Percentage/FixedAmount, EffectiveFrom/To, signed Value)
   └── PriceListRevision
         └── PriceListItem (Route hoặc DeliveryLocation, VehicleType, UnitPrice, Surcharge)
 ```
 
-Bảng giá **chung** (`CustomerId` null) hoặc **theo khách**. Cờ `HasPriceFluctuation` trên cả bảng. Khóa: `IsLocked` + `LockedAt` + `LockReason`.
+Bảng giá **chung** (`CustomerId` null) hoặc **theo khách**. Chỉ bảng đã khóa (`IsLocked`) mới có hiệu lực tra cước; khóa giữ bất biến header, revision và dòng giá. `HasPriceFluctuation` chỉ bảo toàn phân hạng `dacbiet` của legacy, không phải công thức biến động mới.
 
-Tra cước `PriceListService.GetFreightAsync(customer, routeId, vehicleType, asOf)` — item còn hiệu lực, revision mới nhất trong cùng bậc:
+Tra cước `PriceListService.GetFreightAsync(customer, routeId, vehicleType, asOf)` — item thuộc bảng đã khóa, còn hiệu lực và revision mới nhất trong cùng bậc:
 
 1. Đúng khách + không biến động
 2. Đúng khách + có biến động
 3. Bảng chung (ưu tiên không biến động rồi revision mới)
 4. Không khớp → cước tay
 
-Cần `RouteId` và `VehicleTypeId`. Trong cùng bậc khách/chung, hệ thống ưu tiên đúng tuyến rồi mới fallback điểm đến (dùng để bảo toàn năm cột giá legacy). Lệnh snapshot `PriceListItemId`, nhãn nguồn và bắt buộc lý do nếu nhập khác bảng giá.
+Cần `RouteId` và `VehicleTypeId`. Trong cùng bậc khách/chung, hệ thống ưu tiên đúng tuyến rồi mới fallback điểm đến (dùng để bảo toàn năm cột giá legacy). Sau khi chọn dòng gốc, engine lấy tối đa một `PriceListFluctuation` có khoảng ngày bao phủ `asOf`. Khoảng biến động trong cùng bảng không được chồng lấn. Công thức phần trăm tính trên `UnitPrice`; số tiền cố định tính mỗi lệnh: `FinalUnitPrice = UnitPrice + Adjustment`, còn `Surcharge` giữ nguyên. Giá cuối không được âm.
+
+Chỉ quản lý có quyền cập nhật bảng giá mới được thêm/sửa biến động sau khi khóa. Lệnh snapshot `PriceListItemId`, `PriceListFluctuationId`, giá cuối và nhãn nguồn gồm mức biến động; nhập khác kết quả tra cứu vẫn bắt buộc lý do cước thủ công.
 
 ### 5.3 Lệnh điều xe (trung tâm)
 
@@ -288,7 +291,7 @@ Mã được nhóm trong `Features/<Feature>`; port host/adapter ở `Abstractio
 | `CityService` / `DepartmentService` / `JobTitleService` | Catalog đơn theo màn hình                 |
 | `EmployeeService` / `PartnerService` / `DriverService` / `VehicleService` | Catalog giàu dữ liệu |
 | `CatalogOptionQueryService`                 | Lookup DTO cho combo; không trả entity                        |
-| `PriceListService`                          | Header/revision/item; `GetFreightAsync`                       |
+| `PriceListService`                          | Header/revision/item; biến động theo thời điểm; `GetFreightAsync` |
 | `PartnerRateService`                        | Giá mua theo đối tác × tuyến × loại xe × hiệu lực             |
 | `PartnerSettlementService`                  | Lập/gửi duyệt/chốt/hủy quyết toán nhà xe                      |
 | `TransportExceptionService`                 | Sự cố có mã, maker–checker, áp/hoàn thu–chi vào lệnh           |

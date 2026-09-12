@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Hma.Desktop.Wpf.Presentation.Features.Pricing.Models;
+using Hma.Domain.Enums;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Pricing.ViewModels;
 
@@ -25,12 +26,17 @@ public partial class PriceListWorkspaceViewModel(
     [ObservableProperty] private int? selectedVehicleTypeId;
     [ObservableProperty] private decimal unitPrice;
     [ObservableProperty] private decimal surcharge;
+    [ObservableProperty] private PriceListFluctuationSummary? selectedFluctuation;
+    [ObservableProperty] private PriceListFluctuationEditorModel fluctuationEditor = new();
     public ObservableCollection<PriceListSummary> Items { get; } = [];
     public ObservableCollection<RouteOption> Routes { get; } = [];
     public ObservableCollection<LocationOption> Locations { get; } = [];
     public ObservableCollection<CustomerSummary> Customers { get; } = [];
     public ObservableCollection<VehicleTypeOption> VehicleTypes { get; } = [];
     public ObservableCollection<PriceListItemSummary> RevisionItems { get; } = [];
+    public ObservableCollection<PriceListFluctuationSummary> Fluctuations { get; } = [];
+    public IReadOnlyList<PriceFluctuationType> FluctuationTypes { get; } =
+        Enum.GetValues<PriceFluctuationType>();
     private int? _revisionId;
     private byte[] _versionToken = [];
 
@@ -54,6 +60,10 @@ public partial class PriceListWorkspaceViewModel(
                                  && !Editor.IsLocked
                                  && SelectedItem is not null;
     public bool NeedsSavedHeader => IsEditing && Editor.Id == 0;
+    public bool CanManageFluctuations => user.IsManager && CanUpdate && Editor.Id != 0 && Editor.IsLocked;
+    public bool CanDeleteFluctuation =>
+        user.IsManager && CanDelete && Editor.IsLocked && SelectedFluctuation is not null;
+    public bool IsFluctuationReadOnly => !CanManageFluctuations;
 
     public override async Task LoadAsync()
     {
@@ -79,6 +89,9 @@ public partial class PriceListWorkspaceViewModel(
         Selected = null;
         Editor = new PriceListEditorModel { EffectiveFrom = DateTime.Today };
         RevisionItems.Clear();
+        Fluctuations.Clear();
+        FluctuationEditor = new PriceListFluctuationEditorModel();
+        SelectedFluctuation = null;
         _revisionId = null;
         _versionToken = [];
         NotifyActions();
@@ -103,6 +116,10 @@ public partial class PriceListWorkspaceViewModel(
         _revisionId = full.CurrentRevisionId;
         RevisionItems.Clear();
         foreach (var i in full.Items) RevisionItems.Add(i);
+        Fluctuations.Clear();
+        foreach (var fluctuation in full.Fluctuations) Fluctuations.Add(fluctuation);
+        SelectedFluctuation = null;
+        FluctuationEditor = PriceListFluctuationEditorModel.Create(Editor.Id);
         OnPropertyChanged(nameof(Editor));
         NotifyActions();
         if (!IsBrowsing)
@@ -157,6 +174,36 @@ public partial class PriceListWorkspaceViewModel(
         }, "Đã khóa bảng giá.");
     }
 
+    [RelayCommand]
+    private void NewFluctuation()
+    {
+        if (!CanManageFluctuations) return;
+        SelectedFluctuation = null;
+        FluctuationEditor = PriceListFluctuationEditorModel.Create(Editor.Id);
+    }
+
+    [RelayCommand]
+    private async Task SaveFluctuation()
+    {
+        if (!CanManageFluctuations) return;
+        await RunAsync(async () =>
+        {
+            await prices.SaveFluctuationAsync(FluctuationEditor.ToCommand());
+            await OpenAsync(Editor.Id);
+        }, "Đã lưu biến động giá.");
+    }
+
+    [RelayCommand]
+    private async Task DeleteFluctuation()
+    {
+        if (!CanDeleteFluctuation || SelectedFluctuation is null || !ConfirmDelete()) return;
+        await RunAsync(async () =>
+        {
+            await prices.DeleteFluctuationAsync(SelectedFluctuation.Id);
+            await OpenAsync(Editor.Id);
+        }, "Đã xóa biến động giá.");
+    }
+
     partial void OnSelectedRouteIdChanged(int? value)
     {
         if (value is not null)
@@ -173,6 +220,12 @@ public partial class PriceListWorkspaceViewModel(
 
     partial void OnSelectedVehicleTypeIdChanged(int? value) => OnPropertyChanged(nameof(CanAddRate));
     partial void OnSelectedItemChanged(PriceListItemSummary? value) => OnPropertyChanged(nameof(CanDeleteRate));
+    partial void OnSelectedFluctuationChanged(PriceListFluctuationSummary? value)
+    {
+        if (value is not null)
+            FluctuationEditor = PriceListFluctuationEditorModel.From(value);
+        OnPropertyChanged(nameof(CanDeleteFluctuation));
+    }
     partial void OnEditorChanged(PriceListEditorModel value) => NotifyActions();
 
     protected override void OnWorkspaceModeChanged() => NotifyActions();
@@ -185,5 +238,8 @@ public partial class PriceListWorkspaceViewModel(
         OnPropertyChanged(nameof(CanAddRate));
         OnPropertyChanged(nameof(CanDeleteRate));
         OnPropertyChanged(nameof(NeedsSavedHeader));
+        OnPropertyChanged(nameof(CanManageFluctuations));
+        OnPropertyChanged(nameof(CanDeleteFluctuation));
+        OnPropertyChanged(nameof(IsFluctuationReadOnly));
     }
 }

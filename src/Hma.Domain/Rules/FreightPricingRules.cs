@@ -13,6 +13,7 @@ public static class FreightPricingRules
         if (matchesQuote)
         {
             order.PriceListItemId = quote!.PriceListItemId;
+            order.PriceListFluctuationId = quote.PriceListFluctuationId;
             order.PriceSourceSnapshot = quote.SourceLabel;
             order.IsFreightManual = false;
             order.FreightOverrideReason = null;
@@ -23,6 +24,7 @@ public static class FreightPricingRules
             throw new InvalidOperationException("Cần nhập lý do khi dùng cước thủ công hoặc khác bảng giá.");
 
         order.PriceListItemId = quote?.PriceListItemId;
+        order.PriceListFluctuationId = quote?.PriceListFluctuationId;
         order.PriceSourceSnapshot = quote?.SourceLabel;
         order.IsFreightManual = true;
         order.FreightOverrideReason = order.FreightOverrideReason.Trim();

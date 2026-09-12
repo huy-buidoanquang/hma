@@ -1,7 +1,8 @@
 <UserControl x:Class="Hma.Desktop.Wpf.Presentation.Features.Pricing.Views.PriceListView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors">
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors"
+             xmlns:controls="clr-namespace:Hma.Desktop.Wpf.Controls">
     <Grid>
         <DockPanel Visibility="{Binding IsBrowsing, Converter={StaticResource BoolToVisibility}}" Margin="16">
             <TextBlock DockPanel.Dock="Top" Text="Bảng giá" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
@@ -43,8 +44,9 @@
                     Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
                 <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
             </Border>
-            <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True" IsEnabled="{Binding AreFieldsEnabled}">
+            <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True">
                 <StackPanel>
+                    <StackPanel IsEnabled="{Binding AreFieldsEnabled}">
                     <Border Style="{StaticResource EditorCard}" Margin="0,0,0,16">
                         <StackPanel>
                             <Grid Style="{StaticResource FormRow}">
@@ -86,17 +88,6 @@
                                 </Grid.ColumnDefinitions>
                                 <Label Style="{StaticResource FormLabel}" Content="Hiệu lực đến"/>
                                 <DatePicker Grid.Column="1" Margin="0" SelectedDate="{Binding Editor.EffectiveTo}" IsEnabled="{Binding AreFieldsEnabled}"/>
-                            </Grid>
-                            <Grid Style="{StaticResource FormRow}">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Label Style="{StaticResource FormLabel}" Content="Biến động giá"/>
-                                <CheckBox Grid.Column="1" Margin="0" VerticalAlignment="Center"
-                                          IsChecked="{Binding Editor.HasPriceFluctuation}"
-                                          Content="Bảng có biến động giá"
-                                          IsEnabled="{Binding AreFieldsEnabled}"/>
                             </Grid>
                             <Grid Style="{StaticResource FormRow}">
                                 <Grid.ColumnDefinitions>
@@ -147,6 +138,100 @@
                             <DataGridTextColumn Header="Phụ phí" Binding="{Binding Surcharge, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                    </StackPanel>
+
+                    <TextBlock Text="Biến động giá theo thời điểm"
+                               Style="{StaticResource BodyText}"
+                               FontWeight="SemiBold"
+                               Margin="0,20,0,4"/>
+                    <TextBlock Text="Khóa bảng giá trước khi khai báo biến động. Chỉ quản lý được thay đổi các khoảng hiệu lực."
+                               Foreground="{DynamicResource InkSecondaryBrush}"
+                               Margin="0,0,0,12"
+                               Visibility="{Binding Editor.IsLocked, Converter={StaticResource InverseBoolToVisibility}}"/>
+                    <Border Style="{StaticResource EditorCard}"
+                            Visibility="{Binding Editor.IsLocked, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <WrapPanel Margin="0,0,0,8">
+                                <StackPanel Style="{StaticResource FilterCluster}">
+                                    <Label Style="{StaticResource FilterLabel}" Content="Cách tính"/>
+                                    <ComboBox Width="150"
+                                              ItemsSource="{Binding FluctuationTypes}"
+                                              SelectedItem="{Binding FluctuationEditor.Type}"
+                                              IsEnabled="{Binding CanManageFluctuations}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Converter={StaticResource BusinessEnumLabel}}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource FilterCluster}">
+                                    <Label Style="{StaticResource FilterLabel}" Content="Mức tăng / giảm"/>
+                                    <controls:SignedAdjustmentInput Width="220"
+                                                                    Value="{Binding FluctuationEditor.Value, Mode=TwoWay}"
+                                                                    Type="{Binding FluctuationEditor.Type}"
+                                                                    IsReadOnly="{Binding IsFluctuationReadOnly}"/>
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource FilterCluster}">
+                                    <Label Style="{StaticResource FilterLabel}" Content="Từ ngày"/>
+                                    <DatePicker Width="140"
+                                                SelectedDate="{Binding FluctuationEditor.EffectiveFrom}"
+                                                IsEnabled="{Binding CanManageFluctuations}"/>
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource FilterCluster}">
+                                    <Label Style="{StaticResource FilterLabel}" Content="Đến ngày"/>
+                                    <DatePicker Width="140"
+                                                SelectedDate="{Binding FluctuationEditor.EffectiveTo}"
+                                                IsEnabled="{Binding CanManageFluctuations}"/>
+                                </StackPanel>
+                            </WrapPanel>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Style="{StaticResource FormLabel}" Content="Lý do biến động"/>
+                                <TextBox Grid.Column="1"
+                                         Margin="0"
+                                         Text="{Binding FluctuationEditor.Reason, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsFluctuationReadOnly}"/>
+                            </Grid>
+                            <WrapPanel Style="{StaticResource ActionBar}">
+                                <Button Content="Biến động mới"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding NewFluctuationCommand}"
+                                        IsEnabled="{Binding CanManageFluctuations}"/>
+                                <Button Content="Lưu biến động"
+                                        Command="{Binding SaveFluctuationCommand}"
+                                        IsEnabled="{Binding CanManageFluctuations}"/>
+                                <Button Content="Xóa biến động"
+                                        Style="{StaticResource DestructiveButton}"
+                                        Command="{Binding DeleteFluctuationCommand}"
+                                        IsEnabled="{Binding CanDeleteFluctuation}"/>
+                            </WrapPanel>
+                            <DataGrid ItemsSource="{Binding Fluctuations}"
+                                      SelectedItem="{Binding SelectedFluctuation}"
+                                      MinHeight="150">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Cách tính"
+                                                        Binding="{Binding Type, Converter={StaticResource BusinessEnumLabel}}"
+                                                        Width="110"/>
+                                    <DataGridTextColumn Header="Mức biến động"
+                                                        Binding="{Binding ValueLabel}"
+                                                        Width="120"
+                                                        ElementStyle="{StaticResource TabularMoneyCell}"/>
+                                    <DataGridTextColumn Header="Từ ngày"
+                                                        Binding="{Binding EffectiveFrom, StringFormat=dd/MM/yyyy}"
+                                                        Width="90"/>
+                                    <DataGridTextColumn Header="Đến ngày"
+                                                        Binding="{Binding EffectiveTo, StringFormat=dd/MM/yyyy}"
+                                                        Width="90"/>
+                                    <DataGridTextColumn Header="Lý do" Binding="{Binding Reason}" Width="*"/>
+                                    <DataGridTextColumn Header="Người tạo" Binding="{Binding CreatedByDisplayName}" Width="130"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </DockPanel>

@@ -50,6 +50,7 @@ public sealed partial class DispatchOrderEditorModel : ObservableObject
     [ObservableProperty] private decimal approvedExceptionRevenue;
     [ObservableProperty] private decimal totalAmount;
     [ObservableProperty] private int? priceListItemId;
+    [ObservableProperty] private int? priceListFluctuationId;
     [ObservableProperty] private string? priceListCode;
     [ObservableProperty] private string? priceSourceSnapshot;
     [ObservableProperty] private bool isFreightManual;
@@ -127,6 +128,7 @@ public sealed partial class DispatchOrderEditorModel : ObservableObject
             ApprovedExceptionRevenue = header.ApprovedExceptionRevenue,
             TotalAmount = header.TotalAmount,
             PriceListItemId = item.PriceListItemId,
+            PriceListFluctuationId = item.PriceListFluctuationId,
             PriceListCode = item.PriceListCode,
             PriceSourceSnapshot = item.PriceSourceSnapshot,
             IsFreightManual = item.IsFreightManual,
@@ -190,7 +192,7 @@ public sealed partial class DispatchOrderEditorModel : ObservableObject
             SenderCustomer, SenderName, SenderPhone, SenderAddress, SenderTaxCode,
             ReceiverCustomerId, ReceiverCustomer, ReceiverName, ReceiverPhone, ReceiverAddress,
             ReceiverTaxCode, PickupAddress, DeliveryAddress, VehicleTypeId, EmployeeId,
-            PaymentMethodId, PriceListItemId, PriceSourceSnapshot, IsFreightManual,
+            PaymentMethodId, PriceListItemId, PriceListFluctuationId, PriceSourceSnapshot, IsFreightManual,
             FreightOverrideReason, PartnerId, PartnerNameSnapshot, PartnerRateId, BuyUnitPrice,
             BuySurcharge, BuyExtraCost, ApprovedExceptionCost, BuyTotal, PartnerOperatingFeePercent,
             PartnerPayableAmount, GrossMargin, BuyRateSourceSnapshot, IsBuyManual, BuyOverrideReason,
@@ -209,6 +211,7 @@ public sealed partial class DispatchOrderEditorModel : ObservableObject
         ApprovedExceptionRevenue = item.Header.ApprovedExceptionRevenue;
         TotalAmount = item.Header.TotalAmount;
         PriceListItemId = item.PriceListItemId;
+        PriceListFluctuationId = item.PriceListFluctuationId;
         PriceListCode = item.PriceListCode;
         PriceSourceSnapshot = item.PriceSourceSnapshot;
         IsFreightManual = item.IsFreightManual;

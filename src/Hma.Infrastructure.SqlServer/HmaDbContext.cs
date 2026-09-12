@@ -27,6 +27,7 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<PriceListRevision> PriceListRevisions => Set<PriceListRevision>();
     public DbSet<PriceListItem> PriceListItems => Set<PriceListItem>();
+    public DbSet<PriceListFluctuation> PriceListFluctuations => Set<PriceListFluctuation>();
     public DbSet<PartnerRate> PartnerRates => Set<PartnerRate>();
     public DbSet<PartnerSettlement> PartnerSettlements => Set<PartnerSettlement>();
     public DbSet<PartnerSettlementLine> PartnerSettlementLines => Set<PartnerSettlementLine>();
@@ -70,6 +71,7 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
     IQueryable<PriceList> IHmaDbContext.PriceLists => PriceLists;
     IQueryable<PriceListRevision> IHmaDbContext.PriceListRevisions => PriceListRevisions;
     IQueryable<PriceListItem> IHmaDbContext.PriceListItems => PriceListItems;
+    IQueryable<PriceListFluctuation> IHmaDbContext.PriceListFluctuations => PriceListFluctuations;
     IQueryable<PartnerRate> IHmaDbContext.PartnerRates => PartnerRates;
     IQueryable<PartnerSettlement> IHmaDbContext.PartnerSettlements => PartnerSettlements;
     IQueryable<PartnerSettlementLine> IHmaDbContext.PartnerSettlementLines => PartnerSettlementLines;
@@ -255,6 +257,7 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<PriceList>().ToTable("PriceList");
         modelBuilder.Entity<PriceListRevision>().ToTable("PriceListRevision");
         modelBuilder.Entity<PriceListItem>().ToTable("PriceListItem");
+        modelBuilder.Entity<PriceListFluctuation>().ToTable("PriceListFluctuation");
         modelBuilder.Entity<PartnerRate>().ToTable("PartnerRate");
         modelBuilder.Entity<PartnerSettlement>().ToTable("PartnerSettlement");
         modelBuilder.Entity<PartnerSettlementLine>().ToTable("PartnerSettlementLine");
@@ -325,6 +328,9 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<CustomerAlias>().Property(x => x.Alias).HasMaxLength(100);
         modelBuilder.Entity<VehicleAlias>().Property(x => x.Alias).HasMaxLength(100);
         modelBuilder.Entity<PriceList>().Property(x => x.HasPriceFluctuation).HasDefaultValue(false);
+        modelBuilder.Entity<PriceListFluctuation>().Property(x => x.Reason).HasMaxLength(500);
+        modelBuilder.Entity<PriceListFluctuation>().Property(x => x.EffectiveFrom).HasColumnType("date");
+        modelBuilder.Entity<PriceListFluctuation>().Property(x => x.EffectiveTo).HasColumnType("date");
         modelBuilder.Entity<LocationAlias>().HasIndex(x => x.Alias).IsUnique();
         modelBuilder.Entity<RouteAlias>().HasIndex(x => x.Alias).IsUnique();
         modelBuilder.Entity<CustomerAlias>().HasIndex(x => x.Alias).IsUnique();
@@ -351,6 +357,9 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
             .HasIndex(x => new { x.PriceListRevisionId, x.DeliveryLocationId, x.VehicleTypeId })
             .IsUnique()
             .HasFilter("[RouteId] IS NULL AND [DeliveryLocationId] IS NOT NULL");
+        modelBuilder.Entity<PriceListFluctuation>()
+            .HasIndex(x => new { x.PriceListId, x.EffectiveFrom })
+            .IsUnique();
         modelBuilder.Entity<PartnerRate>()
             .HasIndex(x => new { x.PartnerId, x.RouteId, x.VehicleTypeId, x.EffectiveFrom })
             .IsUnique();
@@ -362,6 +371,7 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
 
         modelBuilder.Entity<DispatchOrder>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<PriceList>().Property(x => x.RowVersion).IsRowVersion();
+        modelBuilder.Entity<PriceListFluctuation>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<PartnerRate>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<PartnerSettlement>().Property(x => x.RowVersion).IsRowVersion();
         modelBuilder.Entity<TransportException>().Property(x => x.RowVersion).IsRowVersion();
@@ -373,6 +383,7 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<Vehicle>().Property(x => x.Tonnage).HasPrecision(9, 2);
         modelBuilder.Entity<PriceListItem>().Property(x => x.UnitPrice).HasPrecision(20, 2);
         modelBuilder.Entity<PriceListItem>().Property(x => x.Surcharge).HasPrecision(20, 2);
+        modelBuilder.Entity<PriceListFluctuation>().Property(x => x.Value).HasPrecision(20, 4);
         modelBuilder.Entity<PartnerRate>().Property(x => x.UnitPrice).HasPrecision(20, 2);
         modelBuilder.Entity<PartnerRate>().Property(x => x.Surcharge).HasPrecision(20, 2);
         foreach (var name in new[] { nameof(PartnerSettlement.GrossAmount),
@@ -438,6 +449,8 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.PriceListItem).WithMany().HasForeignKey(d => d.PriceListItemId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
+            .HasOne(d => d.PriceListFluctuation).WithMany().HasForeignKey(d => d.PriceListFluctuationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.Partner).WithMany().HasForeignKey(d => d.PartnerId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<DispatchOrder>()
             .HasOne(d => d.PartnerRate).WithMany().HasForeignKey(d => d.PartnerRateId).OnDelete(DeleteBehavior.Restrict);
@@ -447,6 +460,10 @@ public sealed class HmaDbContext(DbContextOptions<HmaDbContext> options) : DbCon
             .HasOne(i => i.Route).WithMany().HasForeignKey(i => i.RouteId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PriceListItem>()
             .HasOne(i => i.DeliveryLocation).WithMany().HasForeignKey(i => i.DeliveryLocationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PriceListFluctuation>()
+            .HasOne(x => x.PriceList).WithMany(x => x.Fluctuations).HasForeignKey(x => x.PriceListId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PriceListFluctuation>()
+            .HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PartnerRate>()
             .HasOne(x => x.Partner).WithMany().HasForeignKey(x => x.PartnerId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PartnerRate>()

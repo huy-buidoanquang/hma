@@ -46,6 +46,18 @@ public class PriceListMatchRulesTests
     }
 
     [Fact]
+    public void Pick_skips_unlocked_price_list()
+    {
+        var unlocked = Item(customerId: 10, fluctuation: false, created: AsOf, unit: 1_000_000);
+        unlocked.PriceListRevision!.PriceList!.IsLocked = false;
+        var locked = Item(customerId: null, fluctuation: false, created: AsOf, unit: 900_000);
+
+        var hit = PriceListMatchRules.Pick([unlocked, locked], customerId: 10, AsOf);
+
+        Assert.Same(locked, hit);
+    }
+
+    [Fact]
     public void Pick_newer_revision_wins_inside_same_tier()
     {
         var older = Item(customerId: 10, fluctuation: false, created: AsOf.AddDays(-2), unit: 1);
@@ -57,7 +69,7 @@ public class PriceListMatchRulesTests
     [Fact]
     public void IsEffective_includes_boundary_dates()
     {
-        var list = new PriceList { EffectiveFrom = AsOf, EffectiveTo = AsOf };
+        var list = new PriceList { EffectiveFrom = AsOf, EffectiveTo = AsOf, IsLocked = true };
         Assert.True(PriceListMatchRules.IsEffective(list, AsOf));
         Assert.False(PriceListMatchRules.IsEffective(list, AsOf.AddDays(1)));
         Assert.False(PriceListMatchRules.IsEffective(list, AsOf.AddDays(-1)));
@@ -82,7 +94,7 @@ public class PriceListMatchRulesTests
         var privQuote = PriceListMatchRules.ToQuote(privateItem);
         Assert.Equal("RIENG", privQuote.PriceListCode);
         Assert.Contains("Giá riêng KH001", privQuote.SourceLabel, StringComparison.Ordinal);
-        Assert.Contains("biến động", privQuote.SourceLabel, StringComparison.Ordinal);
+        Assert.Contains("bảng đặc biệt", privQuote.SourceLabel, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -113,6 +125,7 @@ public class PriceListMatchRulesTests
             Code = listCode,
             CustomerId = customerId,
             HasPriceFluctuation = fluctuation,
+            IsLocked = true,
             EffectiveFrom = from,
             EffectiveTo = to
         };

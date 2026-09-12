@@ -21,7 +21,7 @@ Physical UI layout: `Hma.Desktop.Wpf/Presentation/Features/<Feature>/{Views,View
 | `cities` | CityView (section Cấu hình) | Thành phố (địa chỉ khách). Nav Cấu hình nếu manager hoặc `Can(cities)` hoặc `Can(settings)` |
 | `locations` | LocationView (section Tuyến đường) | Điểm lấy/giao/qua |
 | `routes` | RouteView (section Tuyến đường) | Tuyến = dãy điểm có thứ tự (≥2). Hub **Tuyến đường** nếu manager hoặc `Can(locations)` / `Can(routes)` |
-| `price-lists` | PriceListView | Hiệu lực từ–đến; biến động giá; khóa + lý do; dòng giá tuyến × loại xe |
+| `price-lists` | PriceListView | Chỉ áp dụng sau khóa; dòng giá tuyến × loại xe; quản lý biến động ± theo %/số tiền và khoảng hiệu lực |
 | `dispatch-orders` | DispatchHubView → DispatchView | Find: số LDX, từ–đến, KH, biển, loại xe, điểm đi/đến (first/last stop), TT lệnh, TT đối soát, khoảng tiền. Chi tiết: người gửi/nhận (VL-), giờ lấy, người tạo, combo tuyến, auto cước, in 1 lệnh / ngày / tháng / theo khách, Excel danh sách cước. Nhập Excel: 6 tab theo sheet tải (1.25…10), sửa lưới, Check in-app, nhập subset đã chọn (`Create`) |
 | `dispatch-grid-edit` | DispatchGridEditView (section lệnh) | Sửa nhiều lệnh theo khách: combo tuyến, xe; không tra cước. Không đứng riêng trên main nav |
 | `lookup` | LookupView | Ô số lệnh hoặc biển số → lịch sử chuyến, mở lệnh (hub form + `OpenByIdAsync`) |

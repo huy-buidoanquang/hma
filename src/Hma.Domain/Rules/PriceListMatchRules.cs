@@ -7,6 +7,7 @@ public static class PriceListMatchRules
 {
     public static bool IsEffective(PriceList list, DateTime asOf)
     {
+        if (!list.IsLocked) return false;
         var day = asOf.Date;
         if (list.EffectiveFrom is { } from && from.Date > day) return false;
         if (list.EffectiveTo is { } to && to.Date < day) return false;
@@ -39,24 +40,35 @@ public static class PriceListMatchRules
                ?? Match(null, true);
     }
 
-    public static FreightQuote ToQuote(PriceListItem hit)
+    public static FreightQuote ToQuote(PriceListItem hit, PriceListFluctuation? fluctuation = null)
     {
         var list = hit.PriceListRevision?.PriceList;
         var kind = list?.CustomerId is null
             ? "Giá công bố"
             : $"Giá riêng {list.Customer?.Code ?? list.Code}";
         if (list?.HasPriceFluctuation == true)
-            kind += " · biến động";
+            kind += " · bảng đặc biệt";
         var route = hit.Route?.Name
                     ?? (hit.DeliveryLocation is null ? "" : $"đến {hit.DeliveryLocation.Name}");
         var vehicle = hit.VehicleType?.Name ?? "";
+        var fluctuationAmount = fluctuation is null
+            ? 0
+            : PriceFluctuationRules.CalculateAmount(hit.UnitPrice, fluctuation);
+        var fluctuationLabel = fluctuation is null
+            ? ""
+            : fluctuation.Type == Hma.Domain.Enums.PriceFluctuationType.Percentage
+                ? $" · biến động {fluctuation.Value:+0.####;-0.####}% ({fluctuationAmount:+#,##0.##;-#,##0.##})"
+                : $" · biến động {fluctuationAmount:+#,##0.##;-#,##0.##}";
         return new FreightQuote
         {
             PriceListItemId = hit.Id,
+            PriceListFluctuationId = fluctuation?.Id,
             PriceListCode = list?.Code ?? "",
-            UnitPrice = hit.UnitPrice,
+            BaseUnitPrice = hit.UnitPrice,
+            FluctuationAmount = fluctuationAmount,
+            UnitPrice = hit.UnitPrice + fluctuationAmount,
             Surcharge = hit.Surcharge,
-            SourceLabel = $"{kind} · {route} · {vehicle} · {hit.UnitPrice:N0}"
+            SourceLabel = $"{kind} · {route} · {vehicle} · gốc {hit.UnitPrice:N0}{fluctuationLabel} · cuối {hit.UnitPrice + fluctuationAmount:N0}"
         };
     }
 }

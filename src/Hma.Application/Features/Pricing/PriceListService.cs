@@ -30,10 +30,17 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current, TimeProvid
         if (list is null) return null;
 
         var revision = list.Revisions.OrderByDescending(r => r.CreatedAt).FirstOrDefault();
+        var fluctuations = await db.PriceListFluctuations.AsNoTracking()
+            .Include(x => x.CreatedByUser)
+            .Where(x => x.PriceListId == list.Id)
+            .OrderByDescending(x => x.EffectiveFrom)
+            .ThenByDescending(x => x.CreatedAt)
+            .ToListAsync(ct);
         return new PriceListDetails(
             ToSummary(list),
             revision?.Id,
-            revision?.Items.Select(ToSummary).ToList() ?? []);
+            revision?.Items.Select(ToSummary).ToList() ?? [],
+            fluctuations.Select(x => ToSummary(x)).ToList());
     }
 
     public async Task<PriceListSummary> SaveAsync(SavePriceListCommand command, CancellationToken ct = default)
@@ -162,6 +169,86 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current, TimeProvid
         await ConcurrencyConflict.SaveAsync(db, ct);
     }
 
+    public async Task<PriceListFluctuationSummary> SaveFluctuationAsync(
+        SavePriceListFluctuationCommand command,
+        CancellationToken ct = default)
+    {
+        RequireManagerForFluctuation();
+        PermissionGuard.Require(current, ScreenKeys.PriceLists, PermissionAction.Update);
+        var persisted = command.Id == 0
+            ? null
+            : await db.PriceListFluctuations.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == command.Id, ct)
+              ?? throw new InvalidOperationException("Không tìm thấy biến động giá.");
+
+        if (persisted is not null && persisted.PriceListId != command.PriceListId)
+            throw new InvalidOperationException("Biến động giá không thuộc bảng giá đang mở.");
+
+        var fluctuation = new PriceListFluctuation
+        {
+            Id = command.Id,
+            PriceListId = command.PriceListId,
+            Type = command.Type,
+            Value = command.Value,
+            EffectiveFrom = command.EffectiveFrom.Date,
+            EffectiveTo = command.EffectiveTo?.Date,
+            Reason = command.Reason.Trim(),
+            CreatedAt = persisted?.CreatedAt ?? timeProvider.GetLocalNow().DateTime,
+            CreatedByUserId = persisted?.CreatedByUserId ?? current.UserId,
+            LegacyId = persisted?.LegacyId,
+            RowVersion = command.VersionToken.ToArray(),
+        };
+        PriceFluctuationRules.EnsureCanSave(fluctuation);
+
+        var priceList = await db.PriceLists.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == command.PriceListId, ct)
+            ?? throw new InvalidOperationException("Không tìm thấy bảng giá.");
+        PriceFluctuationRules.EnsureCanManage(priceList);
+
+        var existingPeriods = await db.PriceListFluctuations.AsNoTracking()
+            .Where(x => x.PriceListId == command.PriceListId && x.Id != command.Id)
+            .Select(x => new { x.EffectiveFrom, x.EffectiveTo })
+            .ToListAsync(ct);
+        if (existingPeriods.Any(x => PriceFluctuationRules.PeriodsOverlap(
+                x.EffectiveFrom,
+                x.EffectiveTo,
+                fluctuation.EffectiveFrom,
+                fluctuation.EffectiveTo)))
+            throw new InvalidOperationException("Khoảng hiệu lực biến động giá bị trùng với một khoảng hiện có.");
+
+        await EnsureFluctuationKeepsCurrentPricesNonNegativeAsync(fluctuation, ct);
+
+        if (fluctuation.Id == 0)
+        {
+            db.Add(fluctuation);
+        }
+        else
+        {
+            db.Update(fluctuation);
+            db.ApplyOriginalRowVersion(fluctuation, command.VersionToken);
+        }
+
+        await ConcurrencyConflict.SaveAsync(db, ct);
+        var saved = await db.PriceListFluctuations.AsNoTracking()
+            .Include(x => x.CreatedByUser)
+            .FirstAsync(x => x.Id == fluctuation.Id, ct);
+        return ToSummary(saved);
+    }
+
+    public async Task DeleteFluctuationAsync(int id, CancellationToken ct = default)
+    {
+        RequireManagerForFluctuation();
+        PermissionGuard.Require(current, ScreenKeys.PriceLists, PermissionAction.Delete);
+        var fluctuation = await db.FindAsync<PriceListFluctuation>(id, ct)
+            ?? throw new InvalidOperationException("Không tìm thấy biến động giá.");
+        var priceList = await db.PriceLists.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == fluctuation.PriceListId, ct)
+            ?? throw new InvalidOperationException("Không tìm thấy bảng giá.");
+        PriceFluctuationRules.EnsureCanManage(priceList);
+        db.Remove(fluctuation);
+        await ReferentialConflict.SaveAsync(db, fluctuation, ct);
+    }
+
     public async Task<FreightQuote?> GetFreightAsync(
         int? customerId,
         int? routeId,
@@ -189,7 +276,43 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current, TimeProvid
             .ToListAsync(ct);
 
         var hit = PriceListMatchRules.Pick(items, customerId, asOf, routeId);
-        return hit is null ? null : PriceListMatchRules.ToQuote(hit);
+        if (hit is null) return null;
+
+        var priceListId = hit.PriceListRevision?.PriceListId;
+        var fluctuations = priceListId is null
+            ? []
+            : await db.PriceListFluctuations.AsNoTracking()
+                .Where(x => x.PriceListId == priceListId)
+                .ToListAsync(ct);
+        var fluctuation = PriceFluctuationRules.Pick(fluctuations, asOf);
+        return PriceListMatchRules.ToQuote(hit, fluctuation);
+    }
+
+    private async Task EnsureFluctuationKeepsCurrentPricesNonNegativeAsync(
+        PriceListFluctuation fluctuation,
+        CancellationToken ct)
+    {
+        if (fluctuation.Value >= 0) return;
+
+        var currentRevisionId = await db.PriceListRevisions.AsNoTracking()
+            .Where(x => x.PriceListId == fluctuation.PriceListId)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => (int?)x.Id)
+            .FirstOrDefaultAsync(ct);
+        if (currentRevisionId is null) return;
+
+        var unitPrices = await db.PriceListItems.AsNoTracking()
+            .Where(x => x.PriceListRevisionId == currentRevisionId.Value)
+            .Select(x => x.UnitPrice)
+            .ToListAsync(ct);
+        foreach (var unitPrice in unitPrices)
+            PriceFluctuationRules.CalculateAmount(unitPrice, fluctuation);
+    }
+
+    private void RequireManagerForFluctuation()
+    {
+        if (!current.IsManager)
+            throw new InvalidOperationException("Chỉ quản lý được điều chỉnh biến động giá.");
     }
 
     private static PriceListSummary ToSummary(PriceList list) => new(
@@ -233,4 +356,17 @@ public class PriceListService(IHmaDbContext db, ICurrentUser current, TimeProvid
             item.VehicleType.Tonnage),
         item.UnitPrice,
         item.Surcharge);
+
+    private static PriceListFluctuationSummary ToSummary(PriceListFluctuation fluctuation) => new(
+        fluctuation.Id,
+        fluctuation.PriceListId,
+        fluctuation.Type,
+        fluctuation.Value,
+        fluctuation.EffectiveFrom,
+        fluctuation.EffectiveTo,
+        fluctuation.Reason,
+        fluctuation.CreatedAt,
+        fluctuation.CreatedByUserId,
+        fluctuation.CreatedByUser?.DisplayName,
+        fluctuation.RowVersion.ToArray());
 }

@@ -7,6 +7,7 @@ using Hma.Desktop.Wpf.Presentation.Features.Accounting.Models;
 using Hma.Desktop.Wpf.Presentation.Features.Catalogs.Models;
 using Hma.Desktop.Wpf.Presentation.Features.Pricing.Models;
 using Hma.Domain.Entities;
+using Hma.Domain.Enums;
 
 namespace Hma.Desktop.Wpf.Tests;
 
@@ -53,6 +54,7 @@ public class PresentationModelMappingTests
             UnitPrice = 1_000_000,
             Surcharge = 100_000,
             TotalAmount = 1_100_000,
+            PriceListFluctuationId = 21,
             RowVersion = [4, 5, 6],
             Lines = [new DispatchOrderLine { LineNumber = 1, GoodsName = "Thép" }],
         };
@@ -64,9 +66,35 @@ public class PresentationModelMappingTests
         Assert.Equal(entity.SenderName, mapped.SenderName);
         Assert.Equal(entity.ReceiverName, mapped.ReceiverName);
         Assert.Equal(entity.TotalAmount, mapped.Header.TotalAmount);
+        Assert.Equal(entity.PriceListFluctuationId, mapped.PriceListFluctuationId);
         Assert.Equal("Thép", Assert.Single(mapped.Lines).GoodsName);
         Assert.Equal(entity.RowVersion, mapped.VersionToken);
         Assert.NotSame(entity.RowVersion, mapped.VersionToken);
+    }
+
+    [Fact]
+    public void Price_fluctuation_editor_round_trips_signed_value_and_concurrency_token()
+    {
+        var summary = new PriceListFluctuationSummary(
+            12,
+            7,
+            PriceFluctuationType.Percentage,
+            -10,
+            new DateTime(2026, 9, 12),
+            null,
+            "Giá dầu giảm",
+            new DateTime(2026, 9, 11),
+            3,
+            "Quản lý",
+            [1, 2, 3]);
+
+        var command = PriceListFluctuationEditorModel.From(summary).ToCommand();
+
+        Assert.Equal(summary.Id, command.Id);
+        Assert.Equal(-10, command.Value);
+        Assert.Equal(PriceFluctuationType.Percentage, command.Type);
+        Assert.Equal(new byte[] { 1, 2, 3 }, command.VersionToken);
+        Assert.NotSame(summary.VersionToken, command.VersionToken);
     }
 
     [Fact]
@@ -107,7 +135,7 @@ public class PresentationModelMappingTests
             entity.SenderTaxCode, entity.ReceiverCustomerId, null, entity.ReceiverName,
             entity.ReceiverPhone, entity.ReceiverAddress, entity.ReceiverTaxCode, entity.PickupAddress,
             entity.DeliveryAddress, entity.VehicleTypeId, entity.EmployeeId, entity.PaymentMethodId,
-            entity.PriceListItemId, entity.PriceSourceSnapshot, entity.IsFreightManual,
+            entity.PriceListItemId, entity.PriceListFluctuationId, entity.PriceSourceSnapshot, entity.IsFreightManual,
             entity.FreightOverrideReason, entity.PartnerId, entity.PartnerNameSnapshot, entity.PartnerRateId,
             entity.BuyUnitPrice, entity.BuySurcharge, entity.BuyExtraCost, entity.ApprovedExceptionCost,
             entity.BuyTotal, entity.PartnerOperatingFeePercent, entity.PartnerPayableAmount,

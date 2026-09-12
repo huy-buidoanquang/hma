@@ -24,6 +24,7 @@ public interface IHmaDbContext
     IQueryable<PriceList> PriceLists { get; }
     IQueryable<PriceListRevision> PriceListRevisions { get; }
     IQueryable<PriceListItem> PriceListItems { get; }
+    IQueryable<PriceListFluctuation> PriceListFluctuations { get; }
     IQueryable<PartnerRate> PartnerRates { get; }
     IQueryable<PartnerSettlement> PartnerSettlements { get; }
     IQueryable<PartnerSettlementLine> PartnerSettlementLines { get; }

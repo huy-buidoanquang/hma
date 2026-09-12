@@ -1,6 +1,6 @@
 # Database — Hà Minh Anh (`Hma`)
 
-> Cập nhật schema 11/09/2026: bổ sung `PartnerRate`, `PartnerSettlement`, `PartnerSettlementLine`, `TransportExceptionCode`, `TransportException`; snapshot giá bán/giá mua và hai tổng `ApprovedExceptionRevenue` / `ApprovedExceptionCost` trên `DispatchOrder`. Nguồn schema cutover vẫn là `database/001_schema.sql`; production nâng cấp bằng EF migrations.
+> Cập nhật schema 12/09/2026: bổ sung `PriceListFluctuation` và nguồn biến động trên `DispatchOrder`; chỉ bảng giá đã khóa mới được áp dụng. Nguồn schema cutover vẫn là `database/001_schema.sql`; production nâng cấp bằng EF migrations.
 
 Thiết kế vật lý của database **Hma** (SQL Server 2016+). Khớp với `database/001_schema.sql` và entity trong `Hma.Domain`. Mapping DHXE → Hma: [`schema-mapping.md`](schema-mapping.md). Cutover: [`etl-cutover.md`](etl-cutover.md). Kiến trúc ứng dụng: [`Architecture.md`](Architecture.md).
 
@@ -21,7 +21,7 @@ Thiết kế vật lý của database **Hma** (SQL Server 2016+). Khớp với `
 | Enum | `INT` trên bảng; giá trị C# trong mục 5. |
 | ETL | Cột `LegacyId INT NULL` trên hầu hết bảng nghiệp vụ. **Không** dùng tên cũ (`nil`, `kh_ud`) làm identifier production. |
 | File chứng từ | Metadata trong `DispatchDocument`; `StoredPath` là **relative storage key**. Bytes qua `IFileStorage` (Phase 1: đĩa local/share). |
-| Optimistic concurrency | `ROWVERSION` trên `DispatchOrder`, `PriceList`, `FreightStatement`, `DocumentSequence`. |
+| Optimistic concurrency | `ROWVERSION` trên `DispatchOrder`, `PriceList`, `PriceListFluctuation`, `PartnerRate`, các chứng từ workflow và `DocumentSequence`. |
 | Không có | View, trigger, stored procedure nghiệp vụ, Plexis `ui_*`. Logic nằm ở Application. |
 | Lazy loading | Tắt. Query `Include` + `Take`. |
 
@@ -36,7 +36,7 @@ Dev app: `HmaDatabaseInitializer.MigrateAndSeedAsync` — `Database.Migrate`. DB
 | Nhóm | Bảng | Phase 1 |
 |------|------|---------|
 | Catalog | `City`, `Location`, `Route`, `RouteStop`, `LocationAlias`, `RouteAlias`, `CustomerAlias`, `VehicleAlias`, `Department`, `JobTitle`, `VehicleType`, `PaymentMethod`, `Employee`, `Partner`, `Driver`, `Vehicle`, `Customer` | Dùng (`PaymentMethod` chưa có màn) |
-| Giá | `PriceList`, `PriceListRevision`, `PriceListItem` | Dùng |
+| Giá | `PriceList`, `PriceListRevision`, `PriceListItem`, `PriceListFluctuation`, `PartnerRate` | Dùng |
 | Lệnh | `DispatchOrder`, `DispatchOrderStop`, `DispatchOrderLine`, `DispatchDocument` | Dùng |
 | Bảng kê | `FreightStatement`, `FreightStatementLine` | Dùng |
 | Audit / hệ thống | `ChangeLog`, `DocumentSequence`, `SystemParameter`, `Company` | Dùng |
@@ -68,6 +68,8 @@ erDiagram
 
     Customer ||--o{ PriceList : optional
     PriceList ||--|{ PriceListRevision : revisions
+    PriceList ||--o{ PriceListFluctuation : fluctuations
+    AppUser ||--o{ PriceListFluctuation : created_by
     PriceListRevision ||--|{ PriceListItem : items
     Route ||--|{ PriceListItem : route
     VehicleType ||--|{ PriceListItem : type
@@ -84,6 +86,7 @@ erDiagram
     Employee ||--o{ DispatchOrder : staff
     AppUser ||--o{ DispatchOrder : created_by
     AppUser ||--o{ DispatchOrder : reconciled_by
+    PriceListFluctuation ||--o{ DispatchOrder : applied_fluctuation
 
     DispatchOrder ||--o{ DispatchOrderLine : lines
     DispatchOrder ||--o{ DispatchDocument : files
@@ -364,7 +367,7 @@ Item = tuyến catalog × loại xe × đơn giá + phụ phí.
 | CustomerId | INT NULL → Customer | NULL = bảng chung |
 | EffectiveFrom / EffectiveTo | DATE NULL | Lọc cước theo `DateTime.Today` |
 | CreatedAt | DATETIME2 | |
-| HasPriceFluctuation | BIT NOT NULL default 0 | Cả bảng; bậc chọn cước |
+| HasPriceFluctuation | BIT NOT NULL default 0 | Cờ `dacbiet` legacy; chỉ dùng bậc chọn cước |
 | IsLocked | BIT NOT NULL default 0 | |
 | LockedAt | DATETIME2 | |
 | LockReason | NVARCHAR(255) | |
@@ -397,6 +400,22 @@ Không có `ON DELETE CASCADE` từ header → revision trong script (default NO
 | LegacyId | INT | |
 
 SQL có hai filtered unique index: `(Revision, Route, VehicleType)` khi có tuyến và `(Revision, DeliveryLocation, VehicleType)` khi dùng fallback điểm đến. Domain bắt buộc đúng một trong `RouteId` / `DeliveryLocationId`. Tra cước: xem Architecture §5.2.
+
+### `PriceListFluctuation`
+
+| Cột | Kiểu | Ghi chú |
+|-----|------|---------|
+| Id | INT IDENTITY PK | |
+| PriceListId | INT NOT NULL → PriceList | Chỉ quản lý sau khi bảng giá khóa |
+| Type | INT NOT NULL | `Percentage=0`, `FixedAmount=1` |
+| Value | DECIMAL(20,4) NOT NULL | Có dấu: dương = tăng, âm = giảm |
+| EffectiveFrom / EffectiveTo | DATE / DATE NULL | Khoảng ngày inclusive; không chồng lấn trong một bảng |
+| Reason | NVARCHAR(500) NOT NULL | Lý do môi trường/nghiệp vụ |
+| CreatedAt / CreatedByUserId | DATETIME2 / INT NULL | Dấu vết người tạo |
+| RowVersion | ROWVERSION NOT NULL | Optimistic concurrency |
+| LegacyId | INT NULL | Không có nguồn ETL hiện tại |
+
+Phần trăm tính trên `PriceListItem.UnitPrice`; số tiền cố định tính cho mỗi lệnh. Kết quả được làm tròn 2 chữ số thập phân và không được làm đơn giá cuối âm. `DispatchOrder.PriceListFluctuationId` dùng FK `Restrict`, nên không thể xóa biến động đã được lệnh sử dụng.
 
 ---
 
@@ -435,7 +454,8 @@ Một lệnh = dữ liệu gốc cho chuyến, cước, chứng từ, đối so�
 | ExtraCost | DECIMAL(20,2) NOT NULL default 0 | `thukhac` |
 | ApprovedExceptionRevenue | DECIMAL(20,2) NOT NULL default 0 | Tổng khoản thu exception đã duyệt; chỉ `TransportExceptionService` cập nhật |
 | TotalAmount | DECIMAL(20,2) NOT NULL default 0 | Unit + Surcharge + ExtraCost + ApprovedExceptionRevenue |
-| PriceListItemId / PriceSourceSnapshot | INT NULL / NVARCHAR(500) | Nguồn giá bán lịch sử |
+| PriceListItemId / PriceListFluctuationId | INT NULL / INT NULL | Dòng giá gốc và biến động đã áp dụng |
+| PriceSourceSnapshot | NVARCHAR(500) | Nguồn giá, mức biến động và giá cuối lịch sử |
 | IsFreightManual / FreightOverrideReason | BIT / NVARCHAR(500) | Bắt buộc lý do khi không khớp giá bán |
 | PartnerRateId / BuyRateSourceSnapshot | INT NULL / NVARCHAR(500) | Nguồn giá mua lịch sử |
 | BuyUnitPrice / BuySurcharge / BuyExtraCost | DECIMAL(20,2) | Thành phần giá mua |

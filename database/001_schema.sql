@@ -32,6 +32,7 @@ IF OBJECT_ID(N'dbo.DispatchOrderStop', N'U') IS NOT NULL DROP TABLE dbo.Dispatch
 IF OBJECT_ID(N'dbo.DispatchOrderLine', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrderLine;
 IF OBJECT_ID(N'dbo.DispatchOrder', N'U') IS NOT NULL DROP TABLE dbo.DispatchOrder;
 IF OBJECT_ID(N'dbo.PartnerRate', N'U') IS NOT NULL DROP TABLE dbo.PartnerRate;
+IF OBJECT_ID(N'dbo.PriceListFluctuation', N'U') IS NOT NULL DROP TABLE dbo.PriceListFluctuation;
 IF OBJECT_ID(N'dbo.PriceListItem', N'U') IS NOT NULL DROP TABLE dbo.PriceListItem;
 IF OBJECT_ID(N'dbo.PriceListRevision', N'U') IS NOT NULL DROP TABLE dbo.PriceListRevision;
 IF OBJECT_ID(N'dbo.PriceList', N'U') IS NOT NULL DROP TABLE dbo.PriceList;
@@ -316,6 +317,24 @@ CREATE TABLE dbo.UserPermission (
     CONSTRAINT UQ_UserPermission_User_Screen UNIQUE (AppUserId, AppScreenId)
 );
 
+CREATE TABLE dbo.PriceListFluctuation (
+    Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PriceListFluctuation PRIMARY KEY,
+    PriceListId INT NOT NULL CONSTRAINT FK_PriceListFluctuation_PriceList REFERENCES dbo.PriceList (Id),
+    Type INT NOT NULL,
+    Value DECIMAL(20,4) NOT NULL,
+    EffectiveFrom DATE NOT NULL,
+    EffectiveTo DATE NULL,
+    Reason NVARCHAR(500) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL,
+    CreatedByUserId INT NULL CONSTRAINT FK_PriceListFluctuation_CreatedBy REFERENCES dbo.AppUser (Id),
+    RowVersion ROWVERSION NOT NULL,
+    LegacyId INT NULL
+);
+CREATE UNIQUE INDEX IX_PriceListFluctuation_PriceList_EffectiveFrom
+    ON dbo.PriceListFluctuation (PriceListId, EffectiveFrom);
+CREATE INDEX IX_PriceListFluctuation_CreatedBy
+    ON dbo.PriceListFluctuation (CreatedByUserId);
+
 CREATE TABLE dbo.PartnerRate (
     Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PartnerRate PRIMARY KEY,
     PartnerId INT NOT NULL CONSTRAINT FK_PartnerRate_Partner REFERENCES dbo.Partner (Id),
@@ -391,6 +410,7 @@ CREATE TABLE dbo.DispatchOrder (
     ApprovedExceptionRevenue DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_ExceptionRevenue DEFAULT (0),
     TotalAmount DECIMAL(20,2) NOT NULL CONSTRAINT DF_DispatchOrder_Total DEFAULT (0),
     PriceListItemId INT NULL CONSTRAINT FK_DispatchOrder_PriceListItem REFERENCES dbo.PriceListItem (Id),
+    PriceListFluctuationId INT NULL CONSTRAINT FK_DispatchOrder_PriceListFluctuation REFERENCES dbo.PriceListFluctuation (Id),
     PriceSourceSnapshot NVARCHAR(500) NULL,
     IsFreightManual BIT NOT NULL CONSTRAINT DF_DispatchOrder_FreightManual DEFAULT (0),
     FreightOverrideReason NVARCHAR(500) NULL,
@@ -418,6 +438,7 @@ CREATE INDEX IX_DispatchOrder_PickupAt ON dbo.DispatchOrder (PickupAt);
 CREATE INDEX IX_DispatchOrder_Customer ON dbo.DispatchOrder (CustomerId);
 CREATE INDEX IX_DispatchOrder_Route ON dbo.DispatchOrder (RouteId);
 CREATE INDEX IX_DispatchOrder_PriceListItem ON dbo.DispatchOrder (PriceListItemId);
+CREATE INDEX IX_DispatchOrder_PriceListFluctuation ON dbo.DispatchOrder (PriceListFluctuationId);
 CREATE INDEX IX_DispatchOrder_Partner ON dbo.DispatchOrder (PartnerId);
 CREATE INDEX IX_DispatchOrder_PartnerRate ON dbo.DispatchOrder (PartnerRateId);
 CREATE INDEX IX_DispatchOrder_ReconSubmittedBy ON dbo.DispatchOrder (ReconciliationSubmittedByUserId);

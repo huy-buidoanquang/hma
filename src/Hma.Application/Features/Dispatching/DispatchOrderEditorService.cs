@@ -49,6 +49,7 @@ public sealed class DispatchOrderEditorService(
             order.UnitPrice = rate.UnitPrice;
             order.Surcharge = rate.Surcharge;
             order.PriceListItemId = rate.PriceListItemId;
+            order.PriceListFluctuationId = rate.PriceListFluctuationId;
             order.PriceSourceSnapshot = rate.SourceLabel;
             order.IsFreightManual = false;
             order.FreightOverrideReason = null;
@@ -403,6 +404,7 @@ public sealed class DispatchOrderEditorService(
         var employeeId = order.EmployeeId;
         var paymentMethodId = order.PaymentMethodId;
         var priceListItemId = order.PriceListItemId;
+        var priceListFluctuationId = order.PriceListFluctuationId;
         var partnerId = order.PartnerId;
         var partnerRateId = order.PartnerRateId;
         var createdBy = order.CreatedByUserId;
@@ -421,6 +423,7 @@ public sealed class DispatchOrderEditorService(
         order.Employee = null;
         order.PaymentMethod = null;
         order.PriceListItem = null;
+        order.PriceListFluctuation = null;
         order.Partner = null;
         order.PartnerRate = null;
         order.CreatedByUser = null;
@@ -439,6 +442,7 @@ public sealed class DispatchOrderEditorService(
         order.EmployeeId = employeeId;
         order.PaymentMethodId = paymentMethodId;
         order.PriceListItemId = priceListItemId;
+        order.PriceListFluctuationId = priceListFluctuationId;
         order.PartnerId = partnerId;
         order.PartnerRateId = partnerRateId;
         order.CreatedByUserId = createdBy;

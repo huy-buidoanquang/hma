@@ -16,4 +16,5 @@ public class PriceList : Entity
     public string? LockReason { get; set; }
     public byte[] RowVersion { get; set; } = [];
     public ICollection<PriceListRevision> Revisions { get; set; } = new List<PriceListRevision>();
+    public ICollection<PriceListFluctuation> Fluctuations { get; set; } = new List<PriceListFluctuation>();
 }

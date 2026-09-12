@@ -276,6 +276,7 @@ public class DispatchImportService(
             UnitPrice = unit,
             Surcharge = surcharge,
             PriceListItemId = appliedQuote?.PriceListItemId,
+            PriceListFluctuationId = appliedQuote?.PriceListFluctuationId,
             PriceSourceSnapshot = appliedQuote?.SourceLabel,
             IsFreightManual = appliedQuote is null,
             FreightOverrideReason = appliedQuote is null ? "Cước nhập từ bảng điều xe Excel." : null,

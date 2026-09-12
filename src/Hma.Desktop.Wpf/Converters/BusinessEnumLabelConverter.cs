@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 using Hma.Domain.Entities;
+using Hma.Domain.Enums;
 
 namespace Hma.Desktop.Wpf.Converters;
 
@@ -16,6 +17,8 @@ public sealed class BusinessEnumLabelConverter : IValueConverter
         DispatchDocumentKind.DeliveryNote => "Biên bản giao hàng",
         DispatchDocumentKind.Invoice => "Hóa đơn / chứng từ",
         DispatchDocumentKind.Other => "Khác",
+        PriceFluctuationType.Percentage => "Phần trăm",
+        PriceFluctuationType.FixedAmount => "Số tiền cố định",
         null => "",
         _ => value.ToString() ?? ""
     };

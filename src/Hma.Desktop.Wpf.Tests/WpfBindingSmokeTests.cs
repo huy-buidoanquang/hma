@@ -23,6 +23,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using Hma.Desktop.Wpf.Behaviors;
+using Hma.Desktop.Wpf.Controls;
 using Hma.Desktop.Wpf.Abstractions;
 using Hma.Desktop.Wpf.Converters;
 using Hma.Desktop.Wpf.Infrastructure.Session;
@@ -30,6 +31,7 @@ using Hma.Desktop.Wpf.Infrastructure.Navigation;
 using Hma.Desktop.Wpf.Infrastructure.Theming;
 using Hma.Desktop.Wpf.Presentation.Common.Views;
 using Hma.Domain.Entities;
+using Hma.Domain.Enums;
 using Hma.Reporting;
 using NSubstitute;
 
@@ -46,6 +48,8 @@ public class WpfBindingSmokeTests
     [InlineData(DispatchDocumentKind.DeliveryNote, "Biên bản giao hàng")]
     [InlineData(DispatchDocumentKind.Invoice, "Hóa đơn / chứng từ")]
     [InlineData(DispatchDocumentKind.Other, "Khác")]
+    [InlineData(PriceFluctuationType.Percentage, "Phần trăm")]
+    [InlineData(PriceFluctuationType.FixedAmount, "Số tiền cố định")]
     public void Business_enums_use_vietnamese_labels(object value, string expected)
     {
         var converter = new BusinessEnumLabelConverter();
@@ -140,6 +144,33 @@ public class WpfBindingSmokeTests
                 Assert.Equal(13, dispatchViewModel.PickupHour);
                 Assert.Equal(47, dispatchViewModel.PickupMinute);
                 Assert.Equal(pickupAt, dispatchViewModel.Editor.PickupAt);
+
+                var priceView = views.Single(x => x.View is PriceListView).View;
+                Assert.IsType<PriceListWorkspaceViewModel>(priceView.DataContext);
+                Render(priceView, 980, 760);
+                var adjustmentInput = new SignedAdjustmentInput
+                {
+                    Type = PriceFluctuationType.FixedAmount,
+                };
+                Render(adjustmentInput, 220, 32);
+                var adjustmentText = FindDescendant<TextBox>(adjustmentInput);
+                adjustmentText.Text = "-100000";
+                Assert.Equal(-100_000m, adjustmentInput.Value);
+                Assert.True(adjustmentInput.IsDecreaseSelected);
+                var signButtons = FindDescendants<Button>(adjustmentInput)
+                    .Where(x => Equals(x.Content, "+") || Equals(x.Content, "−"))
+                    .ToList();
+                var decreaseButton = Assert.Single(signButtons, x => Equals(x.Content, "−"));
+                var increaseButton = Assert.Single(signButtons, x => Equals(x.Content, "+"));
+                Assert.Same(System.Windows.Application.Current.Resources["ErrorBrush"], decreaseButton.Foreground);
+                increaseButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(100_000m, adjustmentInput.Value);
+                Assert.False(adjustmentInput.IsDecreaseSelected);
+                Assert.Same(System.Windows.Application.Current.Resources["SuccessBrush"], increaseButton.Foreground);
+                adjustmentInput.Type = PriceFluctuationType.Percentage;
+                adjustmentText.Text = "-10%";
+                Assert.Equal(-10m, adjustmentInput.Value);
+                Assert.True(adjustmentInput.IsDecreaseSelected);
 
                 var statementView = views.Single(x => x.View is StatementView).View;
                 var voidReasonField = FindTextBox(statementView, "VoidReason");
@@ -354,6 +385,22 @@ public class WpfBindingSmokeTests
     private static ComboBox FindComboBox(DependencyObject parent, string itemsSourcePath) =>
         TryFindComboBox(parent, itemsSourcePath) ??
         throw new InvalidOperationException($"ComboBox ItemsSource binding '{itemsSourcePath}' was not found.");
+
+    private static T FindDescendant<T>(DependencyObject parent) where T : DependencyObject =>
+        FindDescendants<T>(parent).FirstOrDefault()
+        ?? throw new InvalidOperationException($"Không tìm thấy control {typeof(T).Name}.");
+
+    private static IEnumerable<T> FindDescendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match)
+                yield return match;
+            foreach (var descendant in FindDescendants<T>(child))
+                yield return descendant;
+        }
+    }
 
     private static ComboBox? TryFindComboBox(DependencyObject parent, string itemsSourcePath)
     {
