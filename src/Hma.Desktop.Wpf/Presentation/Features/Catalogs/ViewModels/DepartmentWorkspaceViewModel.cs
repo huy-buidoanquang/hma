@@ -8,7 +8,7 @@ using Hma.Desktop.Wpf.Presentation.Features.Catalogs.Models;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Catalogs.ViewModels;
 
-public partial class DepartmentWorkspaceViewModel(DepartmentService departments, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class DepartmentWorkspaceViewModel(DepartmentService departments, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private CatalogItemSummary? selected;
     [ObservableProperty] private CatalogItemEditorModel editor = new();
@@ -22,7 +22,6 @@ public partial class DepartmentWorkspaceViewModel(DepartmentService departments,
         UsePrompt(prompt);
         Items.Clear();
         foreach (var d in await departments.ListAsync()) Items.Add(d);
-        Status = $"{Items.Count} phòng ban";
     }
 
     [RelayCommand]

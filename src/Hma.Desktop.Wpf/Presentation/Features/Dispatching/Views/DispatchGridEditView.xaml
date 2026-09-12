@@ -23,10 +23,6 @@
             <TextBlock Text="Chọn khách và kỳ kế toán. Không đổi ngày chạy. Lệnh đã chốt, đã gửi/duyệt đối soát hoặc đã hủy không sửa trên lưới."
                        TextWrapping="Wrap" Margin="0,0,0,8" Foreground="{DynamicResource InkSecondaryBrush}"/>
         </StackPanel>
-        <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-        </Border>
         <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                   AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
             <DataGrid.Columns>

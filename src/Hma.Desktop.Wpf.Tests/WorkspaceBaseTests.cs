@@ -1,4 +1,6 @@
+using Hma.Desktop.Wpf.Abstractions;
 using Hma.Desktop.Wpf.Infrastructure.Session;
+using NSubstitute;
 
 namespace Hma.Desktop.Wpf.Tests;
 
@@ -28,12 +30,48 @@ public class WorkspaceBaseTests
         Assert.True(workspace.HasUnsavedChanges);
     }
 
-    private sealed class ModeAwareWorkspace() : WorkspaceBase(new UiOperationGate())
+    [Fact]
+    public async Task Successful_crud_action_uses_shared_toast()
     {
+        var toast = Substitute.For<IToastService>();
+        var workspace = new ModeAwareWorkspace(toast);
+
+        await workspace.SucceedAsync();
+
+        toast.Received(1).Show("Đã lưu.", false);
+    }
+
+    [Fact]
+    public async Task Business_rule_failure_uses_shared_error_toast()
+    {
+        var toast = Substitute.For<IToastService>();
+        var workspace = new ModeAwareWorkspace(toast);
+
+        await workspace.FailBusinessRuleAsync();
+
+        toast.Received(1).Show("Dữ liệu không hợp lệ.", true);
+    }
+
+    private sealed class ModeAwareWorkspace : WorkspaceBase
+    {
+        public ModeAwareWorkspace() : this(Substitute.For<IToastService>())
+        {
+        }
+
+        public ModeAwareWorkspace(IToastService toastService)
+            : base(new UiOperationGate(), toastService)
+        {
+        }
+
         public bool CanPersist => Mode == WorkspaceMode.Create;
         public string Value { get; set; } = "initial";
 
         public void StartCreating() => EnterCreateState("Create", () => EditorState.Capture(Value));
+
+        public Task SucceedAsync() => RunAsync(() => Task.CompletedTask, "Đã lưu.");
+
+        public Task FailBusinessRuleAsync() => RunAsync(() =>
+            Task.FromException(new InvalidOperationException("Dữ liệu không hợp lệ.")));
 
         protected override void OnWorkspaceModeChanged() =>
             OnPropertyChanged(nameof(CanPersist));

@@ -6,17 +6,14 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Hma.Desktop.Wpf.Presentation.Common.ViewModels;
 
-public abstract partial class WorkspaceBase(IUiOperationGate operationGate) : ObservableObject, ILoadableWorkspace
+public abstract partial class WorkspaceBase(
+    IUiOperationGate operationGate,
+    IToastService toastService) : ObservableObject, ILoadableWorkspace
 {
-    [ObservableProperty] private string? status;
-    [ObservableProperty] private string? error;
     [ObservableProperty] private WorkspaceMode mode = WorkspaceMode.Browse;
     [ObservableProperty] private string editorTitle = "";
     [ObservableProperty] private bool isDirty;
 
-    [ObservableProperty] private string? toastMessage;
-    [ObservableProperty] private bool toastIsError;
-    private int _toastGeneration;
     private Func<EditorState>? _captureEditorState;
     private EditorState? _editorStateBaseline;
 
@@ -96,8 +93,6 @@ public abstract partial class WorkspaceBase(IUiOperationGate operationGate) : Ob
         _captureEditorState = captureState;
         _editorStateBaseline = captureState();
         IsDirty = false;
-        Error = null;
-        Status = null;
         NotifyChrome();
     }
 
@@ -123,26 +118,13 @@ public abstract partial class WorkspaceBase(IUiOperationGate operationGate) : Ob
     protected bool ConfirmDelete() =>
         _prompt?.Confirm("Xóa bản ghi này?", "Xác nhận", UserPromptKind.Destructive) != false;
 
-    protected void ShowToast(string message, bool isError = false)
-    {
-        ToastMessage = message;
-        ToastIsError = isError;
-        _ = DismissToastAsync();
-    }
-
-    private async Task DismissToastAsync()
-    {
-        var generation = ++_toastGeneration;
-        await Task.Delay(4500);
-        if (generation == _toastGeneration)
-            ToastMessage = null;
-    }
+    protected void ShowToast(string message, bool isError = false) =>
+        toastService.Show(message, isError);
 
     protected async Task RunAsync(Func<Task> action, string? successToast = null, bool closeEditor = false)
     {
         try
         {
-            Error = null;
             await OperationGate.RunAsync(action);
             if (closeEditor)
                 LeaveEditor(discardWithoutConfirm: true);
@@ -152,7 +134,6 @@ public abstract partial class WorkspaceBase(IUiOperationGate operationGate) : Ob
         catch (Exception ex)
         {
             var translated = PersistenceGuard.Translate(ex);
-            Error = translated.Message;
             ShowToast(translated.Message, isError: true);
         }
     }

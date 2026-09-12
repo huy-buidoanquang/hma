@@ -9,10 +9,6 @@
             <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
                 <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
             </WrapPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
                 <DataGrid.Columns>
@@ -40,10 +36,6 @@
                 <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
                 <Button Content="Khóa" Style="{StaticResource SecondaryButton}" Command="{Binding LockListCommand}" IsEnabled="{Binding CanLock}"/>
             </WrapPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True">
                 <StackPanel>
                     <StackPanel IsEnabled="{Binding AreFieldsEnabled}">

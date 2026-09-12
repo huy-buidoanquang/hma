@@ -13,7 +13,7 @@ public partial class PartnerRateWorkspaceViewModel(
     PartnerRateService rates,
     CatalogOptionQueryService catalog,
     ICurrentUser current,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private PartnerRateEditorModel editor = new();
     [ObservableProperty] private PartnerRateSummary? selected;
@@ -47,7 +47,6 @@ public partial class PartnerRateWorkspaceViewModel(
     {
         Items.Clear();
         foreach (var rate in await rates.ListAsync()) Items.Add(rate);
-        Status = $"{Items.Count} dòng giá mua";
     }
 
     [RelayCommand]

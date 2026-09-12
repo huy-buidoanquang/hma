@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string userLabel = "";
 
     public System.Collections.ObjectModel.ObservableCollection<WorkspaceEntry> Items { get; } = [];
+    public IToastService Toast { get; }
 
     public MainViewModel(
         ICurrentUser currentUser,
@@ -24,11 +25,13 @@ public partial class MainViewModel : ObservableObject
         IUserPrompt prompt,
         ISessionHost session,
         IWorkspaceNavigator navigator,
-        IWorkspaceRegistry registry)
+        IWorkspaceRegistry registry,
+        IToastService toast)
     {
         _userSession = userSession;
         _prompt = prompt;
         _session = session;
+        Toast = toast;
         UserLabel = currentUser.DisplayName ?? currentUser.UserName ?? "";
 
         foreach (var entry in registry.Entries)

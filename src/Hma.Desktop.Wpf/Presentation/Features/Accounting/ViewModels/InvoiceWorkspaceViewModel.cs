@@ -20,7 +20,7 @@ public partial class InvoiceWorkspaceViewModel(
     CompanyService company,
     IDocumentRenderer printer,
     IDocumentInteractionService documentInteraction,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private VatInvoiceModel editor = new();
     [ObservableProperty] private VatInvoiceModel? selected;

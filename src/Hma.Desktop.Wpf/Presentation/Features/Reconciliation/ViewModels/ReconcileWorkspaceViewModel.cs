@@ -10,7 +10,7 @@ using Hma.Domain.Entities;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Reconciliation.ViewModels;
 
-public partial class ReconcileWorkspaceViewModel(DispatchOrderQueryService queries, DispatchReconciliationService reconciliation, ChangeLogService logs, ICurrentUser user, IWorkspaceNavigator nav, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class ReconcileWorkspaceViewModel(DispatchOrderQueryService queries, DispatchReconciliationService reconciliation, ChangeLogService logs, ICurrentUser user, IWorkspaceNavigator nav, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private DispatchOrderSummary? selected;
     [ObservableProperty] private string? filterCode;
@@ -71,7 +71,6 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderQueryService queri
             }
             foreach (var o in waiting.OrderByDescending(x => x.PickupAt).ThenByDescending(x => x.Id))
                 Items.Add(o);
-            Status = $"{Items.Count} chuyến chờ đối soát";
         });
     }
 
@@ -110,9 +109,8 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderQueryService queri
         await RunAsync(async () =>
         {
             await reconciliation.SubmitAsync(Selected.Id);
-            Status = "Đã gửi duyệt đối soát.";
             await Search();
-        });
+        }, "Đã gửi duyệt đối soát.");
     }
 
     [RelayCommand]
@@ -122,9 +120,8 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderQueryService queri
         await RunAsync(async () =>
         {
             await reconciliation.ApproveAsync(Selected.Id);
-            Status = "Đã đối soát.";
             await Search();
-        });
+        }, "Đã đối soát.");
     }
 
     [RelayCommand]
@@ -134,9 +131,8 @@ public partial class ReconcileWorkspaceViewModel(DispatchOrderQueryService queri
         await RunAsync(async () =>
         {
             await reconciliation.RejectAsync(Selected.Id, RejectionReason);
-            Status = "Đã từ chối đối soát.";
             await Search();
-        });
+        }, "Đã từ chối đối soát.");
     }
 
     [RelayCommand]

@@ -8,7 +8,7 @@ using Hma.Desktop.Wpf.Presentation.Features.Catalogs.Models;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Catalogs.ViewModels;
 
-public partial class CityWorkspaceViewModel(CityService cities, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class CityWorkspaceViewModel(CityService cities, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterName;
     [ObservableProperty] private CatalogItemEditorModel editor = new();
@@ -32,7 +32,6 @@ public partial class CityWorkspaceViewModel(CityService cities, ICurrentUser use
             if (string.IsNullOrWhiteSpace(FilterName) || c.Code.Contains(FilterName, StringComparison.OrdinalIgnoreCase)
                 || c.Name.Contains(FilterName, StringComparison.OrdinalIgnoreCase))
                 Items.Add(c);
-        Status = $"{Items.Count} thành phố";
     }
 
     [RelayCommand]

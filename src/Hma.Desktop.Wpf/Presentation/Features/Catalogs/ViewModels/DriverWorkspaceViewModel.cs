@@ -21,7 +21,7 @@ public partial class DriverWorkspaceViewModel(
     ICurrentUser user,
     IUserPrompt prompt,
     IDocumentRenderer printer,
-    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterCode;
     [ObservableProperty] private string? filterName;
@@ -51,7 +51,6 @@ public partial class DriverWorkspaceViewModel(
     {
         Items.Clear();
         foreach (var d in await driverService.SearchAsync(FilterCode, FilterName)) Items.Add(d);
-        Status = $"{Items.Count} tài xế";
     }
 
     [RelayCommand]
@@ -108,7 +107,8 @@ public partial class DriverWorkspaceViewModel(
     private async Task ExportExcel()
     {
         if (!CanPrint) return;
-        await documentInteraction.OpenAsync(printer.ExportDriversExcel(Items.ToList()));
-        Status = "Đã xuất Excel tài xế.";
+        await RunAsync(
+            () => documentInteraction.OpenAsync(printer.ExportDriversExcel(Items.ToList())),
+            "Đã xuất Excel tài xế.");
     }
 }

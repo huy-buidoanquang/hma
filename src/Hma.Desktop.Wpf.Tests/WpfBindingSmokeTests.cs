@@ -28,8 +28,10 @@ using Hma.Desktop.Wpf.Abstractions;
 using Hma.Desktop.Wpf.Converters;
 using Hma.Desktop.Wpf.Infrastructure.Session;
 using Hma.Desktop.Wpf.Infrastructure.Navigation;
+using Hma.Desktop.Wpf.Infrastructure.Notifications;
 using Hma.Desktop.Wpf.Infrastructure.Theming;
 using Hma.Desktop.Wpf.Presentation.Common.Views;
+using Hma.Desktop.Wpf.Presentation.Shell.ViewModels;
 using Hma.Domain.Entities;
 using Hma.Domain.Enums;
 using Hma.Reporting;
@@ -74,10 +76,32 @@ public class WpfBindingSmokeTests
 
                 var app = new App();
                 app.InitializeComponent();
-                var mainWindow = new MainWindow(null!);
+                var shellRegistry = Substitute.For<IWorkspaceRegistry>();
+                shellRegistry.Entries.Returns([]);
+                var shellToast = new ToastService(TimeProvider.System);
+                var mainWindow = new MainWindow(new MainViewModel(
+                    Substitute.For<ICurrentUser>(),
+                    Substitute.For<IDesktopUserSession>(),
+                    Substitute.For<IUserPrompt>(),
+                    Substitute.For<ISessionHost>(),
+                    Substitute.For<IWorkspaceNavigator>(),
+                    shellRegistry,
+                    shellToast));
+                mainWindow.ShowActivated = false;
+                mainWindow.ShowInTaskbar = false;
+                mainWindow.Opacity = 0;
                 Assert.True(mainWindow.MinWidth <= 1366);
                 Assert.True(mainWindow.MinHeight <= 768);
+                shellToast.Show("Thông báo kiểm thử", isError: true);
+                mainWindow.Show();
                 Render(mainWindow, 1366, 768);
+                var toastHost = Assert.IsType<Border>(mainWindow.FindName("ToastHost"));
+                var toastText = Assert.IsType<TextBlock>(mainWindow.FindName("ToastText"));
+                toastHost.GetBindingExpression(UIElement.VisibilityProperty)?.UpdateTarget();
+                toastText.GetBindingExpression(TextBlock.TextProperty)?.UpdateTarget();
+                Assert.Equal(Visibility.Visible, toastHost.Visibility);
+                Assert.Equal("Thông báo kiểm thử", toastText.Text);
+                mainWindow.Close();
 
                 var loginWindow = new LoginWindow(new LoginViewModel(
                     Substitute.For<IAuthService>(),
@@ -245,6 +269,7 @@ public class WpfBindingSmokeTests
         var printer = Substitute.For<IDocumentRenderer>();
         var documentInteraction = Substitute.For<IDocumentInteractionService>();
         var gate = new UiOperationGate();
+        var toast = new ToastService(TimeProvider.System);
         var numbers = Substitute.For<IDocumentNumberService>();
         var audit = Substitute.For<IChangeLogService>();
         var storage = Substitute.For<IFileStorage>();
@@ -285,28 +310,28 @@ public class WpfBindingSmokeTests
         var exceptions = new TransportExceptionService(db, current, audit, TimeProvider.System);
         var changeLogs = new ChangeLogService(db, current, TimeProvider.System);
 
-        var cityVm = new CityWorkspaceViewModel(cityService, current, prompt, gate);
-        var customerVm = new CustomerWorkspaceViewModel(customers, catalog, current, prompt, printer, documentInteraction, gate);
-        var customerAliasVm = new CustomerAliasWorkspaceViewModel(customerAliases, customers, current, prompt, gate);
-        var departmentVm = new DepartmentWorkspaceViewModel(departmentService, current, prompt, gate);
+        var cityVm = new CityWorkspaceViewModel(cityService, current, prompt, gate, toast);
+        var customerVm = new CustomerWorkspaceViewModel(customers, catalog, current, prompt, printer, documentInteraction, gate, toast);
+        var customerAliasVm = new CustomerAliasWorkspaceViewModel(customerAliases, customers, current, prompt, gate, toast);
+        var departmentVm = new DepartmentWorkspaceViewModel(departmentService, current, prompt, gate, toast);
         var dispatchVm = new DispatchWorkspaceViewModel(
-            dispatchQueries, dispatchEditor, documents, documentInteraction, catalog, customers, company, printer, current, prompt, gate);
-        var dispatchGridVm = new DispatchGridEditWorkspaceViewModel(dispatchQueries, grid, catalog, customers, current, prompt, gate);
+            dispatchQueries, dispatchEditor, documents, documentInteraction, catalog, customers, company, printer, current, prompt, gate, toast);
+        var dispatchGridVm = new DispatchGridEditWorkspaceViewModel(dispatchQueries, grid, catalog, customers, current, prompt, gate, toast);
         var dispatchImportVm = new DispatchImportWorkspaceViewModel(
-            importer, Substitute.For<IDispatchImportParser>(), current, prompt, gate);
+            importer, Substitute.For<IDispatchImportParser>(), current, prompt, gate, toast);
         var dispatchHubVm = new DispatchHubWorkspaceViewModel(
-            dispatchVm, dispatchGridVm, dispatchImportVm, current, prompt, gate);
-        var driverVm = new DriverWorkspaceViewModel(driverService, catalog, dispatchQueries, current, prompt, printer, documentInteraction, gate);
-        var employeeVm = new EmployeeWorkspaceViewModel(employeeService, catalog, current, prompt, gate);
-        var jobTitleVm = new JobTitleWorkspaceViewModel(jobTitleService, current, prompt, gate);
-        var locationVm = new LocationWorkspaceViewModel(locationService, catalog, current, prompt, gate);
-        var routeVm = new RouteWorkspaceViewModel(routeService, catalog, current, prompt, gate);
-        var routeCatalogVm = new RouteCatalogWorkspaceViewModel(locationVm, routeVm, current, prompt, gate);
-        var locationAliasVm = new LocationAliasWorkspaceViewModel(locationAliases, catalog, current, prompt, gate);
-        var routeAliasVm = new RouteAliasWorkspaceViewModel(routeAliases, catalog, current, prompt, gate);
-        var partnerVm = new PartnerWorkspaceViewModel(partnerService, current, prompt, printer, documentInteraction, gate);
-        var priceVm = new PriceListWorkspaceViewModel(prices, catalog, customers, current, prompt, gate);
-        var userVm = new UserWorkspaceViewModel(users, catalog, current, prompt, gate);
+            dispatchVm, dispatchGridVm, dispatchImportVm, current, prompt, gate, toast);
+        var driverVm = new DriverWorkspaceViewModel(driverService, catalog, dispatchQueries, current, prompt, printer, documentInteraction, gate, toast);
+        var employeeVm = new EmployeeWorkspaceViewModel(employeeService, catalog, current, prompt, gate, toast);
+        var jobTitleVm = new JobTitleWorkspaceViewModel(jobTitleService, current, prompt, gate, toast);
+        var locationVm = new LocationWorkspaceViewModel(locationService, catalog, current, prompt, gate, toast);
+        var routeVm = new RouteWorkspaceViewModel(routeService, catalog, current, prompt, gate, toast);
+        var routeCatalogVm = new RouteCatalogWorkspaceViewModel(locationVm, routeVm, current, prompt, gate, toast);
+        var locationAliasVm = new LocationAliasWorkspaceViewModel(locationAliases, catalog, current, prompt, gate, toast);
+        var routeAliasVm = new RouteAliasWorkspaceViewModel(routeAliases, catalog, current, prompt, gate, toast);
+        var partnerVm = new PartnerWorkspaceViewModel(partnerService, current, prompt, printer, documentInteraction, gate, toast);
+        var priceVm = new PriceListWorkspaceViewModel(prices, catalog, customers, current, prompt, gate, toast);
+        var userVm = new UserWorkspaceViewModel(users, catalog, current, prompt, gate, toast);
         var settingsVm = new SettingsWorkspaceViewModel(
             settings,
             health,
@@ -319,9 +344,10 @@ public class WpfBindingSmokeTests
             current,
             prompt,
             new ThemeService(),
-            gate);
+            gate,
+            toast);
 
-        var exceptionViewModel = new TransportExceptionWorkspaceViewModel(exceptions, current, prompt, gate);
+        var exceptionViewModel = new TransportExceptionWorkspaceViewModel(exceptions, current, prompt, gate, toast);
         exceptionViewModel.Codes.Add(new TransportExceptionCodeOption(1, "WAIT", "Chờ bốc hàng"));
         var customerOption = new CustomerSummary(
             1, "KH001", "Khách kiểm thử", null, null, null, null, null,
@@ -332,12 +358,12 @@ public class WpfBindingSmokeTests
 
         return
         [
-            new(new CashPaymentView(), new CashPaymentWorkspaceViewModel(cash, customers, catalog, company, printer, documentInteraction, prompt, gate)),
-            new(new CashReceiptView(), new CashReceiptWorkspaceViewModel(cash, customers, dispatchQueries, company, printer, documentInteraction, prompt, gate)),
+            new(new CashPaymentView(), new CashPaymentWorkspaceViewModel(cash, customers, catalog, company, printer, documentInteraction, prompt, gate, toast)),
+            new(new CashReceiptView(), new CashReceiptWorkspaceViewModel(cash, customers, dispatchQueries, company, printer, documentInteraction, prompt, gate, toast)),
             new(new CityView(), cityVm),
             new(new CustomerAliasView(), customerAliasVm),
             new(new CustomerView(), customerVm),
-            new(new DashboardView(), new DashboardWorkspaceViewModel(dashboard, current, gate)),
+            new(new DashboardView(), new DashboardWorkspaceViewModel(dashboard, current, gate, toast)),
             new(new DepartmentView(), departmentVm),
             new(new DispatchGridEditView(), dispatchGridVm),
             new(new DispatchHubView(), dispatchHubVm),
@@ -345,25 +371,25 @@ public class WpfBindingSmokeTests
             new(new DispatchView(), dispatchVm),
             new(new DriverView(), driverVm),
             new(new EmployeeView(), employeeVm),
-            new(new InvoiceView(), new InvoiceWorkspaceViewModel(invoices, customers, company, printer, documentInteraction, prompt, gate)),
+            new(new InvoiceView(), new InvoiceWorkspaceViewModel(invoices, customers, company, printer, documentInteraction, prompt, gate, toast)),
             new(new JobTitleView(), jobTitleVm),
             new(new LocationAliasView(), locationAliasVm),
             new(new LocationView(), locationVm),
-            new(new LookupView(), new LookupWorkspaceViewModel(dispatchQueries, current, navigator, gate)),
-            new(new PartnerRateView(), new PartnerRateWorkspaceViewModel(partnerRates, catalog, current, prompt, gate)),
-            new(new PartnerSettlementView(), new PartnerSettlementWorkspaceViewModel(settlements, catalog, current, gate)),
+            new(new LookupView(), new LookupWorkspaceViewModel(dispatchQueries, current, navigator, gate, toast)),
+            new(new PartnerRateView(), new PartnerRateWorkspaceViewModel(partnerRates, catalog, current, prompt, gate, toast)),
+            new(new PartnerSettlementView(), new PartnerSettlementWorkspaceViewModel(settlements, catalog, current, gate, toast)),
             new(new PartnerView(), partnerVm),
             new(new PriceListView(), priceVm),
-            new(new ReconcileView(), new ReconcileWorkspaceViewModel(dispatchQueries, reconciliation, changeLogs, current, navigator, gate)),
-            new(new ReportView(), new ReportWorkspaceViewModel(reports, dashboard, company, printer, documentInteraction, current, gate)),
+            new(new ReconcileView(), new ReconcileWorkspaceViewModel(dispatchQueries, reconciliation, changeLogs, current, navigator, gate, toast)),
+            new(new ReportView(), new ReportWorkspaceViewModel(reports, dashboard, company, printer, documentInteraction, current, gate, toast)),
             new(new RouteAliasView(), routeAliasVm),
             new(new RouteCatalogView(), routeCatalogVm),
             new(new RouteView(), routeVm),
             new(new SettingsView(), settingsVm),
-            new(new StatementView(), new StatementWorkspaceViewModel(statements, customers, company, printer, documentInteraction, current, gate)),
+            new(new StatementView(), new StatementWorkspaceViewModel(statements, customers, company, printer, documentInteraction, current, gate, toast)),
             new(new TransportExceptionView(), exceptionViewModel),
             new(new UserView(), userVm),
-            new(new VehicleView(), new VehicleWorkspaceViewModel(vehicleService, catalog, dispatchQueries, current, prompt, printer, documentInteraction, gate))
+            new(new VehicleView(), new VehicleWorkspaceViewModel(vehicleService, catalog, dispatchQueries, current, prompt, printer, documentInteraction, gate, toast))
         ];
     }
 

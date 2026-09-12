@@ -30,10 +30,6 @@
                 <Button Content="Hủy bảng kê" Style="{StaticResource DestructiveButton}" Command="{Binding VoidStatementCommand}" IsEnabled="{Binding CanVoid}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
             </WrapPanel>
         </StackPanel>
-        <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Top"
-                Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-        </Border>
         <TextBlock DockPanel.Dock="Top" Style="{StaticResource TabularText}" Margin="0,8,0,16" TextWrapping="Wrap">
             <Run Text="Trạng thái:"/> <Run Text="{Binding Current.Status, Mode=OneWay, Converter={StaticResource BusinessEnumLabel}}"/>
             <Run Text="Chuyến:"/> <Run Text="{Binding Current.TripCount, Mode=OneWay}"/>

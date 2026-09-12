@@ -12,7 +12,7 @@ public partial class CustomerAliasWorkspaceViewModel(
     CustomerAliasService aliases,
     CustomerService customers,
     ICurrentUser user,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterText;
     [ObservableProperty] private CustomerAliasEditorModel editor = new();
@@ -45,7 +45,6 @@ public partial class CustomerAliasWorkspaceViewModel(
                 || (row.Customer?.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ?? false))
                 Items.Add(row);
         }
-        Status = $"{Items.Count} bí danh khách";
     }
 
     [RelayCommand]

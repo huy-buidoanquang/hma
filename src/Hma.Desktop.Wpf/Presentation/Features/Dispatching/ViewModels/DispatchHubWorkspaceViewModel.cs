@@ -9,7 +9,7 @@ public partial class DispatchHubWorkspaceViewModel(
     DispatchGridEditWorkspaceViewModel gridEdit,
     DispatchImportWorkspaceViewModel import,
     ICurrentUser user,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private SettingsSection? selectedSection;
     private bool _suppressSection;

@@ -9,7 +9,7 @@ using Hma.Desktop.Wpf.Presentation.Features.Routes.Models;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Routes.ViewModels;
 
-public partial class LocationWorkspaceViewModel(LocationService locations, CatalogOptionQueryService catalog, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class LocationWorkspaceViewModel(LocationService locations, CatalogOptionQueryService catalog, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterName;
     [ObservableProperty] private LocationEditorModel editor = new();
@@ -39,7 +39,6 @@ public partial class LocationWorkspaceViewModel(LocationService locations, Catal
                 || row.Code.Contains(FilterName, StringComparison.OrdinalIgnoreCase)
                 || row.Name.Contains(FilterName, StringComparison.OrdinalIgnoreCase))
                 Items.Add(row);
-        Status = $"{Items.Count} điểm";
     }
 
     [RelayCommand]

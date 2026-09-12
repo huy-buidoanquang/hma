@@ -20,6 +20,7 @@ public class WorkspaceRegistryTests
         registry.Entries.Returns(entries);
         var currentUser = Substitute.For<ICurrentUser>();
         currentUser.DisplayName.Returns("Điều hành viên");
+        var toast = Substitute.For<IToastService>();
 
         var viewModel = new MainViewModel(
             currentUser,
@@ -27,11 +28,13 @@ public class WorkspaceRegistryTests
             Substitute.For<IUserPrompt>(),
             Substitute.For<ISessionHost>(),
             Substitute.For<IWorkspaceNavigator>(),
-            registry);
+            registry,
+            toast);
 
         Assert.Equal(entries, viewModel.Items);
         Assert.Same(entries[0], viewModel.Selected);
         Assert.Same(firstWorkspace, viewModel.Current);
         Assert.Equal("Điều hành viên", viewModel.UserLabel);
+        Assert.Same(toast, viewModel.Toast);
     }
 }

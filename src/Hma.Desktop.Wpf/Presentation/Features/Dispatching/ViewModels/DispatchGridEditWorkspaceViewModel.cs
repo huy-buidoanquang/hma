@@ -17,7 +17,7 @@ public partial class DispatchGridEditWorkspaceViewModel(
     CatalogOptionQueryService catalog,
     CustomerService customers,
     ICurrentUser current,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private int? customerId;
     [ObservableProperty] private int year = DateTime.Today.Year;
@@ -76,7 +76,6 @@ public partial class DispatchGridEditWorkspaceViewModel(
         }
         RefreshAllSelected();
         _dirty = false;
-        Status = $"{Items.Count} lệnh kỳ {Month:00}/{Year}";
     }
 
     [RelayCommand]
@@ -157,7 +156,6 @@ public partial class DispatchGridEditWorkspaceViewModel(
     {
         _dirty = false;
         ClearRows();
-        Status = null;
     }
 
     private void ClearRows()

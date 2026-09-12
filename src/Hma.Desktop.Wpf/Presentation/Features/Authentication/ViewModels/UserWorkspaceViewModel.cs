@@ -9,7 +9,7 @@ using Hma.Desktop.Wpf.Presentation.Features.Authentication.Models;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Authentication.ViewModels;
 
-public partial class UserWorkspaceViewModel(UserAdminService users, CatalogOptionQueryService catalog, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class UserWorkspaceViewModel(UserAdminService users, CatalogOptionQueryService catalog, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private UserEditorModel editor = new();
     [ObservableProperty] private UserSummary? selected;

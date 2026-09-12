@@ -40,10 +40,6 @@
                     <Button Content="Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
                 </WrapPanel>
             </StackPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
                 <DataGrid.Columns>
@@ -66,10 +62,6 @@
                 <Button Content="Xóa" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteCommand}"
                         IsEnabled="{Binding CanDelete}" Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
                 <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True">
                     <StackPanel>

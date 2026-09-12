@@ -18,7 +18,7 @@ public partial class SettingsWorkspaceViewModel(
     CustomerAliasWorkspaceViewModel customerAliases,
     ICurrentUser user,
     IUserPrompt prompt,
-    ThemeService theme, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    ThemeService theme, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string vatRate = "10";
     [ObservableProperty] private string documentStorePath = "";

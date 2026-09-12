@@ -20,7 +20,7 @@ public partial class ReportWorkspaceViewModel(
     CompanyService company,
     IDocumentRenderer printer,
     IDocumentInteractionService documentInteraction,
-    ICurrentUser user, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    ICurrentUser user, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private DateTime day = DateTime.Today;
     [ObservableProperty] private DateTime from = DateTime.Today.AddMonths(-1);
@@ -64,32 +64,41 @@ public partial class ReportWorkspaceViewModel(
     private async Task PrintDaily()
     {
         if (!CanPrint) return;
-        var orders = await reports.DailyDispatchAsync(Day);
-        var companyInfo = await company.GetAsync();
-        await documentInteraction.OpenAsync(printer.PrintDailyDispatch(orders, Day, companyInfo));
-        Status = $"Đã in {orders.Count} lệnh.";
+        await RunAsync(async () =>
+        {
+            var orders = await reports.DailyDispatchAsync(Day);
+            var companyInfo = await company.GetAsync();
+            await documentInteraction.OpenAsync(printer.PrintDailyDispatch(orders, Day, companyInfo));
+            ShowToast($"Đã in {orders.Count} lệnh.");
+        });
     }
 
     [RelayCommand]
     private async Task PrintPeriod()
     {
         if (!CanPrint) return;
-        var orders = await reports.PeriodDispatchAsync(From, To);
-        var companyInfo = await company.GetAsync();
-        await documentInteraction.OpenAsync(printer.PrintDispatchSummary(
-            orders,
-            $"BÁO CÁO LỆNH ĐIỀU XE {From:dd/MM/yyyy} – {To:dd/MM/yyyy}",
-            companyInfo));
-        Status = $"Đã in {orders.Count} lệnh.";
+        await RunAsync(async () =>
+        {
+            var orders = await reports.PeriodDispatchAsync(From, To);
+            var companyInfo = await company.GetAsync();
+            await documentInteraction.OpenAsync(printer.PrintDispatchSummary(
+                orders,
+                $"BÁO CÁO LỆNH ĐIỀU XE {From:dd/MM/yyyy} – {To:dd/MM/yyyy}",
+                companyInfo));
+            ShowToast($"Đã in {orders.Count} lệnh.");
+        });
     }
 
     [RelayCommand]
     private async Task ExportPeriodExcel()
     {
         if (!CanPrint) return;
-        var orders = await reports.PeriodDispatchAsync(From, To);
-        await documentInteraction.OpenAsync(printer.ExportPeriodSummaryExcel(orders, From, To));
-        Status = $"Đã xuất Excel {orders.Count} lệnh.";
+        await RunAsync(async () =>
+        {
+            var orders = await reports.PeriodDispatchAsync(From, To);
+            await documentInteraction.OpenAsync(printer.ExportPeriodSummaryExcel(orders, From, To));
+            ShowToast($"Đã xuất Excel {orders.Count} lệnh.");
+        });
     }
 
     [RelayCommand]
@@ -99,6 +108,5 @@ public partial class ReportWorkspaceViewModel(
         foreach (var r in await dashboard.ByCustomerAsync(From, To)) CustomerRows.Add(r);
         VehicleRows.Clear();
         foreach (var r in await dashboard.ByVehicleAsync(From, To)) VehicleRows.Add(r);
-        Status = $"Từ {From:dd/MM} đến {To:dd/MM} · {CustomerRows.Sum(r => r.Trips)} chuyến · {CustomerRows.Sum(r => r.Freight):N0}";
     }
 }

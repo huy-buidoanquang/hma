@@ -136,6 +136,29 @@ public partial class ArchitectureRulesTests
         }
     }
 
+    [Fact]
+    public void Workspace_notifications_render_only_in_the_main_shell()
+    {
+        var desktop = Path.Combine(RepositoryRoot, "src", "Hma.Desktop.Wpf");
+        var presentation = Path.Combine(desktop, "Presentation");
+        var workspaceMarkup = Directory.GetFiles(presentation, "*.xaml", SearchOption.AllDirectories)
+            .Where(path => Path.GetFileName(path) is not "MainWindow.xaml" and not "LoginWindow.xaml")
+            .Select(path => (path, text: File.ReadAllText(path)))
+            .ToArray();
+
+        var violations = workspaceMarkup
+            .Where(item => item.text.Contains("StatusBanner", StringComparison.Ordinal)
+                           || item.text.Contains("ToastMessage", StringComparison.Ordinal)
+                           || item.text.Contains("ToastIsError", StringComparison.Ordinal))
+            .Select(item => item.path)
+            .ToArray();
+        Assert.Empty(violations);
+
+        var shell = File.ReadAllText(Path.Combine(presentation, "Shell", "Views", "MainWindow.xaml"));
+        Assert.Contains("{Binding Toast.Message", shell, StringComparison.Ordinal);
+        Assert.Contains("{Binding Toast.IsError", shell, StringComparison.Ordinal);
+    }
+
     private static bool IsProductionSource(string path) =>
         !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
         && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)

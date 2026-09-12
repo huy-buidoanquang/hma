@@ -21,7 +21,7 @@ public partial class CashPaymentWorkspaceViewModel(
     CompanyService company,
     IDocumentRenderer printer,
     IDocumentInteractionService documentInteraction,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private CashPaymentModel editor = new();
     [ObservableProperty] private CashPaymentModel? selected;

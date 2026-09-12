@@ -11,28 +11,11 @@
             <Button Content="Kiểm tra" Style="{StaticResource SecondaryButton}" Command="{Binding CheckRowsCommand}" IsEnabled="{Binding CanCreate}"/>
             <Button Content="Nhập dòng đã chọn" Command="{Binding ImportSelectedCommand}" IsEnabled="{Binding CanCreate}"/>
         </WrapPanel>
-        <Border DockPanel.Dock="Bottom"
-                Visibility="{Binding ToastMessage, Converter={StaticResource StringToVisibility}}">
-            <Border.Style>
-                <Style TargetType="Border" BasedOn="{StaticResource StatusBanner}">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding ToastIsError}" Value="True">
-                            <Setter Property="Background" Value="{DynamicResource BrushError}"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-            <TextBlock Text="{Binding ToastMessage}" Foreground="{DynamicResource BrushBlack}"/>
-        </Border>
-        <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-        </Border>
         <TabControl ItemsSource="{Binding Sheets}" SelectedItem="{Binding SelectedSheet}"
                     Margin="0,8,0,0">
             <TabControl.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding Title}" Margin="0" Padding="0"/>
+                    <TextBlock Width="40" HorizontalAlignment="Center" Text="{Binding Title}" Margin="0" Padding="0"/>
                 </DataTemplate>
             </TabControl.ItemTemplate>
             <TabControl.ContentTemplate>

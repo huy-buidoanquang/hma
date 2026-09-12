@@ -12,7 +12,7 @@ namespace Hma.Desktop.Wpf.Presentation.Features.PartnerSettlements.ViewModels;
 public partial class PartnerSettlementWorkspaceViewModel(
     PartnerSettlementService settlements,
     CatalogOptionQueryService catalog,
-    ICurrentUser current, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    ICurrentUser current, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private int? partnerId;
     [ObservableProperty] private int year = DateTime.Today.Year;

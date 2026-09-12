@@ -29,9 +29,6 @@
                 <Button Content="In kỳ" Style="{StaticResource SecondaryButton}" Command="{Binding PrintPeriodCommand}" IsEnabled="{Binding CanPrint}" VerticalAlignment="Bottom" Margin="4,16"/>
                 <Button Content="Excel kỳ" Style="{StaticResource SecondaryButton}" Command="{Binding ExportPeriodExcelCommand}" IsEnabled="{Binding CanPrint}" VerticalAlignment="Bottom" Margin="4,16"/>
             </WrapPanel>
-            <Border Style="{StaticResource StatusBanner}" Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <TextBlock Text="Theo khách hàng" Style="{StaticResource SectionTitle}" Margin="0,16,0,8"/>
             <DataGrid ItemsSource="{Binding CustomerRows}" Height="180" Margin="0,0,0,16">
                 <DataGrid.Columns>

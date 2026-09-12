@@ -21,7 +21,7 @@ public partial class StatementWorkspaceViewModel(
     CompanyService company,
     IDocumentRenderer printer,
     IDocumentInteractionService documentInteraction,
-    ICurrentUser user, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    ICurrentUser user, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private int? customerId;
     [ObservableProperty] private int year = DateTime.Today.Year;
@@ -99,9 +99,8 @@ public partial class StatementWorkspaceViewModel(
             Lines.Clear();
             if (Current is not null)
                 foreach (var l in Current.Lines) Lines.Add(l);
-            Status = Current is null ? "Không có dữ liệu." : $"Bảng kê {Current.Code}: {Current.TripCount} chuyến, {Current.GrandTotal:N0}.";
             await LoadAsync();
-        });
+        }, "Đã lập bảng kê tháng.");
     }
 
     [RelayCommand]
@@ -111,9 +110,8 @@ public partial class StatementWorkspaceViewModel(
         await RunAsync(async () =>
         {
             RefreshCurrent(await statements.SubmitDetailsAsync(Current.Id));
-            Status = "Đã gửi duyệt bảng kê.";
             await LoadAsync();
-        });
+        }, "Đã gửi duyệt bảng kê.");
     }
 
     [RelayCommand]
@@ -123,9 +121,8 @@ public partial class StatementWorkspaceViewModel(
         await RunAsync(async () =>
         {
             RefreshCurrent(await statements.FinalizeDetailsAsync(Current.Id));
-            Status = "Đã chốt bảng kê.";
             await LoadAsync();
-        });
+        }, "Đã chốt bảng kê.");
     }
 
     [RelayCommand]
@@ -135,9 +132,8 @@ public partial class StatementWorkspaceViewModel(
         await RunAsync(async () =>
         {
             RefreshCurrent(await statements.VoidDetailsAsync(Current.Id, VoidReason));
-            Status = "Đã hủy bảng kê.";
             await LoadAsync();
-        });
+        }, "Đã hủy bảng kê.");
     }
 
     [RelayCommand]

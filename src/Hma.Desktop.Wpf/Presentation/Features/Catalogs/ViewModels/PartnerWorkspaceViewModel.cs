@@ -18,7 +18,7 @@ public partial class PartnerWorkspaceViewModel(
     ICurrentUser user,
     IUserPrompt prompt,
     IDocumentRenderer printer,
-    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterCode;
     [ObservableProperty] private string? filterName;
@@ -42,7 +42,6 @@ public partial class PartnerWorkspaceViewModel(
     {
         Items.Clear();
         foreach (var p in await partnerService.SearchAsync(FilterCode, FilterName)) Items.Add(p);
-        Status = $"{Items.Count} đối tác";
     }
 
     [RelayCommand]
@@ -96,7 +95,8 @@ public partial class PartnerWorkspaceViewModel(
     private async Task ExportExcel()
     {
         if (!CanPrint) return;
-        await documentInteraction.OpenAsync(printer.ExportPartnersExcel(Items.ToList()));
-        Status = "Đã xuất Excel đối tác.";
+        await RunAsync(
+            () => documentInteraction.OpenAsync(printer.ExportPartnersExcel(Items.ToList())),
+            "Đã xuất Excel đối tác.");
     }
 }

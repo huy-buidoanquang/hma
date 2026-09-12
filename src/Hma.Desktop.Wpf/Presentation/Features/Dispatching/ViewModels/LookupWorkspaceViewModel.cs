@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Dispatching.ViewModels;
 
-public partial class LookupWorkspaceViewModel(DispatchOrderQueryService queries, ICurrentUser user, IWorkspaceNavigator nav, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class LookupWorkspaceViewModel(DispatchOrderQueryService queries, ICurrentUser user, IWorkspaceNavigator nav, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? query;
     [ObservableProperty] private DispatchOrderSummary? selected;
@@ -27,7 +27,7 @@ public partial class LookupWorkspaceViewModel(DispatchOrderQueryService queries,
             Items.Clear();
             if (string.IsNullOrWhiteSpace(Query))
             {
-                Status = "Nhập số lệnh hoặc biển số.";
+                ShowToast("Nhập số lệnh hoặc biển số.", isError: true);
                 return;
             }
             var q = Query.Trim();
@@ -35,7 +35,6 @@ public partial class LookupWorkspaceViewModel(DispatchOrderQueryService queries,
             var byPlate = await queries.SearchAsync(null, null, null, null, q, null, null, null, null);
             foreach (var o in byCode.Concat(byPlate).DistinctBy(x => x.Id).OrderByDescending(x => x.PickupAt))
                 Items.Add(o);
-            Status = $"{Items.Count} chuyến";
         });
     }
 

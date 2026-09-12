@@ -13,7 +13,7 @@ public partial class RouteWorkspaceViewModel(
     RouteService routes,
     CatalogOptionQueryService catalog,
     ICurrentUser user,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterName;
     [ObservableProperty] private RouteEditorModel editor = new();
@@ -45,7 +45,6 @@ public partial class RouteWorkspaceViewModel(
                 || row.Code.Contains(FilterName, StringComparison.OrdinalIgnoreCase)
                 || row.Name.Contains(FilterName, StringComparison.OrdinalIgnoreCase))
                 Items.Add(row);
-        Status = $"{Items.Count} tuyến";
     }
 
     [RelayCommand]

@@ -8,7 +8,7 @@ using Hma.Desktop.Wpf.Presentation.Features.Catalogs.Models;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Catalogs.ViewModels;
 
-public partial class EmployeeWorkspaceViewModel(EmployeeService employees, CatalogOptionQueryService catalog, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class EmployeeWorkspaceViewModel(EmployeeService employees, CatalogOptionQueryService catalog, ICurrentUser user, IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private EmployeeSummary? selected;
     [ObservableProperty] private EmployeeEditorModel editor = new();
@@ -32,7 +32,6 @@ public partial class EmployeeWorkspaceViewModel(EmployeeService employees, Catal
             foreach (var j in await catalog.JobTitlesAsync()) JobTitles.Add(j);
             Items.Clear();
             foreach (var e in await employees.ListAsync()) Items.Add(e);
-            Status = $"{Items.Count} nhân viên";
         });
     }
 

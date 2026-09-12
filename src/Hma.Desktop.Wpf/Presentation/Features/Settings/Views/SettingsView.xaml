@@ -75,9 +75,6 @@
                         <Button Content="Lưu" Command="{Binding SaveParametersCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" IsEnabled="{Binding CanUpdate}"/>
                         <Button Content="Kiểm tra hệ thống" Command="{Binding CheckHealthCommand}" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
                         <TextBlock Text="{Binding HealthStatus}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource InkSecondaryBrush}"/>
-                        <Border Style="{StaticResource StatusBanner}" Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-                        </Border>
                     </StackPanel>
                 </Border>
             </ScrollViewer>

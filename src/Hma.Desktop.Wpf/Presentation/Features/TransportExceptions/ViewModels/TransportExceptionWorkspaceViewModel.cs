@@ -11,7 +11,7 @@ namespace Hma.Desktop.Wpf.Presentation.Features.TransportExceptions.ViewModels;
 public partial class TransportExceptionWorkspaceViewModel(
     TransportExceptionService exceptions,
     ICurrentUser current,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private TransportExceptionEditorModel editor = new();
     [ObservableProperty] private TransportExceptionSummary? selected;
@@ -65,7 +65,6 @@ public partial class TransportExceptionWorkspaceViewModel(
     {
         Items.Clear();
         foreach (var item in await exceptions.ListAsync()) Items.Add(item);
-        Status = $"{Items.Count} sự cố";
     }
 
     [RelayCommand]

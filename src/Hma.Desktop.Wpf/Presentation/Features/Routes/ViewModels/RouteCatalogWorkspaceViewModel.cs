@@ -8,7 +8,7 @@ public partial class RouteCatalogWorkspaceViewModel(
     LocationWorkspaceViewModel locations,
     RouteWorkspaceViewModel routes,
     ICurrentUser user,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private SettingsSection? selectedSection;
     private bool _suppressSection;

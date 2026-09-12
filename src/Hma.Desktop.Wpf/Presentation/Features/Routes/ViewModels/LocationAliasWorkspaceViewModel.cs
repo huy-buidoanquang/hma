@@ -16,7 +16,7 @@ public partial class LocationAliasWorkspaceViewModel(
     LocationAliasService aliases,
     CatalogOptionQueryService catalog,
     ICurrentUser user,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterText;
     [ObservableProperty] private LocationAliasEditorModel editor = new();
@@ -57,7 +57,6 @@ public partial class LocationAliasWorkspaceViewModel(
                 || (row.Location?.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ?? false))
                 Items.Add(row);
         }
-        Status = $"{Items.Count} bí danh điểm";
     }
 
     [RelayCommand]

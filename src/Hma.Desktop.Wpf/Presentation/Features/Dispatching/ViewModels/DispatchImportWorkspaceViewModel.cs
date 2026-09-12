@@ -15,7 +15,7 @@ public partial class DispatchImportWorkspaceViewModel(
     DispatchImportService importer,
     IDispatchImportParser parser,
     ICurrentUser current,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private DispatchImportSheetModel? selectedSheet;
     [ObservableProperty] private string? fileName;
@@ -54,8 +54,7 @@ public partial class DispatchImportWorkspaceViewModel(
         if (dlg.ShowDialog() != true) return;
         using var stream = File.Create(dlg.FileName);
         parser.WriteTemplate(stream);
-        Status = "Đã tải mẫu Excel.";
-        ShowToast(Status);
+        ShowToast("Đã tải mẫu Excel.");
     }
 
     [RelayCommand]
@@ -75,7 +74,6 @@ public partial class DispatchImportWorkspaceViewModel(
             Distribute(rows);
             FileName = Path.GetFileName(dlg.FileName);
             var count = AllDrafts().Count();
-            Status = $"{count} dòng từ {FileName}.";
             if (count == 0)
                 throw new InvalidOperationException("File không có dòng lệnh nào.");
             await CheckCoreAsync();
@@ -126,10 +124,10 @@ public partial class DispatchImportWorkspaceViewModel(
         if (imported is null)
             return;
         var skipped = chosen.Count - imported.Saved;
-        Status = skipped > 0
+        var message = skipped > 0
             ? $"Đã nhập {imported.Saved} lệnh. Bỏ qua {skipped} dòng lỗi."
             : $"Đã nhập {imported.Saved} lệnh.";
-        ShowToast(Status, isError: skipped > 0);
+        ShowToast(message, isError: skipped > 0);
     }
 
     private async Task CheckCoreAsync()
@@ -140,8 +138,8 @@ public partial class DispatchImportWorkspaceViewModel(
         RefreshSheetHeaders();
         if (result.FileError is not null)
             throw new InvalidOperationException(result.FileError);
-        Status = $"Đúng {result.ValidCount} dòng, lỗi {result.ErrorCount} dòng.";
-        ShowToast(Status, isError: result.ErrorCount > 0);
+        var message = $"Đúng {result.ValidCount} dòng, lỗi {result.ErrorCount} dòng.";
+        ShowToast(message, isError: result.ErrorCount > 0);
     }
 
     private static void ApplyCheck(IReadOnlyList<DispatchImportDraft> drafts, DispatchImportCheckResult result, bool syncSelection)

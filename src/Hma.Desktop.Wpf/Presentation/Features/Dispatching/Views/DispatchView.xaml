@@ -68,10 +68,6 @@
                     <Button Content="In theo khách" Style="{StaticResource SecondaryButton}" Command="{Binding PrintSummaryCustomerCommand}" IsEnabled="{Binding CanPrint}"/>
                 </WrapPanel>
             </StackPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       ScrollViewer.HorizontalScrollBarVisibility="Auto"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
@@ -129,10 +125,6 @@
                 <Button Content="Xóa" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteCommand}"
                         IsEnabled="{Binding CanDelete}" Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibility}}"/>
             </WrapPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <ScrollViewer b:ScrollViewerBehaviors.FormScroll="True" HorizontalScrollBarVisibility="Disabled">
                 <Border Style="{StaticResource EditorCard}">
                     <TabControl>

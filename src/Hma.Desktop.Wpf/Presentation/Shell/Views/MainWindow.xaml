@@ -146,18 +146,18 @@
             </DockPanel>
         </Border>
         <ContentControl Grid.Column="1" Style="{StaticResource WorkspaceHost}" Content="{Binding Current}"/>
-        <Border Grid.Column="1" Panel.ZIndex="20"
-                Visibility="{Binding Current.ToastMessage, Converter={StaticResource StringToVisibility}}">
+        <Border x:Name="ToastHost" Grid.Column="1" Panel.ZIndex="20"
+                Visibility="{Binding Toast.Message, Converter={StaticResource StringToVisibility}}">
             <Border.Style>
                 <Style TargetType="Border" BasedOn="{StaticResource ToastBanner}">
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding Current.ToastIsError}" Value="True">
+                        <DataTrigger Binding="{Binding Toast.IsError}" Value="True">
                             <Setter Property="Background" Value="{DynamicResource BrushError}"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </Border.Style>
-            <TextBlock Text="{Binding Current.ToastMessage}" Foreground="{DynamicResource BrushOnBrand}"
+            <TextBlock x:Name="ToastText" Text="{Binding Toast.Message}" Foreground="{DynamicResource BrushOnBrand}"
                        TextWrapping="Wrap" FontSize="13"/>
         </Border>
     </Grid>

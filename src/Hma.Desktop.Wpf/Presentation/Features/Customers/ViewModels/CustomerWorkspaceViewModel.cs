@@ -20,7 +20,7 @@ public partial class CustomerWorkspaceViewModel(
     ICurrentUser user,
     IUserPrompt prompt,
     IDocumentRenderer printer,
-    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterCode;
     [ObservableProperty] private string? filterName;
@@ -60,7 +60,6 @@ public partial class CustomerWorkspaceViewModel(
             Items.Clear();
             foreach (var c in await customers.SearchAsync(FilterCode, FilterName, FilterAddress, FilterTaxCode, FilterFrom, FilterTo))
                 Items.Add(c);
-            Status = $"Tìm thấy {Items.Count} khách hàng";
         });
     }
 
@@ -116,7 +115,8 @@ public partial class CustomerWorkspaceViewModel(
     private async Task ExportExcel()
     {
         if (!CanPrint) return;
-        await documentInteraction.OpenAsync(printer.ExportCustomersExcel(Items.ToList()));
-        Status = "Đã xuất Excel danh sách khách.";
+        await RunAsync(
+            () => documentInteraction.OpenAsync(printer.ExportCustomersExcel(Items.ToList())),
+            "Đã xuất Excel danh sách khách.");
     }
 }

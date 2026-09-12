@@ -3,6 +3,7 @@ using Hma.Desktop.Wpf.Abstractions;
 using Hma.Desktop.Wpf.Infrastructure.Dialogs;
 using Hma.Desktop.Wpf.Infrastructure.Files;
 using Hma.Desktop.Wpf.Infrastructure.Navigation;
+using Hma.Desktop.Wpf.Infrastructure.Notifications;
 using Hma.Desktop.Wpf.Infrastructure.Session;
 using Hma.Desktop.Wpf.Infrastructure.Theming;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddSingleton<ICurrentUser>(provider => provider.GetRequiredService<DesktopUserSession>());
         services.AddSingleton<IDocumentInteractionService, DesktopDocumentInteractionService>();
         services.AddSingleton<IUiOperationGate, UiOperationGate>();
+        services.AddScoped<IToastService, ToastService>();
         services.AddSingleton<ThemeService>();
         services.AddSingleton<SessionHost>();
         services.AddSingleton<ISessionHost>(provider => provider.GetRequiredService<SessionHost>());

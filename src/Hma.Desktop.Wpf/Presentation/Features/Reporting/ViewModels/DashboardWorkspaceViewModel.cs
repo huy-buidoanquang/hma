@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Hma.Desktop.Wpf.Presentation.Features.Reporting.ViewModels;
 
-public partial class DashboardWorkspaceViewModel(DashboardQueryService dashboard, ICurrentUser user, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+public partial class DashboardWorkspaceViewModel(DashboardQueryService dashboard, ICurrentUser user, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private int year = DateTime.Today.Year;
     [ObservableProperty] private int month = DateTime.Today.Month;

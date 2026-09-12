@@ -24,10 +24,6 @@
                     <Button Content="Excel" Style="{StaticResource SecondaryButton}" Command="{Binding ExportExcelCommand}" IsEnabled="{Binding CanPrint}"/>
                 </WrapPanel>
             </StackPanel>
-            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
-                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
-            </Border>
             <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                       b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
                 <DataGrid.Columns>

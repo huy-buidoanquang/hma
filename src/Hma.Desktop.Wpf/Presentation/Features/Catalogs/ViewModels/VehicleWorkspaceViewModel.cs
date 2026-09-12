@@ -21,7 +21,7 @@ public partial class VehicleWorkspaceViewModel(
     ICurrentUser user,
     IUserPrompt prompt,
     IDocumentRenderer printer,
-    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IDocumentInteractionService documentInteraction, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterPlate;
     [ObservableProperty] private VehicleSummary? selected;
@@ -53,7 +53,6 @@ public partial class VehicleWorkspaceViewModel(
     {
         Items.Clear();
         foreach (var v in await vehicleService.SearchAsync(FilterPlate)) Items.Add(v);
-        Status = $"{Items.Count} xe";
     }
 
     [RelayCommand]
@@ -110,7 +109,8 @@ public partial class VehicleWorkspaceViewModel(
     private async Task ExportExcel()
     {
         if (!CanPrint) return;
-        await documentInteraction.OpenAsync(printer.ExportVehiclesExcel(Items.ToList()));
-        Status = "Đã xuất Excel xe.";
+        await RunAsync(
+            () => documentInteraction.OpenAsync(printer.ExportVehiclesExcel(Items.ToList())),
+            "Đã xuất Excel xe.");
     }
 }

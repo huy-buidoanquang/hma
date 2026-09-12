@@ -31,7 +31,7 @@ public partial class DispatchWorkspaceViewModel(
     CompanyService company,
     IDocumentRenderer printer,
     ICurrentUser current,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private string? filterCode;
     [ObservableProperty] private string? filterPlate;
@@ -335,7 +335,6 @@ public partial class DispatchWorkspaceViewModel(
         Items.Clear();
         foreach (var o in await QueryAsync(FilterFrom, FilterTo))
             Items.Add(o);
-        Status = $"{Items.Count} lệnh điều xe";
     }
 
     [RelayCommand]
@@ -756,9 +755,10 @@ public partial class DispatchWorkspaceViewModel(
             await using var stream = File.OpenRead(dlg.FileName);
             await documents.AttachAsync(Editor.Id, (DispatchDocumentKind)SelectedDocKind, Path.GetFileName(dlg.FileName), stream);
             await OpenAsync(Editor.Id);
-            if (await documents.IsUsingLocalFallbackAsync())
-                Status = "Đã đính kèm (lưu máy local — đặt đường dẫn mạng trong Tham số khi dùng nhiều máy).";
-        }, "Đã đính kèm chứng từ.");
+            ShowToast(await documents.IsUsingLocalFallbackAsync()
+                ? "Đã đính kèm (lưu máy local — đặt đường dẫn mạng trong Tham số khi dùng nhiều máy)."
+                : "Đã đính kèm chứng từ.");
+        });
     }
 
     [RelayCommand]
@@ -848,15 +848,16 @@ public partial class DispatchWorkspaceViewModel(
     private async Task ExportExcel()
     {
         if (!CanPrint) return;
-        await documentInteraction.OpenAsync(printer.ExportDispatchExcel(Items.ToList()));
-        Status = "Đã xuất danh sách cước.";
+        await RunAsync(
+            () => documentInteraction.OpenAsync(printer.ExportDispatchExcel(Items.ToList())),
+            "Đã xuất danh sách cước.");
     }
 
     private async Task OpenSummaryAsync(List<DispatchOrderSummary> list, string title)
     {
         var companyInfo = await company.GetAsync();
         await documentInteraction.OpenAsync(printer.PrintDispatchSummary(list, title, companyInfo));
-        Status = $"Đã in {list.Count} lệnh.";
+        ShowToast($"Đã in {list.Count} lệnh.");
     }
 
 }

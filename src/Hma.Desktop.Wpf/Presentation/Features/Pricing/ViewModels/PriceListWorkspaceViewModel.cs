@@ -16,7 +16,7 @@ public partial class PriceListWorkspaceViewModel(
     CatalogOptionQueryService catalog,
     CustomerService customers,
     ICurrentUser user,
-    IUserPrompt prompt, IUiOperationGate operationGate) : WorkspaceBase(operationGate)
+    IUserPrompt prompt, IUiOperationGate operationGate, IToastService toastService) : WorkspaceBase(operationGate, toastService)
 {
     [ObservableProperty] private PriceListEditorModel editor = new();
     [ObservableProperty] private PriceListSummary? selected;
