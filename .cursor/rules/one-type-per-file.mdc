@@ -32,4 +32,4 @@ Allowed exceptions:
 - A single `file`-scoped or `private` nested type used only as an implementation detail of the outer type.
 - One static `DependencyInjection` class per project in `DependencyInjection.cs`.
 
-When adding a type, create the file in the matching folder (`Entities/`, `Services/`, `Abstractions/`, `ViewModels/`, `Views/`). When touching a file that already contains multiple types, split them before adding more. Do not put ViewModels for different screens in `*ViewModels.cs`.
+When adding a type, create the file in its owner folder: Domain taxonomy, Application `Abstractions/Common/Features`, or Desktop `Presentation/Features/<Feature>/{Views,ViewModels,Models}`. Never create catch-all `Helpers/` or `Utils/`. When touching a file that already contains multiple types, split it before adding more.

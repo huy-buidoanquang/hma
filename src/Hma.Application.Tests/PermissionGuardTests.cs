@@ -1,5 +1,5 @@
-using Hma.Application.Abstractions;
-using Hma.Application.Services;
+using Hma.Application.Abstractions.Security;
+using Hma.Application.Common.Authorization;
 using NSubstitute;
 
 namespace Hma.Application.Tests;

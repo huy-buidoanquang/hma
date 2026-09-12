@@ -4,6 +4,8 @@ Permission model: `AppScreen.Key` + Create / Delete / Update / View / Print (`Re
 
 Pattern: **Tìm → lưới → Xem / double-click → form chi tiết**. Catalogs stay two-column (find left, editor right). Dispatch form mode is list on top, form below.
 
+Physical UI layout: `Hma.Desktop.Wpf/Presentation/Features/<Feature>/{Views,ViewModels,Models}`. ViewModels bind presentation models; Application contracts and use cases are under `Hma.Application/Features/<Feature>`. Shared host seams are in Desktop `Abstractions`, implementations in `Infrastructure`.
+
 **Main nav** is not 1:1 with `AppScreen.Key`. Shell items: Dashboard … Chức vụ, **Tuyến đường** (hub, workspace key `route-catalog` — not an AppScreen), Bảng giá, **Lệnh điều xe** (hub), Tra cứu, Đối soát, Bảng kê, Báo cáo, **Cấu hình** (hub). Thành phố / Người dùng / Điểm / Tuyến / Sửa lệnh theo khách are inner sections; permission keys stay as below.
 
 | Screen key | View | Use cases |
@@ -23,7 +25,7 @@ Pattern: **Tìm → lưới → Xem / double-click → form chi tiết**. Catalo
 | `dispatch-orders` | DispatchHubView → DispatchView | Find: số LDX, từ–đến, KH, biển, loại xe, điểm đi/đến (first/last stop), TT lệnh, TT đối soát, khoảng tiền. Chi tiết: người gửi/nhận (VL-), giờ lấy, người tạo, combo tuyến, auto cước, in 1 lệnh / ngày / tháng / theo khách, Excel danh sách cước. Nhập Excel: 6 tab theo sheet tải (1.25…10), sửa lưới, Check in-app, nhập subset đã chọn (`Create`) |
 | `dispatch-grid-edit` | DispatchGridEditView (section lệnh) | Sửa nhiều lệnh theo khách: combo tuyến, xe; không tra cước. Không đứng riêng trên main nav |
 | `lookup` | LookupView | Ô số lệnh hoặc biển số → lịch sử chuyến, mở lệnh (hub form + `OpenByIdAsync`) |
-| `reconcile` | ReconcileView | Checklist; mở lệnh từ lưới; Pending → Reconciled; audit ChangeLog |
+| `reconcile` | ReconcileView | Checklist; mở lệnh từ lưới; Pending/Rejected → Submitted → Reconciled hoặc Rejected; maker–checker; audit ChangeLog |
 | `statements` | StatementView | Bảng kê tháng; cột tải/phát sinh/ghi chú; tổng cước / phụ phí / phát sinh / trước–sau VAT |
 | `reports` | ReportView | In ngày; preset tuần / quý / năm; số chuyến + tổng cước theo khách/xe |
 | `settings` | SettingsView | Hub Cấu hình: VAT / chứng từ / số đếm; công ty; thành phố; người dùng (manager); từ điển điểm (`LocationAlias`); từ điển tuyến (`RouteAlias`); từ điển khách (`CustomerAlias`) |

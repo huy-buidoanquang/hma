@@ -1,4 +1,4 @@
-using Hma.Desktop.Wpf.ViewModels;
+using Hma.Desktop.Wpf.Infrastructure.Session;
 
 namespace Hma.Desktop.Wpf.Tests;
 
@@ -17,11 +17,23 @@ public class WorkspaceBaseTests
         Assert.Contains(nameof(ModeAwareWorkspace.CanPersist), changedProperties);
     }
 
-    private sealed class ModeAwareWorkspace : WorkspaceBase
+    [Fact]
+    public void Explicit_editor_state_detects_a_changed_value()
+    {
+        var workspace = new ModeAwareWorkspace();
+        workspace.StartCreating();
+
+        workspace.Value = "changed";
+
+        Assert.True(workspace.HasUnsavedChanges);
+    }
+
+    private sealed class ModeAwareWorkspace() : WorkspaceBase(new UiOperationGate())
     {
         public bool CanPersist => Mode == WorkspaceMode.Create;
+        public string Value { get; set; } = "initial";
 
-        public void StartCreating() => EnterCreate("Create");
+        public void StartCreating() => EnterCreateState("Create", () => EditorState.Capture(Value));
 
         protected override void OnWorkspaceModeChanged() =>
             OnPropertyChanged(nameof(CanPersist));

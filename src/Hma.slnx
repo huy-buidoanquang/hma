@@ -9,4 +9,5 @@
   <Project Path="Hma.Reporting.Tests/Hma.Reporting.Tests.csproj" />
   <Project Path="Hma.Infrastructure.SqlServer.Tests/Hma.Infrastructure.SqlServer.Tests.csproj" />
   <Project Path="Hma.Desktop.Wpf.Tests/Hma.Desktop.Wpf.Tests.csproj" />
+  <Project Path="Hma.Architecture.Tests/Hma.Architecture.Tests.csproj" />
 </Solution>

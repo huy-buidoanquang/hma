@@ -1,4 +1,5 @@
-using Hma.Application.Abstractions;
+using Hma.Application.Abstractions.Import;
+using Hma.Application.Abstractions.Reporting;
 using Hma.Reporting;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,7 +9,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddHmaReporting(this IServiceCollection services)
     {
-        services.AddSingleton<IDocumentPrinter, DocumentPrinter>();
+        services.AddSingleton<DocumentPrinter>();
+        services.AddSingleton<IDocumentRenderer, ReportDocumentRenderer>();
         services.AddSingleton<IDispatchImportParser, DispatchImportParser>();
         return services;
     }

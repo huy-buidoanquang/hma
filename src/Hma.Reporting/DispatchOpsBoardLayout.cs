@@ -1,5 +1,4 @@
 using ClosedXML.Excel;
-using Hma.Application.Services;
 
 namespace Hma.Reporting;
 

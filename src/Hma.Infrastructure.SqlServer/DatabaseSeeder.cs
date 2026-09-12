@@ -1,7 +1,8 @@
-using Hma.Application.Abstractions;
-using Hma.Application.Services;
+using Hma.Application.Common.Authorization;
+using Hma.Application.Common.Security;
 using Hma.Domain.Entities;
-using Hma.Domain.Services;
+using Hma.Domain.Normalization;
+using Hma.Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Infrastructure.SqlServer;
@@ -105,7 +106,11 @@ public static class DatabaseSeeder
         {
             db.Companies.Add(new Company
             {
-                Name = "Công ty TNHH dịch vụ vận tải và thương mại Hà Minh Anh"
+                Name = "Công ty TNHH dịch vụ vận tải và thương mại Hà Minh Anh",
+                Address = "SỐ 121 - KHU 3 - QL2 - PHÚ MINH - SÓC SƠN – TP HÀ NỘI",
+                Phone = "046 2544 966 8 – 0987 060 666",
+                TaxCode = "010013455645",
+                Email = "truckinghaco@gmail.com"
             });
         }
 
@@ -124,7 +129,7 @@ public static class DatabaseSeeder
                 throw new InvalidOperationException(
                     "Cơ sở dữ liệu chưa có người dùng. Đặt biến HMA_BOOTSTRAP_ADMIN_PASSWORD bằng mật khẩu mạnh cho lần khởi tạo đầu tiên.");
             }
-            AppUserDomainService.EnsurePasswordIsStrong(bootstrapPassword);
+            AppUserRules.EnsurePasswordIsStrong(bootstrapPassword);
             db.Users.Add(new AppUser
             {
                 UserName = "admin",
@@ -142,7 +147,7 @@ public static class DatabaseSeeder
             var accountantPassword = Environment.GetEnvironmentVariable("HMA_BOOTSTRAP_ACCOUNTANT_PASSWORD");
             if (!string.IsNullOrWhiteSpace(accountantPassword))
             {
-                AppUserDomainService.EnsurePasswordIsStrong(accountantPassword);
+                AppUserRules.EnsurePasswordIsStrong(accountantPassword);
                 var accountant = new AppUser
                 {
                     UserName = "ketoan",

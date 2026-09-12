@@ -1,5 +1,6 @@
+using Hma.Domain.Normalization;
 using Hma.Domain.Entities;
-using Hma.Domain.Services;
+using Hma.Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Infrastructure.SqlServer;

@@ -1,5 +1,5 @@
 using Hma.Domain.Entities;
-using Hma.Domain.Services;
+using Hma.Domain.Rules;
 
 namespace Hma.Domain.Tests;
 
@@ -70,6 +70,7 @@ public class PriceListMatchRulesTests
         published.Route = new Route { Name = "Hà Nội → Hải Phòng" };
         published.VehicleType = new VehicleType { Name = "Xe 5 tấn" };
         var pubQuote = PriceListMatchRules.ToQuote(published);
+        Assert.Equal("CB", pubQuote.PriceListCode);
         Assert.Contains("Giá công bố", pubQuote.SourceLabel, StringComparison.Ordinal);
         Assert.Contains("Hà Nội → Hải Phòng", pubQuote.SourceLabel, StringComparison.Ordinal);
         Assert.Equal(2_430_000, pubQuote.UnitPrice);
@@ -79,6 +80,7 @@ public class PriceListMatchRulesTests
         privateItem.Route = new Route { Name = "Hà Nội → Hải Phòng" };
         privateItem.VehicleType = new VehicleType { Name = "Xe 5 tấn" };
         var privQuote = PriceListMatchRules.ToQuote(privateItem);
+        Assert.Equal("RIENG", privQuote.PriceListCode);
         Assert.Contains("Giá riêng KH001", privQuote.SourceLabel, StringComparison.Ordinal);
         Assert.Contains("biến động", privQuote.SourceLabel, StringComparison.Ordinal);
     }

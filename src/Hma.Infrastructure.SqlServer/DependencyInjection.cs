@@ -1,4 +1,5 @@
-using Hma.Application.Abstractions;
+using Hma.Application.Abstractions.Persistence;
+using Hma.Application.Abstractions.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

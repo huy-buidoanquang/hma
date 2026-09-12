@@ -1,5 +1,4 @@
-using Hma.Desktop.Wpf.ViewModels;
-using Hma.Domain.Entities;
+using Hma.Application.Features.Dispatching;
 
 namespace Hma.Desktop.Wpf.Tests;
 
@@ -10,7 +9,7 @@ public class DispatchGridRowTests
     [InlineData(ReconciliationStatus.Reconciled)]
     public void FromOrder_disables_financially_locked_orders(ReconciliationStatus status)
     {
-        var row = DispatchGridRow.FromOrder(new DispatchOrder
+        var row = DispatchGridRow.FromOrder(new DispatchOrderSummary
         {
             Status = DispatchStatus.Completed,
             ReconciliationStatus = status
@@ -24,11 +23,12 @@ public class DispatchGridRowTests
     {
         var pickupAt = new DateTime(2026, 9, 11, 20, 30, 0);
 
-        var row = DispatchGridRow.FromOrder(new DispatchOrder
+        var row = DispatchGridRow.FromOrder(new DispatchOrderSummary
         {
             Status = DispatchStatus.Issued,
             ReconciliationStatus = ReconciliationStatus.Pending,
-            PickupAt = pickupAt
+            PickupAt = pickupAt,
+            CanEdit = true,
         });
 
         Assert.True(row.CanEditRow);

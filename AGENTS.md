@@ -2,31 +2,30 @@
 
 ## Project Structure & Architecture
 
-The .NET 10 solution is `src/Hma.slnx`. `Hma.Domain` contains rules; `Hma.Application` owns use cases; `Hma.Infrastructure.SqlServer` implements persistence; `Hma.Reporting` exports PDF/Excel; and `Hma.Desktop.Wpf` is the host. Tests: `src/Hma.*.Tests`; SQL/ETL: `database/`; specifications: `docs/`.
+The .NET 10 solution is `src/Hma.slnx`. Domain code uses `Entities/`, `Enums/`, `Models/`, `Rules/`, `Normalization/`, and `Formatting/`. Application ports live in `Abstractions/`, shared concerns in `Common/`, and use cases/contracts in `Features/<Feature>/`. WPF uses `Abstractions/`, `Infrastructure/`, and `Presentation/Features/<Feature>/{Views,ViewModels,Models}`. SQL/ETL is in `database/`; specifications are in `docs/`.
 
-Domain must not reference EF, WPF, or SQL; Application must not use `System.Windows` or connection strings. Desktop calls Application, never `SqlClient` or `HmaDbContext`. Do not add ASP.NET/JWT/Swagger in this phase. Treat `legacy/` as read-only behavioral reference; never compile or copy its frameworks or metadata.
+Domain must not reference EF, WPF, or SQL; Application must not use `System.Windows` or connection strings. Desktop calls Application, never `SqlClient` or `HmaDbContext`. Do not add ASP.NET/JWT/Swagger now. Treat `legacy/` as read-only behavioral reference.
 
 ## Survey Before Editing
 
-Before every change, inspect affected callers, callees, interfaces, DI, XAML, entities, tests, and schema/ETL. Infer side effects, permissions, messages, and screen keys from code. Prefer the smallest fix in Domain/Application, reuse helpers, and update all call sites. Report contradictions instead of guessing.
+Before changes, inspect affected callers, interfaces, DI, XAML, entities, tests, and schema/ETL. Infer side effects, permissions, messages, and screen keys from code. Update all call sites; report contradictions instead of guessing.
 
 ## Build, Test, and Run
 
-- `dotnet tool restore` — restore the pinned EF CLI.
 - `dotnet restore src/Hma.slnx` — restore packages.
 - `dotnet build src/Hma.slnx` — compile the solution.
 - `dotnet test src/Hma.slnx` — run xUnit tests.
+- `$env:HMA_TEST_CONNECTION='Server=.;Trusted_Connection=True;Encrypt=False'; dotnet test src/Hma.Infrastructure.SqlServer.Tests` — run disposable SQL integration tests.
 - `dotnet run --project src/Hma.Desktop.Wpf` — start the desktop app.
-- `dotnet format src/Hma.slnx` — apply repository formatting.
 
 ## Coding & WPF Conventions
 
-Use four spaces, file-scoped namespaces, nullable annotations, and implicit usings. Use PascalCase for types/public members, camelCase for locals, `_camelCase` for stored fields, and `I` for interfaces. Prefer primary constructors, obvious `var`, LINQ, and immutable records. I/O is async, accepts `CancellationToken`, and uses an `Async` suffix; never block on tasks.
+Use four spaces, file-scoped namespaces, nullable annotations, and implicit usings. Use PascalCase for types/public members, camelCase for locals, `_camelCase` for fields, and `I` for interfaces. Prefer primary constructors, obvious `var`, LINQ, and immutable records. Async I/O accepts `CancellationToken` and uses an `Async` suffix.
 
-Each top-level type belongs in a matching file/folder; only WPF partials, a private/file-scoped helper, and `DependencyInjection` are exceptions. Keep views layout-only and code-behind minimal. ViewModels use CommunityToolkit.Mvvm, `WorkspaceBase`, observable collections, bindings, and Application services. User text is Vietnamese; identifiers and screen keys are English.
+Each top-level type belongs in a matching file/folder; never create `Helpers/` or `Utils/`. Keep views layout-only and code-behind minimal. ViewModels use CommunityToolkit.Mvvm, presentation models, immutable dirty-state snapshots, and Application commands/details. Never expose persisted entities or physical paths. User text is Vietnamese; identifiers and screen keys are English.
 
 ## Persistence, Security & Testing
 
-Use EF Core through `IHmaDbContext`; do not add another repository layer or lazy loading. Use explicit `Include` and bound list queries. Schema changes are code-first migrations—no ad-hoc `ALTER`/`EnsureCreated` patches—and `database/001_schema.sql` must stay aligned. Use singular PascalCase SQL names, `Id`/`{Table}Id`, `nvarchar`, and `datetime2`; preserve established decimal precision. Keep `LegacyId` only for ETL. Enforce permissions at the Application boundary, hash passwords with PBKDF2, and never commit production secrets or plaintext legacy passwords.
+Use EF Core through `IHmaDbContext`; do not add repositories or lazy loading. Use explicit `Include` and bounded queries. Schema changes require migrations and aligned `database/001_schema.sql`; preserve SQL names and decimal precision. Keep `LegacyId` only for ETL. Enforce permissions at the Application boundary and never commit secrets.
 
-Name tests `<Subject>Tests.cs` and scenarios by behavior. Add xUnit/NSubstitute coverage in the owning layer. Use short imperative commits (for example, `improve excel import`). PRs must explain impact, link issues, list verification, include WPF screenshots, and call out migrations, ETL, permissions, or configuration changes.
+Application uses read-only `ICurrentUser`, `TimeProvider`, stream storage, and Application-owned reporting contracts. Name tests `<Subject>Tests.cs` and scenarios by behavior. Run architecture and WPF binding smoke tests after moves. Commits are short and imperative; PRs list verification, screenshots, and migration/ETL/permission/configuration impact.

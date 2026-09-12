@@ -1,4 +1,4 @@
-using Hma.Application.Services;
+using Hma.Application.Features.Dispatching.Import;
 using Hma.Domain.Entities;
 
 namespace Hma.Application.Tests;

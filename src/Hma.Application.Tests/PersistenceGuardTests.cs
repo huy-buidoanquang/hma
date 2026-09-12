@@ -1,4 +1,4 @@
-using Hma.Application.Services;
+using Hma.Application.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Application.Tests;

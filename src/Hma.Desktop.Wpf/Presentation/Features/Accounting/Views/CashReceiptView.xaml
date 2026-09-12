@@ -1,0 +1,90 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Presentation.Features.Accounting.Views.CashReceiptView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors">
+    <Grid>
+        <DockPanel Visibility="{Binding IsBrowsing, Converter={StaticResource BoolToVisibility}}" Margin="16">
+            <TextBlock DockPanel.Dock="Top" Text="Phiếu thu" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ToolbarPanel}">
+                <Button Content="Tìm" Command="{Binding SearchCommand}"/>
+                <Button Content="Thêm mới" Command="{Binding NewItemCommand}"/>
+            </WrapPanel>
+            <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                      b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Số PT" Binding="{Binding Code}" Width="90"/>
+                    <DataGridTextColumn Header="Ngày" Binding="{Binding DocumentDate, StringFormat=dd/MM/yyyy}"/>
+                    <DataGridTextColumn Header="Số tiền" Binding="{Binding Amount, Converter={StaticResource VndMoney}}" Width="*" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+        <DockPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}" Margin="16">
+            <TextBlock DockPanel.Dock="Top" Text="{Binding EditorTitle}" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <StackPanel DockPanel.Dock="Bottom" Style="{StaticResource EditorActions}">
+                <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
+                <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
+                <Button Content="In" Style="{StaticResource SecondaryButton}" Command="{Binding PrintCommand}"/>
+            </StackPanel>
+            <Border Style="{StaticResource EditorCard}" IsEnabled="{Binding AreFieldsEnabled}">
+                <StackPanel>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Số phiếu"/>
+                        <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Code}" IsReadOnly="True"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Ngày"/>
+                        <DatePicker Grid.Column="1" Margin="0" SelectedDate="{Binding Editor.DocumentDate}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Khách hàng"/>
+                        <ComboBox Grid.Column="1" Margin="0" ItemsSource="{Binding Customers}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding Editor.CustomerId}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Lệnh điều xe"/>
+                        <ComboBox Grid.Column="1" Margin="0" ItemsSource="{Binding DispatchOrders}" DisplayMemberPath="Code" SelectedValuePath="Id" SelectedValue="{Binding Editor.DispatchOrderId}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Số tiền"/>
+                        <TextBox Grid.Column="1" Margin="0" Style="{StaticResource MoneyField}" Text="{Binding Editor.Amount, Converter={StaticResource VndMoney}, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="MoneyPositive"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Người nộp"/>
+                        <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.PayerName}"/>
+                    </Grid>
+                    <Grid Style="{StaticResource FormRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Style="{StaticResource FormLabel}" Content="Lý do"/>
+                        <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Reason}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </DockPanel>
+    </Grid>
+</UserControl>

@@ -1,4 +1,4 @@
-using Hma.Application.Services;
+using Hma.Application.Features.Reporting;
 
 namespace Hma.Application.Tests;
 

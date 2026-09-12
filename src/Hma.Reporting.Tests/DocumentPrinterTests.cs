@@ -1,10 +1,37 @@
 using ClosedXML.Excel;
+using Hma.Application.Features.Customers;
+using Hma.Application.Features.Statements;
 using Hma.Domain.Entities;
 
 namespace Hma.Reporting.Tests;
 
 public class DocumentPrinterTests
 {
+    [Fact]
+    public void Renderer_returns_generated_document_content_instead_of_a_physical_path()
+    {
+        var statement = new FreightStatement
+        {
+            Code = "GEN-001",
+            Year = 2026,
+            Month = 9,
+            Customer = new Customer { Name = "Khách kiểm thử" }
+        };
+
+        var details = new FreightStatementDetails(
+            statement.Id, statement.Code, 0,
+            new CustomerOption(0, "", statement.Customer.Name, null, null, null, false),
+            statement.Year, statement.Month, statement.Status, null, null, 0, 0, 0, 0, 0, 0, 0, 0,
+            null, []);
+        var document = new ReportDocumentRenderer(new DocumentPrinter()).ExportFreightStatementExcel(details);
+
+        Assert.Equal("BK-GEN-001.xlsx", document.FileName);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", document.ContentType);
+        Assert.NotEmpty(document.Content);
+        using var workbook = new XLWorkbook(new MemoryStream(document.Content));
+        Assert.NotNull(workbook.Worksheet("Bang ke"));
+    }
+
     [Fact]
     public void Temporary_report_paths_are_unique_and_keep_the_requested_extension()
     {

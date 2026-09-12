@@ -1,5 +1,6 @@
-using Hma.Application.Abstractions;
-using Hma.Application.Services;
+using Hma.Application.Abstractions.Persistence;
+using Hma.Application.Abstractions.Storage;
+using Hma.Application.Common.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hma.Infrastructure.SqlServer;
@@ -62,11 +63,11 @@ public sealed class LocalDiskFileStorage(IHmaDbContext db) : IFileStorage
         try { File.Delete(path); } catch { /* ignore missing/locked files */ }
     }
 
-    public async Task<string> GetPhysicalPathAsync(string key, CancellationToken cancellationToken = default)
+    public async Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken = default)
     {
         var path = await ResolveExistingAsync(key, cancellationToken)
                    ?? throw new InvalidOperationException("Không tìm thấy file chứng từ.");
-        return path;
+        return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
     }
 
     private async Task<string?> ResolveExistingAsync(string key, CancellationToken cancellationToken)

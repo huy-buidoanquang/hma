@@ -1,4 +1,15 @@
-using Hma.Application.Services;
+using Hma.Application.Features.Routes;
+using Hma.Application.Features.Reconciliation;
+using Hma.Application.Common.Persistence;
+using Hma.Application.Features.Authentication;
+using Hma.Application.Features.TransportExceptions;
+using Hma.Application.Features.Reporting;
+using Hma.Application.Common.Formatting;
+using Hma.Application.Features.Pricing;
+using Hma.Application.Features.Catalogs;
+using Hma.Application.Features.Dispatching;
+using Hma.Application.Features.Statements;
+using Hma.Application.Common.Security;
 using Hma.Domain.Entities;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +20,161 @@ namespace Hma.Infrastructure.SqlServer.Tests;
 
 public class SqlServerWorkflowTests
 {
+    [Fact]
+    public async Task Core_operational_workflow_uses_application_contracts_end_to_end()
+    {
+        var options = CreateOptions();
+        var storageRoot = Path.Combine(Path.GetTempPath(), "HmaIntegration", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var hasher = new Pbkdf2PasswordHasher();
+            AppUser maker;
+            AppUser reviewer;
+            Customer customer;
+            Partner partner;
+            Route route;
+            VehicleType vehicleType;
+            Vehicle vehicle;
+            Driver driver;
+            PaymentMethod paymentMethod;
+            await using (var setup = new HmaDbContext(options))
+            {
+                await setup.Database.MigrateAsync();
+                maker = new AppUser
+                {
+                    UserName = "workflow-maker",
+                    DisplayName = "Người lập",
+                    PasswordHash = hasher.Hash("test-password"),
+                    IsManager = true,
+                };
+                reviewer = new AppUser
+                {
+                    UserName = "workflow-reviewer",
+                    DisplayName = "Người duyệt",
+                    PasswordHash = hasher.Hash("test-password"),
+                    IsManager = true,
+                };
+                customer = new Customer { Code = "WF-CUSTOMER", Name = "Khách quy trình" };
+                partner = new Partner { Code = "WF-PARTNER", Name = "Đối tác quy trình", OperatingFeePercent = 10 };
+                vehicleType = new VehicleType { Code = "WF-TRUCK", Name = "Xe 5 tấn", Tonnage = 5 };
+                var location = new Location { Code = "WF-LOCATION", Name = "Kho lấy hàng" };
+                var delivery = new Location { Code = "WF-DELIVERY", Name = "Kho giao hàng" };
+                route = new Route { Code = "WF-ROUTE", Name = "Tuyến quy trình" };
+                route.Stops.Add(new RouteStop { Sequence = 0, Location = location });
+                route.Stops.Add(new RouteStop { Sequence = 1, Location = delivery });
+                vehicle = new Vehicle { PlateNumber = "29C-99999", Partner = partner, VehicleType = vehicleType, Tonnage = 5 };
+                driver = new Driver { Code = "WF-DRIVER", Name = "Tài xế quy trình", Partner = partner };
+                paymentMethod = new PaymentMethod { Code = PaymentMethodCodes.Credit, Name = "Trả sau" };
+                setup.AddRange(maker, reviewer, customer, route, vehicle, driver, paymentMethod);
+                setup.Parameters.Add(new SystemParameter { Key = "DocumentStorePath", Value = storageRoot });
+                setup.Sequences.AddRange(
+                    new DocumentSequence { Key = "dispatch-order", LastValue = 0 },
+                    new DocumentSequence { Key = "freight-statement", LastValue = 0 });
+                await setup.SaveChangesAsync();
+            }
+
+            await using var db = new HmaDbContext(options);
+            var authenticated = await new AuthService(db, hasher, TimeProvider.System)
+                .AuthenticateAsync("workflow-maker", "test-password");
+            Assert.NotNull(authenticated);
+            Assert.Equal(maker.Id, authenticated.Id);
+
+            var current = new MutableCurrentUser(maker);
+            var cityService = new CityService(db, current);
+            await cityService.SaveAsync(new SaveCatalogItemCommand(0, "WF-CITY", "Thành phố quy trình", null));
+            var city = Assert.Single(await cityService.ListAsync());
+            await cityService.SaveAsync(new SaveCatalogItemCommand(city.Id, city.Code, "Thành phố đã sửa", null));
+            Assert.Equal("Thành phố đã sửa", Assert.Single(await cityService.ListAsync()).Name);
+            await cityService.DeleteAsync(city.Id);
+            Assert.Empty(await cityService.ListAsync());
+
+            var priceLists = new PriceListService(db, current, TimeProvider.System);
+            var priceList = await priceLists.SaveAsync(new SavePriceListCommand(
+                0, "WF-PRICE", "Bảng giá quy trình", null, customer.Id,
+                new DateTime(2026, 9, 1), null, false, null, []));
+            var revisionId = await priceLists.EnsureRevisionAsync(priceList.Id);
+            await priceLists.AddItemAsync(new AddPriceListItemCommand(
+                revisionId, route.Id, null, vehicleType.Id, 1_000_000, 100_000));
+            var quote = await priceLists.GetFreightAsync(
+                customer.Id, route.Id, vehicleType.Id, new DateTime(2026, 9, 12));
+            Assert.NotNull(quote);
+            Assert.Equal(1_000_000, quote.UnitPrice);
+
+            var numbers = new DocumentNumberService(db);
+            var log = new ChangeLogService(db, current, TimeProvider.System);
+            var partnerRates = new PartnerRateService(db, current, TimeProvider.System);
+            await partnerRates.SaveAsync(new SavePartnerRateCommand(
+                0, partner.Id, route.Id, vehicleType.Id, new DateTime(2026, 9, 1), null,
+                700_000, 50_000, []));
+            var editor = new DispatchOrderEditorService(
+                db, numbers, priceLists, partnerRates, current, log, TimeProvider.System);
+            var draft = await editor.CreateNewAsync();
+            var header = draft.Header with
+            {
+                PickupAt = new DateTime(2026, 9, 12, 8, 0, 0),
+                Customer = new Hma.Application.Features.Customers.CustomerOption(
+                    customer.Id, customer.Code, customer.Name, null, null, null, false),
+                RouteId = route.Id,
+                VehicleId = vehicle.Id,
+                DriverId = driver.Id,
+                VehicleType = new VehicleTypeOption(
+                    vehicleType.Id, vehicleType.Code, vehicleType.Name, vehicleType.Tonnage),
+            };
+            var dispatch = draft with
+            {
+                Header = header,
+                CustomerId = customer.Id,
+                VehicleTypeId = vehicleType.Id,
+                PaymentMethodId = paymentMethod.Id,
+                Lines = [new DispatchOrderLineDetails(0, 1, "Hàng kiểm thử", 2, route.Name, 10, null)],
+            };
+            var freight = await editor.ApplyFreightAsync(new SaveDispatchOrderCommand(dispatch));
+            Assert.NotNull(freight.Quote);
+            await editor.SaveAsync(new SaveDispatchOrderCommand(freight.Order));
+
+            var queries = new DispatchOrderQueryService(db);
+            var saved = Assert.Single(await queries.SearchAsync(
+                null, null, null, customer.Id, null, null, null, null, null));
+            Assert.Equal(1_100_000, saved.TotalAmount);
+
+            var documents = new DispatchDocumentService(db, current, new LocalDiskFileStorage(db), TimeProvider.System);
+            var document = await documents.AttachAsync(
+                saved.Id, DispatchDocumentKind.DeliveryNote, "delivery.txt", new MemoryStream([1, 2, 3]));
+            await using (var content = await documents.OpenReadAsync(document.StoredPath))
+            {
+                using var copy = new MemoryStream();
+                await content.CopyToAsync(copy);
+                Assert.Equal(new byte[] { 1, 2, 3 }, copy.ToArray());
+            }
+
+            var disposableDocument = await documents.AttachAsync(
+                saved.Id, DispatchDocumentKind.Other, "temporary.txt", new MemoryStream([9, 8, 7]));
+            await documents.DeleteAsync(disposableDocument.Id);
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => documents.OpenReadAsync(disposableDocument.StoredPath));
+
+            await editor.SetStatusAsync(saved.Id, DispatchStatus.Completed);
+            var reconciliation = new DispatchReconciliationService(db, queries, current, log, TimeProvider.System);
+            await reconciliation.SubmitAsync(saved.Id);
+            current.User = reviewer;
+            await reconciliation.ApproveAsync(saved.Id);
+
+            var statements = new FreightStatementService(db, numbers, current, log, TimeProvider.System);
+            var statement = await statements.GenerateDetailsAsync(customer.Id, 2026, 9);
+            Assert.Equal(1, statement.TripCount);
+            Assert.Equal(1_100_000, statement.GrandTotal);
+
+            var reports = new ReportQueryService(db);
+            Assert.Contains(await reports.PeriodDispatchAsync(
+                new DateTime(2026, 9, 1), new DateTime(2026, 9, 30)), x => x.Id == saved.Id);
+        }
+        finally
+        {
+            await DeleteDatabaseAsync(options);
+            if (Directory.Exists(storageRoot)) Directory.Delete(storageRoot, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task Failed_location_delete_does_not_poison_later_price_list_save_in_same_context()
     {
@@ -58,9 +224,9 @@ public class SqlServerWorkflowTests
             var manager = await db.Users.SingleAsync(x => x.Id == managerId);
             var priceList = await db.PriceLists.SingleAsync(x => x.Id == priceListId);
 
-            var current = new CurrentUser { User = manager };
+            var current = new MutableCurrentUser(manager);
             var locationService = new LocationService(db, current);
-            var priceListService = new PriceListService(db, current);
+            var priceListService = new PriceListService(db, current, TimeProvider.System);
 
             var error = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => locationService.DeleteAsync(locationId));
@@ -69,8 +235,17 @@ public class SqlServerWorkflowTests
             var location = db.ChangeTracker.Entries<Location>().Single(x => x.Entity.Id == locationId);
             Assert.Equal(EntityState.Unchanged, location.State);
 
-            priceList.Name = "Bảng giá sau lỗi xóa";
-            await priceListService.SaveAsync(priceList);
+            await priceListService.SaveAsync(new SavePriceListCommand(
+                priceList.Id,
+                priceList.Code,
+                "Bảng giá sau lỗi xóa",
+                priceList.Description,
+                priceList.CustomerId,
+                priceList.EffectiveFrom,
+                priceList.EffectiveTo,
+                priceList.HasPriceFluctuation,
+                priceList.LockReason,
+                priceList.RowVersion));
 
             Assert.True(await db.Locations.AnyAsync(x => x.Id == locationId));
             Assert.Equal(
@@ -244,22 +419,14 @@ public class SqlServerWorkflowTests
 
             await using (var db = new HmaDbContext(options))
             {
-                var current = new CurrentUser { User = maker };
-                var log = new ChangeLogService(db, current);
-                var service = new TransportExceptionService(db, current, log);
-                var item = new TransportException
-                {
-                    DispatchOrderId = orderId,
-                    TransportExceptionCodeId = codeId,
-                    Description = "Chờ bốc hàng quá thời gian",
-                    CustomerCharge = 100_000,
-                    PartnerCost = 50_000
-                };
-
-                await service.SaveAsync(item);
-                await service.SubmitAsync(item.Id);
+                var current = new MutableCurrentUser(maker);
+                var log = new ChangeLogService(db, current, TimeProvider.System);
+                var service = new TransportExceptionService(db, current, log, TimeProvider.System);
+                var itemId = await service.SaveAsync(new SaveTransportExceptionCommand(
+                    0, orderId, codeId, DateTime.Now, "Chờ bốc hàng quá thời gian", 100_000, 50_000, []));
+                await service.SubmitAsync(itemId);
                 current.User = reviewer;
-                await service.ApproveAsync(item.Id);
+                await service.ApproveAsync(itemId);
             }
 
             await using (var verify = new HmaDbContext(options))

@@ -1,7 +1,8 @@
+using Hma.Desktop.Wpf.Presentation.Common.Formatting;
 using System.Globalization;
 using System.Windows.Data;
 using Hma.Domain.Entities;
-using Hma.Domain.Services;
+using Hma.Domain.Rules;
 
 namespace Hma.Desktop.Wpf.Converters;
 

@@ -1,5 +1,4 @@
-using Hma.Desktop.Wpf.ViewModels;
-using Hma.Domain.Entities;
+using Hma.Application.Features.Dispatching;
 
 namespace Hma.Desktop.Wpf.Tests;
 
@@ -8,16 +7,16 @@ public class ReconcileWorkspaceViewModelTests
     [Fact]
     public void Checklist_includes_manual_and_approved_exception_revenue()
     {
-        var order = new DispatchOrder
+        var order = new DispatchOrderSummary
         {
             UnitPrice = 1_000_000,
             Surcharge = 10_000,
             ExtraCost = 20_000,
             ApprovedExceptionRevenue = 30_000,
             Status = DispatchStatus.Completed,
-            ReconciliationStatus = ReconciliationStatus.Pending
+            ReconciliationStatus = ReconciliationStatus.Pending,
+            TotalAmount = 1_060_000,
         };
-        order.RecalculateTotal();
 
         var checklist = ReconcileWorkspaceViewModel.BuildChecklist(order);
 

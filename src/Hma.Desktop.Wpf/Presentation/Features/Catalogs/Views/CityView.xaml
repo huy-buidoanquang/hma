@@ -1,0 +1,86 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Presentation.Features.Catalogs.Views.CityView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors"
+             xmlns:controls="clr-namespace:Hma.Desktop.Wpf.Controls">
+    <Grid>
+        <DockPanel Margin="16">
+            <TextBlock DockPanel.Dock="Top" Text="Thành phố" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <StackPanel DockPanel.Dock="Top">
+                <WrapPanel>
+                    <StackPanel Style="{StaticResource FilterCluster}">
+                        <Label Style="{StaticResource FilterLabel}" Content="Mã / tên"/>
+                        <TextBox Style="{StaticResource SearchField}" Width="200" Text="{Binding FilterName}"/>
+                    </StackPanel>
+                </WrapPanel>
+                <WrapPanel Style="{StaticResource ActionBar}">
+                    <Button Content="Tìm" Command="{Binding SearchCommand}"/>
+                    <Button Content="Làm lại" Style="{StaticResource SecondaryButton}" Command="{Binding ResetFiltersCommand}"/>
+                    <Border Style="{StaticResource ToolbarSpacer}"/>
+                    <Button Content="Thêm mới" Command="{Binding NewItemCommand}" IsEnabled="{Binding CanCreate}"/>
+                </WrapPanel>
+            </StackPanel>
+            <Border DockPanel.Dock="Bottom"
+                    Visibility="{Binding ToastMessage, Converter={StaticResource StringToVisibility}}">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource StatusBanner}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ToastIsError}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource BrushError}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding ToastMessage}" Foreground="{DynamicResource BrushBlack}"/>
+            </Border>
+            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
+                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
+            </Border>
+            <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                      b:CommandBehaviors.DoubleClickCommand="{Binding ViewItemCommand}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="80"/>
+                    <DataGridTextColumn Header="Tên" Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="Mô tả" Binding="{Binding Description}" Width="160"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+        <controls:EditorOverlay Visibility="{Binding IsBrowsing, Converter={StaticResource InverseBoolToVisibility}}">
+            <StackPanel>
+                <StackPanel IsEnabled="{Binding AreFieldsEnabled}">
+                <Grid Style="{StaticResource FormRow}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Style="{StaticResource FormLabel}" Content="Mã"/>
+                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Code, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Required"/>
+                </Grid>
+                <Grid Style="{StaticResource FormRow}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Style="{StaticResource FormLabel}" Content="Tên"/>
+                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" b:InputValidation.Rule="Required"/>
+                </Grid>
+                <Grid Style="{StaticResource FormRow}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="LabelColumn"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Style="{StaticResource FormLabel}" Content="Mô tả"/>
+                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Editor.Description}"/>
+                </Grid>
+                </StackPanel>
+                <StackPanel Style="{StaticResource EditorActions}">
+                    <Button Content="Lưu" Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"/>
+                    <Button Content="Hủy" Style="{StaticResource SecondaryButton}" Command="{Binding CancelCommand}"/>
+                    <Button Content="Xóa" Style="{StaticResource DestructiveButton}" Command="{Binding DeleteCommand}"
+                            IsEnabled="{Binding CanDelete}" Visibility="{Binding IsEditMode, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+            </StackPanel>
+        </controls:EditorOverlay>
+    </Grid>
+</UserControl>

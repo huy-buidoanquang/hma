@@ -1,0 +1,164 @@
+<Window x:Class="Hma.Desktop.Wpf.Presentation.Shell.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:catVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Catalogs.ViewModels"
+        xmlns:catViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Catalogs.Views"
+        xmlns:customerVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Customers.ViewModels"
+        xmlns:customerViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Customers.Views"
+        xmlns:routeVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Routes.ViewModels"
+        xmlns:routeViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Routes.Views"
+        xmlns:pricingVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Pricing.ViewModels"
+        xmlns:pricingViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Pricing.Views"
+        xmlns:dispatchVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Dispatching.ViewModels"
+        xmlns:dispatchViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Dispatching.Views"
+        xmlns:reconVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Reconciliation.ViewModels"
+        xmlns:reconViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Reconciliation.Views"
+        xmlns:statementVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Statements.ViewModels"
+        xmlns:statementViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Statements.Views"
+        xmlns:settlementVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.PartnerSettlements.ViewModels"
+        xmlns:settlementViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.PartnerSettlements.Views"
+        xmlns:reportVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Reporting.ViewModels"
+        xmlns:reportViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Reporting.Views"
+        xmlns:settingsVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Settings.ViewModels"
+        xmlns:settingsViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Settings.Views"
+        xmlns:authVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Authentication.ViewModels"
+        xmlns:authViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Authentication.Views"
+        xmlns:accountingVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Accounting.ViewModels"
+        xmlns:accountingViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.Accounting.Views"
+        xmlns:exceptionVm="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.TransportExceptions.ViewModels"
+        xmlns:exceptionViews="clr-namespace:Hma.Desktop.Wpf.Presentation.Features.TransportExceptions.Views"
+        Title="Hà Minh Anh — Điều hành xe"
+        Height="768" Width="1366"
+        MinHeight="768" MinWidth="1366"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PaperBrush}"
+        Foreground="{DynamicResource InkBrush}">
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type reportVm:DashboardWorkspaceViewModel}">
+            <reportViews:DashboardView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type customerVm:CustomerWorkspaceViewModel}">
+            <customerViews:CustomerView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:PartnerWorkspaceViewModel}">
+            <catViews:PartnerView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:DriverWorkspaceViewModel}">
+            <catViews:DriverView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:VehicleWorkspaceViewModel}">
+            <catViews:VehicleView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:EmployeeWorkspaceViewModel}">
+            <catViews:EmployeeView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:DepartmentWorkspaceViewModel}">
+            <catViews:DepartmentView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:JobTitleWorkspaceViewModel}">
+            <catViews:JobTitleView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type catVm:CityWorkspaceViewModel}">
+            <catViews:CityView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type routeVm:LocationWorkspaceViewModel}">
+            <routeViews:LocationView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type routeVm:RouteWorkspaceViewModel}">
+            <routeViews:RouteView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type routeVm:RouteCatalogWorkspaceViewModel}">
+            <routeViews:RouteCatalogView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type pricingVm:PriceListWorkspaceViewModel}">
+            <pricingViews:PriceListView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type pricingVm:PartnerRateWorkspaceViewModel}">
+            <pricingViews:PartnerRateView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type settlementVm:PartnerSettlementWorkspaceViewModel}">
+            <settlementViews:PartnerSettlementView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dispatchVm:DispatchWorkspaceViewModel}">
+            <dispatchViews:DispatchView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dispatchVm:DispatchGridEditWorkspaceViewModel}">
+            <dispatchViews:DispatchGridEditView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dispatchVm:DispatchHubWorkspaceViewModel}">
+            <dispatchViews:DispatchHubView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type reconVm:ReconcileWorkspaceViewModel}">
+            <reconViews:ReconcileView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type statementVm:StatementWorkspaceViewModel}">
+            <statementViews:StatementView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dispatchVm:LookupWorkspaceViewModel}">
+            <dispatchViews:LookupView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type reportVm:ReportWorkspaceViewModel}">
+            <reportViews:ReportView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type settingsVm:SettingsWorkspaceViewModel}">
+            <settingsViews:SettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type authVm:UserWorkspaceViewModel}">
+            <authViews:UserView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type accountingVm:CashReceiptWorkspaceViewModel}">
+            <accountingViews:CashReceiptView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type accountingVm:CashPaymentWorkspaceViewModel}">
+            <accountingViews:CashPaymentView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type accountingVm:InvoiceWorkspaceViewModel}">
+            <accountingViews:InvoiceView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type exceptionVm:TransportExceptionWorkspaceViewModel}">
+            <exceptionViews:TransportExceptionView/>
+        </DataTemplate>
+    </Window.Resources>
+    <Grid Background="{DynamicResource PaperBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Background="{DynamicResource NavBrush}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="16,24,16,16">
+                    <TextBlock Text="HÀ MINH ANH" Style="{StaticResource NavBrandTitle}"/>
+                    <TextBlock Text="Điều hành xe" Style="{StaticResource NavBrandSubtitle}"/>
+                    <TextBlock Text="{Binding UserLabel}" Style="{StaticResource NavBrandSubtitle}" Margin="0,16,0,0"/>
+                </StackPanel>
+                <Button DockPanel.Dock="Bottom" Content="Đăng xuất" Style="{StaticResource NavLogoutButton}"
+                        Command="{Binding LogoutCommand}"/>
+                <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                         Background="Transparent" BorderThickness="0" Margin="8,0,8,16"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ItemContainerStyle="{StaticResource NavListBoxItem}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Title}" Foreground="{DynamicResource NavTextBrush}" FontSize="15"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+        <ContentControl Grid.Column="1" Style="{StaticResource WorkspaceHost}" Content="{Binding Current}"/>
+        <Border Grid.Column="1" Panel.ZIndex="20"
+                Visibility="{Binding Current.ToastMessage, Converter={StaticResource StringToVisibility}}">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource ToastBanner}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Current.ToastIsError}" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource BrushError}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding Current.ToastMessage}" Foreground="{DynamicResource BrushOnBrand}"
+                       TextWrapping="Wrap" FontSize="13"/>
+        </Border>
+    </Grid>
+</Window>

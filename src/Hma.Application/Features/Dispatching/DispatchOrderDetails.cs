@@ -1,0 +1,55 @@
+using Hma.Application.Features.Catalogs;
+using Hma.Application.Features.Customers;
+
+namespace Hma.Application.Features.Dispatching;
+
+public sealed record DispatchOrderDetails(
+    DispatchOrderSummary Header,
+    DateTime CreatedAt,
+    int? CreatedByUserId,
+    DateTime? ConfirmedAt,
+    int? CustomerId,
+    int? SenderCustomerId,
+    CustomerOption? SenderCustomer,
+    string? SenderName,
+    string? SenderPhone,
+    string? SenderAddress,
+    string? SenderTaxCode,
+    int? ReceiverCustomerId,
+    CustomerOption? ReceiverCustomer,
+    string? ReceiverName,
+    string? ReceiverPhone,
+    string? ReceiverAddress,
+    string? ReceiverTaxCode,
+    string? PickupAddress,
+    string? DeliveryAddress,
+    int? VehicleTypeId,
+    int? EmployeeId,
+    int? PaymentMethodId,
+    int? PriceListItemId,
+    string? PriceSourceSnapshot,
+    bool IsFreightManual,
+    string? FreightOverrideReason,
+    int? PartnerId,
+    string? PartnerNameSnapshot,
+    int? PartnerRateId,
+    decimal BuyUnitPrice,
+    decimal BuySurcharge,
+    decimal BuyExtraCost,
+    decimal ApprovedExceptionCost,
+    decimal BuyTotal,
+    decimal PartnerOperatingFeePercent,
+    decimal PartnerPayableAmount,
+    decimal GrossMargin,
+    string? BuyRateSourceSnapshot,
+    bool IsBuyManual,
+    string? BuyOverrideReason,
+    string? AmountInWords,
+    bool IsDeleted,
+    byte[] VersionToken,
+    IReadOnlyList<DispatchStopDetails> Stops,
+    IReadOnlyList<DispatchOrderLineDetails> Lines,
+    IReadOnlyList<DispatchDocumentDetails> Documents)
+{
+    public string? PriceListCode { get; init; }
+}

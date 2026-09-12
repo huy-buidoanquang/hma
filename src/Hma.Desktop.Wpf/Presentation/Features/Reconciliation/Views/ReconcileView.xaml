@@ -1,0 +1,76 @@
+<UserControl x:Class="Hma.Desktop.Wpf.Presentation.Features.Reconciliation.Views.ReconcileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="clr-namespace:Hma.Desktop.Wpf.Behaviors"
+             xmlns:controls="clr-namespace:Hma.Desktop.Wpf.Controls">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1.3*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Đối soát" Style="{StaticResource WorkspaceTitle}" Margin="0,0,0,16"/>
+            <WrapPanel DockPanel.Dock="Top" Style="{StaticResource ActionBar}">
+                <StackPanel Style="{StaticResource FilterCluster}" Margin="0">
+                    <Label Style="{StaticResource FilterLabel}" Content="Mã lệnh"/>
+                    <TextBox Style="{StaticResource SearchField}" Width="140" Text="{Binding FilterCode}"/>
+                </StackPanel>
+                <Button Content="Tìm" Command="{Binding SearchCommand}" VerticalAlignment="Bottom" Margin="0,0,8,8"/>
+            </WrapPanel>
+            <Border Style="{StaticResource StatusBanner}" DockPanel.Dock="Bottom"
+                    Visibility="{Binding Status, Converter={StaticResource StringToVisibility}}">
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource BrushBlack}"/>
+            </Border>
+            <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                      b:CommandBehaviors.DoubleClickCommand="{Binding OpenOrderCommand}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Mã" Binding="{Binding Code}" Width="80"/>
+                    <DataGridTemplateColumn Header="Trạng thái" Width="110">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <controls:StatusBadge OrderStatus="{Binding Status}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Đối soát" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <controls:StatusBadge ReconStatus="{Binding ReconciliationStatus}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Ngày" Binding="{Binding PickupAt, StringFormat=dd/MM/yyyy}" Width="90"/>
+                    <DataGridTextColumn Header="Khách" Binding="{Binding Customer.Name}" Width="180"/>
+                    <DataGridTextColumn Header="Tuyến" Binding="{Binding RouteLabel}" Width="180"/>
+                    <DataGridTextColumn Header="Tổng" Binding="{Binding TotalAmount, Converter={StaticResource VndMoney}}" Width="110" ElementStyle="{StaticResource TabularMoneyCell}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+        <Border Grid.Column="2" Style="{StaticResource EditorCard}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="Checklist đối soát" Style="{StaticResource SectionTitle}"/>
+                    <TextBlock Text="{Binding Checklist}" TextWrapping="Wrap" Style="{StaticResource BodyText}"/>
+                    <WrapPanel Margin="0,16,0,8">
+                        <Button Content="Gửi duyệt" Command="{Binding SubmitCommand}" IsEnabled="{Binding CanSubmit}"/>
+                        <Button Content="Duyệt đối soát" Command="{Binding ApproveCommand}" IsEnabled="{Binding CanApprove}"/>
+                    </WrapPanel>
+                    <Label Content="Lý do từ chối"/>
+                    <TextBox Text="{Binding RejectionReason, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanReject}"/>
+                    <Button Content="Từ chối" Style="{StaticResource DestructiveButton}" Command="{Binding RejectCommand}"
+                            Margin="0,8,0,16" HorizontalAlignment="Left" IsEnabled="{Binding CanReject}"/>
+                    <TextBlock Text="Lịch sử cước / xe / tuyến / trạng thái / đối soát" Style="{StaticResource SectionTitle}" Margin="0,8,0,8"/>
+                </StackPanel>
+                <DataGrid ItemsSource="{Binding History}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Lúc" Binding="{Binding ChangedAt, StringFormat=dd/MM HH:mm}" Width="110"/>
+                        <DataGridTextColumn Header="Hành động" Binding="{Binding Action}" Width="120"/>
+                        <DataGridTextColumn Header="Nội dung" Binding="{Binding Summary}" Width="*"/>
+                        <DataGridTextColumn Header="Người" Binding="{Binding User.DisplayName}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

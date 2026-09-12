@@ -1,15 +1,34 @@
+using Hma.Application.Features.Reconciliation;
+using Hma.Application.Abstractions.Reporting;
+using Hma.Application.Features.PartnerSettlements;
+using Hma.Application.Features.Dispatching;
+using Hma.Application.Features.Dispatching.Import;
+using Hma.Application.Features.Accounting;
+using Hma.Application.Abstractions.Import;
+using Hma.Application.Features.Customers;
+using Hma.Application.Features.TransportExceptions;
+using Hma.Application.Features.Reporting;
+using Hma.Application.Features.Catalogs;
+using Hma.Application.Features.Routes;
+using Hma.Application.Features.Statements;
+using Hma.Application.Abstractions.Security;
+using Hma.Application.Features.Pricing;
+using Hma.Application.Features.Settings;
+using Hma.Application.Abstractions.Storage;
+using Hma.Application.Features.Authentication;
+using Hma.Application.Abstractions.Persistence;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
-using Hma.Application.Abstractions;
-using Hma.Application.Services;
 using Hma.Desktop.Wpf.Behaviors;
+using Hma.Desktop.Wpf.Abstractions;
 using Hma.Desktop.Wpf.Converters;
-using Hma.Desktop.Wpf.Theming;
-using Hma.Desktop.Wpf.ViewModels;
-using Hma.Desktop.Wpf.Views;
+using Hma.Desktop.Wpf.Infrastructure.Session;
+using Hma.Desktop.Wpf.Infrastructure.Navigation;
+using Hma.Desktop.Wpf.Infrastructure.Theming;
+using Hma.Desktop.Wpf.Presentation.Common.Views;
 using Hma.Domain.Entities;
 using Hma.Reporting;
 using NSubstitute;
@@ -56,7 +75,9 @@ public class WpfBindingSmokeTests
                 Assert.True(mainWindow.MinHeight <= 768);
                 Render(mainWindow, 1366, 768);
 
-                var loginWindow = new LoginWindow(new LoginViewModel(Substitute.For<IAuthService>()));
+                var loginWindow = new LoginWindow(new LoginViewModel(
+                    Substitute.For<IAuthService>(),
+                    Substitute.For<IDesktopUserSession>()));
                 Render(loginWindow, 520, 420);
 
                 var confirmDialog = new ConfirmDialog
@@ -87,6 +108,8 @@ public class WpfBindingSmokeTests
                 theme.Apply(ThemeService.Light, persist: false);
 
                 var exceptionView = views.Single(x => x.View is TransportExceptionView).View;
+                var exceptionCodeField = FindComboBox(exceptionView, "Codes");
+                Assert.Equal(nameof(TransportExceptionCodeOption.Name), exceptionCodeField.DisplayMemberPath);
                 var statusField = FindTextBox(exceptionView, "Editor.StatusLabel");
                 var statusBinding = Assert.IsType<Binding>(
                     BindingOperations.GetBindingBase(statusField, TextBox.TextProperty));
@@ -95,16 +118,28 @@ public class WpfBindingSmokeTests
                 Assert.True(exceptionOrderField.IsReadOnly);
 
                 var dispatchView = views.Single(x => x.View is DispatchView).View;
-                var vehicleSearch = FindTextBox(dispatchView, "VehicleLookupText");
-                var driverSearch = FindTextBox(dispatchView, "DriverLookupText");
+                var vehicleSearch = FindComboBox(dispatchView, "Vehicles");
+                var driverSearch = FindComboBox(dispatchView, "Drivers");
                 Assert.Equal(UpdateSourceTrigger.PropertyChanged,
                     Assert.IsType<Binding>(BindingOperations.GetBindingBase(
-                        vehicleSearch, TextBox.TextProperty)).UpdateSourceTrigger);
+                        vehicleSearch, ComboBox.TextProperty)).UpdateSourceTrigger);
                 Assert.Equal(UpdateSourceTrigger.PropertyChanged,
                     Assert.IsType<Binding>(BindingOperations.GetBindingBase(
-                        driverSearch, TextBox.TextProperty)).UpdateSourceTrigger);
-                Assert.False(FindComboBox(dispatchView, "Vehicles").IsEditable);
-                Assert.False(FindComboBox(dispatchView, "Drivers").IsEditable);
+                        driverSearch, ComboBox.TextProperty)).UpdateSourceTrigger);
+                Assert.True(vehicleSearch.IsEditable);
+                Assert.True(driverSearch.IsEditable);
+                Assert.True(AutoCompleteComboBoxBehavior.GetIsEnabled(vehicleSearch));
+                Assert.True(AutoCompleteComboBoxBehavior.GetIsEnabled(driverSearch));
+                Assert.Null(TryFindTextBox(dispatchView, "NewPartyName"));
+                Assert.Equal(nameof(CustomerSummary.CodeName),
+                    FindComboBox(dispatchView, "CustomerOptions").DisplayMemberPath);
+                var dispatchViewModel = Assert.IsType<DispatchWorkspaceViewModel>(dispatchView.DataContext);
+                var pickupAt = new DateTime(2026, 9, 12, 13, 47, 0);
+                dispatchViewModel.Editor.PickupAt = pickupAt;
+                dispatchViewModel.BindEditorChrome();
+                Assert.Equal(13, dispatchViewModel.PickupHour);
+                Assert.Equal(47, dispatchViewModel.PickupMinute);
+                Assert.Equal(pickupAt, dispatchViewModel.Editor.PickupAt);
 
                 var statementView = views.Single(x => x.View is StatementView).View;
                 var voidReasonField = FindTextBox(statementView, "VoidReason");
@@ -127,14 +162,9 @@ public class WpfBindingSmokeTests
                     CommandBehaviors.DoubleClickCommandProperty));
                 var settlementViewModel = Assert.IsType<PartnerSettlementWorkspaceViewModel>(
                     settlementView.DataContext);
-                var selectedSettlement = new PartnerSettlement
-                {
-                    Id = 42,
-                    PartnerId = 7,
-                    Year = 2026,
-                    Month = 9,
-                    GrossAmount = 730_000m
-                };
+                var selectedSettlement = new PartnerSettlementDetails(
+                    42, "QT-42", 7, null, 2026, 9, FinancialDocumentStatus.Draft,
+                    null, null, 0, 730_000m, 0, 730_000m, null, []);
                 settlementViewModel.Selected = selectedSettlement;
                 Assert.Same(selectedSettlement, settlementViewModel.CurrentSettlement);
 
@@ -172,64 +202,80 @@ public class WpfBindingSmokeTests
     private static IReadOnlyList<ViewCase> CreateWorkspaceViews()
     {
         var db = Substitute.For<IHmaDbContext>();
-        var current = new CurrentUser
-        {
-            User = new AppUser { Id = 1, UserName = "ui-test", DisplayName = "UI test", IsManager = true }
-        };
+        var current = new DesktopUserSession();
+        current.SignIn(new AuthenticatedUser(
+            1,
+            null,
+            "ui-test",
+            "UI test",
+            true,
+            new Dictionary<string, PermissionGrant>()));
         var prompt = Substitute.For<IUserPrompt>();
-        var printer = Substitute.For<IDocumentPrinter>();
+        var printer = Substitute.For<IDocumentRenderer>();
+        var documentInteraction = Substitute.For<IDocumentInteractionService>();
+        var gate = new UiOperationGate();
         var numbers = Substitute.For<IDocumentNumberService>();
         var audit = Substitute.For<IChangeLogService>();
         var storage = Substitute.For<IFileStorage>();
         var navigator = new WorkspaceNavigator();
 
-        var catalog = new CatalogService(db, current);
-        var customers = new CustomerService(db, current);
+        var catalog = new CatalogOptionQueryService(db);
+        var cityService = new CityService(db, current);
+        var departmentService = new DepartmentService(db, current);
+        var jobTitleService = new JobTitleService(db, current);
+        var employeeService = new EmployeeService(db, current, TimeProvider.System);
+        var partnerService = new PartnerService(db, current);
+        var driverService = new DriverService(db, current);
+        var vehicleService = new VehicleService(db, current);
+        var customers = new CustomerService(db, current, TimeProvider.System);
         var company = new CompanyService(db, current);
-        var prices = new PriceListService(db, current);
-        var partnerRates = new PartnerRateService(db, current);
-        var orders = new DispatchOrderService(db, numbers, prices, partnerRates, current, audit);
-        var documents = new DispatchDocumentService(db, current, storage);
-        var importer = new DispatchImportService(db, orders, prices, current);
-        var cash = new CashDocumentService(db, numbers);
-        var invoices = new VatInvoiceService(db, numbers);
+        var prices = new PriceListService(db, current, TimeProvider.System);
+        var partnerRates = new PartnerRateService(db, current, TimeProvider.System);
+        var dispatchQueries = new DispatchOrderQueryService(db);
+        var dispatchEditor = new DispatchOrderEditorService(db, numbers, prices, partnerRates, current, audit, TimeProvider.System);
+        var reconciliation = new DispatchReconciliationService(db, dispatchQueries, current, audit, TimeProvider.System);
+        var grid = new DispatchGridService(db, dispatchQueries, dispatchEditor, current, audit);
+        var documents = new DispatchDocumentService(db, current, storage, TimeProvider.System);
+        var importer = new DispatchImportService(db, dispatchEditor, prices, current, TimeProvider.System);
+        var cash = new CashDocumentService(db, numbers, TimeProvider.System);
+        var invoices = new VatInvoiceService(db, numbers, TimeProvider.System);
         var dashboard = new DashboardQueryService(db);
         var reports = new ReportQueryService(db);
         var settings = new SettingsService(db, current);
-        var health = new SystemHealthService(db, storage);
-        var users = new UserAdminService(db, Substitute.For<IPasswordHasher>(), current);
+        var health = new SystemHealthService(db, storage, TimeProvider.System);
+        var users = new UserAdminService(db, Substitute.For<IPasswordHasher>(), current, TimeProvider.System);
         var locationService = new LocationService(db, current);
         var routeService = new RouteService(db, current);
         var locationAliases = new LocationAliasService(db, current);
         var routeAliases = new RouteAliasService(db, current);
         var customerAliases = new CustomerAliasService(db, current);
-        var statements = new FreightStatementService(db, numbers, current, audit);
-        var settlements = new PartnerSettlementService(db, numbers, current, audit);
-        var exceptions = new TransportExceptionService(db, current, audit);
-        var changeLogs = new ChangeLogService(db, current);
+        var statements = new FreightStatementService(db, numbers, current, audit, TimeProvider.System);
+        var settlements = new PartnerSettlementService(db, numbers, current, audit, TimeProvider.System);
+        var exceptions = new TransportExceptionService(db, current, audit, TimeProvider.System);
+        var changeLogs = new ChangeLogService(db, current, TimeProvider.System);
 
-        var cityVm = new CityWorkspaceViewModel(catalog, current, prompt);
-        var customerVm = new CustomerWorkspaceViewModel(customers, catalog, current, prompt, printer);
-        var customerAliasVm = new CustomerAliasWorkspaceViewModel(customerAliases, customers, current, prompt);
-        var departmentVm = new DepartmentWorkspaceViewModel(catalog, current, prompt);
+        var cityVm = new CityWorkspaceViewModel(cityService, current, prompt, gate);
+        var customerVm = new CustomerWorkspaceViewModel(customers, catalog, current, prompt, printer, documentInteraction, gate);
+        var customerAliasVm = new CustomerAliasWorkspaceViewModel(customerAliases, customers, current, prompt, gate);
+        var departmentVm = new DepartmentWorkspaceViewModel(departmentService, current, prompt, gate);
         var dispatchVm = new DispatchWorkspaceViewModel(
-            orders, documents, catalog, customers, company, printer, current, prompt);
-        var dispatchGridVm = new DispatchGridEditWorkspaceViewModel(orders, catalog, customers, current, prompt);
+            dispatchQueries, dispatchEditor, documents, documentInteraction, catalog, customers, company, printer, current, prompt, gate);
+        var dispatchGridVm = new DispatchGridEditWorkspaceViewModel(dispatchQueries, grid, catalog, customers, current, prompt, gate);
         var dispatchImportVm = new DispatchImportWorkspaceViewModel(
-            importer, Substitute.For<IDispatchImportParser>(), current, prompt);
+            importer, Substitute.For<IDispatchImportParser>(), current, prompt, gate);
         var dispatchHubVm = new DispatchHubWorkspaceViewModel(
-            dispatchVm, dispatchGridVm, dispatchImportVm, current, prompt);
-        var driverVm = new DriverWorkspaceViewModel(catalog, current, prompt, printer);
-        var employeeVm = new EmployeeWorkspaceViewModel(catalog, current, prompt);
-        var jobTitleVm = new JobTitleWorkspaceViewModel(catalog, current, prompt);
-        var locationVm = new LocationWorkspaceViewModel(locationService, catalog, current, prompt);
-        var routeVm = new RouteWorkspaceViewModel(routeService, catalog, current, prompt);
-        var routeCatalogVm = new RouteCatalogWorkspaceViewModel(locationVm, routeVm, current, prompt);
-        var locationAliasVm = new LocationAliasWorkspaceViewModel(locationAliases, catalog, current, prompt);
-        var routeAliasVm = new RouteAliasWorkspaceViewModel(routeAliases, catalog, current, prompt);
-        var partnerVm = new PartnerWorkspaceViewModel(catalog, current, prompt, printer);
-        var priceVm = new PriceListWorkspaceViewModel(prices, catalog, customers, current, prompt);
-        var userVm = new UserWorkspaceViewModel(users, catalog, current, prompt);
+            dispatchVm, dispatchGridVm, dispatchImportVm, current, prompt, gate);
+        var driverVm = new DriverWorkspaceViewModel(driverService, catalog, dispatchQueries, current, prompt, printer, documentInteraction, gate);
+        var employeeVm = new EmployeeWorkspaceViewModel(employeeService, catalog, current, prompt, gate);
+        var jobTitleVm = new JobTitleWorkspaceViewModel(jobTitleService, current, prompt, gate);
+        var locationVm = new LocationWorkspaceViewModel(locationService, catalog, current, prompt, gate);
+        var routeVm = new RouteWorkspaceViewModel(routeService, catalog, current, prompt, gate);
+        var routeCatalogVm = new RouteCatalogWorkspaceViewModel(locationVm, routeVm, current, prompt, gate);
+        var locationAliasVm = new LocationAliasWorkspaceViewModel(locationAliases, catalog, current, prompt, gate);
+        var routeAliasVm = new RouteAliasWorkspaceViewModel(routeAliases, catalog, current, prompt, gate);
+        var partnerVm = new PartnerWorkspaceViewModel(partnerService, current, prompt, printer, documentInteraction, gate);
+        var priceVm = new PriceListWorkspaceViewModel(prices, catalog, customers, current, prompt, gate);
+        var userVm = new UserWorkspaceViewModel(users, catalog, current, prompt, gate);
         var settingsVm = new SettingsWorkspaceViewModel(
             settings,
             health,
@@ -241,16 +287,26 @@ public class WpfBindingSmokeTests
             customerAliasVm,
             current,
             prompt,
-            new ThemeService());
+            new ThemeService(),
+            gate);
+
+        var exceptionViewModel = new TransportExceptionWorkspaceViewModel(exceptions, current, prompt, gate);
+        exceptionViewModel.Codes.Add(new TransportExceptionCodeOption(1, "WAIT", "Chờ bốc hàng"));
+        var customerOption = new CustomerSummary(
+            1, "KH001", "Khách kiểm thử", null, null, null, null, null,
+            null, null, null, null, false, null);
+        dispatchVm.CustomerOptions.Add(customerOption);
+        dispatchGridVm.CustomerOptions.Add(customerOption);
+        customerAliasVm.Customers.Add(customerOption);
 
         return
         [
-            new(new CashPaymentView(), new CashPaymentWorkspaceViewModel(cash, customers, catalog, company, printer, prompt)),
-            new(new CashReceiptView(), new CashReceiptWorkspaceViewModel(cash, customers, orders, company, printer, prompt)),
+            new(new CashPaymentView(), new CashPaymentWorkspaceViewModel(cash, customers, catalog, company, printer, documentInteraction, prompt, gate)),
+            new(new CashReceiptView(), new CashReceiptWorkspaceViewModel(cash, customers, dispatchQueries, company, printer, documentInteraction, prompt, gate)),
             new(new CityView(), cityVm),
             new(new CustomerAliasView(), customerAliasVm),
             new(new CustomerView(), customerVm),
-            new(new DashboardView(), new DashboardWorkspaceViewModel(dashboard, current)),
+            new(new DashboardView(), new DashboardWorkspaceViewModel(dashboard, current, gate)),
             new(new DepartmentView(), departmentVm),
             new(new DispatchGridEditView(), dispatchGridVm),
             new(new DispatchHubView(), dispatchHubVm),
@@ -258,25 +314,25 @@ public class WpfBindingSmokeTests
             new(new DispatchView(), dispatchVm),
             new(new DriverView(), driverVm),
             new(new EmployeeView(), employeeVm),
-            new(new InvoiceView(), new InvoiceWorkspaceViewModel(invoices, customers, company, printer, prompt)),
+            new(new InvoiceView(), new InvoiceWorkspaceViewModel(invoices, customers, company, printer, documentInteraction, prompt, gate)),
             new(new JobTitleView(), jobTitleVm),
             new(new LocationAliasView(), locationAliasVm),
             new(new LocationView(), locationVm),
-            new(new LookupView(), new LookupWorkspaceViewModel(orders, current, navigator)),
-            new(new PartnerRateView(), new PartnerRateWorkspaceViewModel(partnerRates, catalog, current, prompt)),
-            new(new PartnerSettlementView(), new PartnerSettlementWorkspaceViewModel(settlements, catalog, current)),
+            new(new LookupView(), new LookupWorkspaceViewModel(dispatchQueries, current, navigator, gate)),
+            new(new PartnerRateView(), new PartnerRateWorkspaceViewModel(partnerRates, catalog, current, prompt, gate)),
+            new(new PartnerSettlementView(), new PartnerSettlementWorkspaceViewModel(settlements, catalog, current, gate)),
             new(new PartnerView(), partnerVm),
             new(new PriceListView(), priceVm),
-            new(new ReconcileView(), new ReconcileWorkspaceViewModel(orders, changeLogs, current, navigator)),
-            new(new ReportView(), new ReportWorkspaceViewModel(reports, dashboard, company, printer, current)),
+            new(new ReconcileView(), new ReconcileWorkspaceViewModel(dispatchQueries, reconciliation, changeLogs, current, navigator, gate)),
+            new(new ReportView(), new ReportWorkspaceViewModel(reports, dashboard, company, printer, documentInteraction, current, gate)),
             new(new RouteAliasView(), routeAliasVm),
             new(new RouteCatalogView(), routeCatalogVm),
             new(new RouteView(), routeVm),
             new(new SettingsView(), settingsVm),
-            new(new StatementView(), new StatementWorkspaceViewModel(statements, customers, company, printer, current)),
-            new(new TransportExceptionView(), new TransportExceptionWorkspaceViewModel(exceptions, current, prompt)),
+            new(new StatementView(), new StatementWorkspaceViewModel(statements, customers, company, printer, documentInteraction, current, gate)),
+            new(new TransportExceptionView(), exceptionViewModel),
             new(new UserView(), userVm),
-            new(new VehicleView(), new VehicleWorkspaceViewModel(catalog, current, prompt, printer))
+            new(new VehicleView(), new VehicleWorkspaceViewModel(vehicleService, catalog, dispatchQueries, current, prompt, printer, documentInteraction, gate))
         ];
     }
 

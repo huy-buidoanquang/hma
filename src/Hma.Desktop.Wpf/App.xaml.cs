@@ -1,9 +1,7 @@
-﻿using System.Windows;
+using System.Windows;
 using Hma.Application;
-using Hma.Application.Abstractions;
-using Hma.Desktop.Wpf.Theming;
-using Hma.Desktop.Wpf.ViewModels;
-using Hma.Desktop.Wpf.Views;
+using Hma.Desktop.Wpf.Infrastructure.Theming;
+using Hma.Desktop.Wpf.Infrastructure.Session;
 using Hma.Infrastructure.SqlServer;
 using Hma.Reporting;
 using Microsoft.Extensions.Configuration;
@@ -51,47 +49,7 @@ public partial class App : System.Windows.Application
                 services.AddHmaApplication();
                 services.AddHmaInfrastructure(cs);
                 services.AddHmaReporting();
-                services.AddSingleton<ThemeService>();
-                services.AddSingleton<SessionHost>();
-                services.AddSingleton<ISessionHost>(sp => sp.GetRequiredService<SessionHost>());
-                services.AddSingleton<IWorkspaceNavigator, WorkspaceNavigator>();
-                services.AddSingleton<IUserPrompt, DialogUserPrompt>();
-                services.AddTransient<LoginWindow>();
-                services.AddTransient<LoginViewModel>();
-                services.AddScoped<MainWindow>();
-                services.AddScoped<MainViewModel>();
-                services.AddScoped<CustomerWorkspaceViewModel>();
-                services.AddScoped<PartnerWorkspaceViewModel>();
-                services.AddScoped<DriverWorkspaceViewModel>();
-                services.AddScoped<VehicleWorkspaceViewModel>();
-                services.AddScoped<EmployeeWorkspaceViewModel>();
-                services.AddScoped<DepartmentWorkspaceViewModel>();
-                services.AddScoped<JobTitleWorkspaceViewModel>();
-                services.AddScoped<CityWorkspaceViewModel>();
-                services.AddScoped<LocationWorkspaceViewModel>();
-                services.AddScoped<RouteWorkspaceViewModel>();
-                services.AddScoped<PriceListWorkspaceViewModel>();
-                services.AddScoped<PartnerRateWorkspaceViewModel>();
-                services.AddScoped<PartnerSettlementWorkspaceViewModel>();
-                services.AddScoped<TransportExceptionWorkspaceViewModel>();
-                services.AddScoped<DispatchWorkspaceViewModel>();
-                services.AddScoped<DispatchGridEditWorkspaceViewModel>();
-                services.AddScoped<DispatchImportWorkspaceViewModel>();
-                services.AddScoped<DispatchHubWorkspaceViewModel>();
-                services.AddScoped<RouteCatalogWorkspaceViewModel>();
-                services.AddScoped<ReconcileWorkspaceViewModel>();
-                services.AddScoped<StatementWorkspaceViewModel>();
-                services.AddScoped<LookupWorkspaceViewModel>();
-                services.AddScoped<DashboardWorkspaceViewModel>();
-                services.AddScoped<ReportWorkspaceViewModel>();
-                services.AddScoped<SettingsWorkspaceViewModel>();
-                services.AddScoped<LocationAliasWorkspaceViewModel>();
-                services.AddScoped<RouteAliasWorkspaceViewModel>();
-                services.AddScoped<CustomerAliasWorkspaceViewModel>();
-                services.AddScoped<UserWorkspaceViewModel>();
-                services.AddScoped<CashReceiptWorkspaceViewModel>();
-                services.AddScoped<CashPaymentWorkspaceViewModel>();
-                services.AddScoped<InvoiceWorkspaceViewModel>();
+                services.AddHmaDesktop();
             })
             .Build();
         _logger = _host.Services.GetRequiredService<ILogger<App>>();
@@ -148,9 +106,6 @@ public partial class App : System.Windows.Application
         previous?.Close();
         _sessionScope?.Dispose();
         _sessionScope = null;
-        if (_host?.Services.GetRequiredService<IWorkspaceNavigator>() is WorkspaceNavigator nav)
-            nav.OpenDispatchHandler = null;
-
         using (var loginScope = _host!.Services.CreateScope())
         {
             var login = loginScope.ServiceProvider.GetRequiredService<LoginWindow>();

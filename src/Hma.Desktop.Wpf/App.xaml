@@ -5,14 +5,14 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Themes/Colors.Palette.xaml"/>
-                <ResourceDictionary Source="Themes/Colors.Light.xaml"/>
-                <ResourceDictionary Source="Themes/Typography.xaml"/>
-                <ResourceDictionary Source="Themes/Buttons.xaml"/>
-                <ResourceDictionary Source="Themes/Controls.xaml"/>
-                <ResourceDictionary Source="Themes/Fields.xaml"/>
-                <ResourceDictionary Source="Themes/ScrollBars.xaml"/>
-                <ResourceDictionary Source="Themes/Layouts.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Colors.Palette.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Colors.Light.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Typography.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Buttons.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Controls.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Fields.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/ScrollBars.xaml"/>
+                <ResourceDictionary Source="Infrastructure/Theming/Layouts.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
             <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>

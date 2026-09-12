@@ -1,7 +1,8 @@
+using Hma.Desktop.Wpf.Presentation.Common.Validation;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using Hma.Domain.Services;
+using Hma.Domain.Rules;
 
 namespace Hma.Desktop.Wpf.Behaviors;
 

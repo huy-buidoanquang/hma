@@ -1,4 +1,4 @@
-using Hma.Application.Services;
+using Hma.Application.Common.Security;
 
 namespace Hma.Application.Tests;
 

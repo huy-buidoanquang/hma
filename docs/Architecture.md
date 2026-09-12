@@ -1,6 +1,6 @@
 # Architecture — Hà Minh Anh (HMA)
 
-> Cập nhật hardening 11/09/2026: hệ thống hiện có optimistic concurrency, transaction aggregate, workflow đối soát/bảng kê maker–checker, giá mua đối tác, quyết toán nhà xe, exception vận tải có duyệt, health check và CI. Các phần dưới đây mô tả kiến trúc hiện hành; phiếu thu/chi và hóa đơn VAT vẫn đóng băng cho đến khi thiết kế AR/AP được chốt.
+> Cập nhật kiến trúc 12/09/2026: Domain đã được phân loại theo entity/model/rule; Application theo feature và contract; Desktop theo Presentation/Infrastructure/Abstractions. Optimistic concurrency, transaction aggregate và maker–checker giữ nguyên. Phiếu thu/chi và hóa đơn VAT vẫn đóng băng cho đến khi thiết kế AR/AP được chốt.
 
 Tài liệu này mô tả **thiết kế hệ thống đang có trong source**, không phải roadmap. Nguồn: `src/`, `database/`, `docs/`, `.cursor/rules/`. Cập nhật khi ranh giới lớp, schema, hoặc chuỗi nghiệp vụ thay đổi.
 
@@ -54,6 +54,7 @@ Hma.Reporting            → Application, Domain
 Hma.Desktop.Wpf          → Application, Infrastructure, Reporting, Domain
 Hma.Domain.Tests         → Domain
 Hma.Application.Tests    → Application
+Hma.Architecture.Tests   → kiểm tra ranh giới toàn solution
 ```
 
 `legacy/` chỉ để đọc hành vi (VB.NET + Plexis + SQL Server 2000 `DHXE`). Không reference, không copy metadata `ui_*` / Crystal / Infragistics.
@@ -67,23 +68,23 @@ Hma.Application.Tests    → Application
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Hma.Desktop.Wpf                          │
-│  LoginWindow / MainWindow · Views · ViewModels · Themes     │
+│  Presentation/Features · Infrastructure · Abstractions      │
 │  CommunityToolkit.Mvvm · không SqlClient, không DbContext   │
 └──────────────┬──────────────────────────────┬───────────────┘
                │ gọi use case                 │ in / Excel
                ▼                              ▼
 ┌──────────────────────────┐    ┌─────────────────────────────┐
 │     Hma.Application      │    │       Hma.Reporting         │
-│  Services, IHmaDbContext │    │  IDocumentPrinter           │
-│  Auth, PermissionGuard   │    │  QuestPDF + ClosedXML       │
-│  ScreenKeys              │    │  không quy tắc nghiệp vụ    │
+│  Features + contracts    │    │  IDocumentRenderer adapter  │
+│  Abstractions + Common   │    │  QuestPDF + ClosedXML       │
+│  Auth, PermissionGuard   │    │  không quy tắc nghiệp vụ    │
 └──────────────┬───────────┘    └──────────────▲──────────────┘
                │ phụ thuộc                     │ đọc entity
                ▼                               │
 ┌──────────────────────────┐                   │
 │       Hma.Domain         │───────────────────┘
-│  Entities, enums, rules  │
-│  VietnameseAmountWords   │
+│  Entities · Enums · Models · Rules │
+│  Normalization · Formatting       │
 └──────────────▲───────────┘
                │ implement IHmaDbContext
 ┌──────────────┴───────────┐
@@ -111,8 +112,8 @@ Host web tương lai phải tái sử dụng Application + Domain **không đổ
 | Domain         | Entity, enum, rule thuần, đọc số tiền              | EF, WPF, SQL, connection string                                |
 | Application    | Use case, `IHmaDbContext`, auth, `PermissionGuard` | `System.Windows`, connection string                            |
 | Infrastructure | EF mapping, seed, SQL Server                       | Quy tắc nghiệp vụ mới                                          |
-| Reporting      | PDF/Excel từ entity đã tính                        | Tính cước, đối soát, phân quyền                                |
-| Desktop        | MVVM, DI host, binding                             | `SqlClient`, `HmaDbContext`, logic nghiệp vụ trong code-behind |
+| Reporting      | Render `GeneratedDocument` từ Application contract | Tính cước, đối soát, phân quyền, trả physical path             |
+| Desktop        | MVVM, presentation model, DI host, binding          | Persisted entity, `SqlClient`, `HmaDbContext`, business rule   |
 
 
 - Thông điệp người dùng: **tiếng Việt**.
@@ -238,7 +239,7 @@ Tổng: số chuyến, cước, phụ phí, phát sinh, `GrandTotal`, VAT từ `
 4. `SaveAsync`: snapshot gửi/nhận, `DispatchOrderRules`, không sửa lệnh khóa (trừ manager), không đổi cước nếu đã đối soát, lấy `VehicleType` từ xe nếu thiếu, `RecalculateTotal` + đọc tiền, cấp số nếu mới, thay toàn bộ dòng hàng, ghi ChangeLog.
 5. Khách vãng lai: `CreateWalkInAsync` → `VL-{seq}`, `IsWalkIn`.
 
-In một lệnh / theo ngày / tháng / theo khách và Excel danh sách cước đi qua `IDocumentPrinter`.
+In một lệnh / theo ngày / tháng / theo khách và Excel danh sách cước đi qua `IDocumentRenderer`; kết quả là tên file + MIME type + bytes.
 
 ### 6.2 Đối soát
 
@@ -263,9 +264,9 @@ KPI tháng (`DashboardQueryService.MonthAsync`): doanh thu earned, phải trả 
 
 ### 6.6 Tra cứu
 
-Ô số lệnh **hoặc** biển số → `DispatchOrderService.SearchAsync` (tối đa 500, mới nhất trước) → mở workspace lệnh qua `IWorkspaceNavigator`.
+Ô số lệnh **hoặc** biển số → `DispatchOrderQueryService.SearchAsync` (tối đa 500, mới nhất trước) → mở workspace lệnh qua `IWorkspaceNavigator`.
 
-Lịch sử chuyến cũng có trên màn tài xế / xe (`CatalogService.TripsByDriverAsync` / `TripsByVehicleAsync`).
+Lịch sử chuyến cũng có trên màn tài xế / xe (`DispatchOrderQueryService.TripsByDriverAsync` / `TripsByVehicleAsync`).
 
 ---
 
@@ -273,23 +274,28 @@ Lịch sử chuyến cũng có trên màn tài xế / xe (`CatalogService.TripsB
 
 ## 7. Application — use case
 
-Đăng ký trong `Hma.Application/DependencyInjection.cs`. Mọi service mutating (trừ cash/VAT đóng băng) gọi `PermissionGuard`.
+Mã được nhóm trong `Features/<Feature>`; port host/adapter ở `Abstractions`, concern dùng chung ở `Common`. Đăng ký trong `Hma.Application/DependencyInjection.cs`. Mọi service mutating (trừ cash/VAT đóng băng) gọi `PermissionGuard`.
 
 
 | Service                                     | Trách nhiệm                                                   |
 | ------------------------------------------- | ------------------------------------------------------------- |
-| `AuthService`                               | Login, nạp permission + employee, gán `ICurrentUser`          |
-| `CurrentUser`                               | Singleton phiên; `IsManager` bypass mọi `Can`                 |
+| `AuthService`                               | Login và trả `AuthenticatedUser` bất biến; không ghi session  |
+| `ICurrentUser`                              | Principal read-only do host cung cấp; `IsManager` bypass `Can` |
 | `Pbkdf2PasswordHasher`                      | PBKDF2 SHA256; từ chối hash malformed và tài khoản `DISABLED` từ ETL |
 | `PermissionGuard`                           | Ném `InvalidOperationException` tiếng Việt nếu thiếu quyền    |
 | `UserAdminService`                          | CRUD user + matrix quyền; màn `users`                         |
 | `CustomerService`                           | Tìm/sửa/xóa; unique `Code`                                    |
-| `CatalogService`                            | City, phòng ban, chức vụ, NV, đối tác, TX, xe; lịch sử chuyến |
+| `CityService` / `DepartmentService` / `JobTitleService` | Catalog đơn theo màn hình                 |
+| `EmployeeService` / `PartnerService` / `DriverService` / `VehicleService` | Catalog giàu dữ liệu |
+| `CatalogOptionQueryService`                 | Lookup DTO cho combo; không trả entity                        |
 | `PriceListService`                          | Header/revision/item; `GetFreightAsync`                       |
 | `PartnerRateService`                        | Giá mua theo đối tác × tuyến × loại xe × hiệu lực             |
 | `PartnerSettlementService`                  | Lập/gửi duyệt/chốt/hủy quyết toán nhà xe                      |
 | `TransportExceptionService`                 | Sự cố có mã, maker–checker, áp/hoàn thu–chi vào lệnh           |
-| `DispatchOrderService`                      | Tìm, CRUD, cước, khóa, status, đối soát, walk-in              |
+| `DispatchOrderQueryService`                 | Search/details/history bằng Summary/Details                    |
+| `DispatchOrderEditorService`                | Tạo, lưu, tính cước, trạng thái, khóa lệnh bằng command         |
+| `DispatchReconciliationService` / `DispatchGridService` | Đối soát và sửa lưới hàng loạt          |
+| `WalkInCustomerService`                     | Tạo khách vãng lai                                             |
 | `DispatchDocumentService`                   | Metadata và file qua `IFileStorage`, có compensation khi DB lỗi |
 | `FreightStatementService`                   | Lập/gửi duyệt/chốt/hủy bảng kê tháng                          |
 | `DashboardQueryService`                     | KPI + group khách/xe                                          |
@@ -305,6 +311,8 @@ Lịch sử chuyến cũng có trên màn tài xế / xe (`CatalogService.TripsB
 
 
 `IHmaDbContext`: `IQueryable<T>` cho từng DbSet, `Add`/`Update`/`Remove`/`FindAsync`/`SaveChangesAsync`. Schema: `HmaDatabaseInitializer.MigrateAndSeedAsync` (Infrastructure).
+
+Application không đăng ký `ICurrentUser`. Desktop dùng `DesktopUserSession` singleton; API tương lai có thể cung cấp principal scoped từ claims. I/O trả DTO/command và nhận `CancellationToken`; thời gian nghiệp vụ lấy từ `TimeProvider` nhưng vẫn là giờ local để bảo toàn dữ liệu hiện hành.
 
 Lỗi nghiệp vụ: `InvalidOperationException` với câu tiếng Việt. Không dùng exception làm luồng bình thường.
 
@@ -322,11 +330,11 @@ Chi tiết cột, FK, index, enum, snapshot, và khác biệt SQL/EF: [`Database
 
 Nguồn sự thật schema: code-first — entity + `OnModelCreating` + `Migrations/`. [`database/001_schema.sql`](../database/001_schema.sql) cho cutover/ETL. Seed SQL: [`002_seed.sql`](../database/002_seed.sql). [`003_brief_schema.sql`](../database/003_brief_schema.sql) chỉ cảnh báo schema cũ; **không** migrate tại chỗ.
 
-EF: `HmaDbContext` map 1–1 tên bảng PascalCase, precision tiền, unique index (Partner.Code, Driver.Code, Vehicle.PlateNumber, UserPermission, FreightStatement kỳ), `DeleteBehavior.Restrict` trên FK nhiều nhánh Customer/City/User của lệnh. `RowVersion` (`IsRowVersion`) trên lệnh, bảng giá, bảng kê, dãy số. `IHmaDbContext.ApplyOriginalRowVersion` gắn token lúc mở form khi `Update` từ ViewModel.
+EF: `HmaDbContext` map 1–1 tên bảng PascalCase, precision tiền, unique index (Partner.Code, Driver.Code, Vehicle.PlateNumber, UserPermission, FreightStatement kỳ), `DeleteBehavior.Restrict` trên FK nhiều nhánh Customer/City/User của lệnh. `RowVersion` (`IsRowVersion`) trên lệnh, bảng giá, bảng kê, dãy số. `IHmaDbContext.ApplyOriginalRowVersion` gắn token từ Application command khi cập nhật.
 
 Dev LocalDB: nếu thiếu bảng `Partner` hoặc cột `DispatchOrder.SenderCustomerId` / `SenderName` / `RowVersion` / `IsDeleted` → **drop + recreate** rồi seed. Cờ `--seed` chỉ tạo DB rồi thoát.
 
-File chứng từ: `IFileStorage` / `LocalDiskFileStorage`. `DispatchDocument.StoredPath` là key tương đối. Lệnh đã xóa: `IsDeleted` + query filter (search / dashboard / bảng kê không thấy).
+File chứng từ: `IFileStorage` / `LocalDiskFileStorage`. `DispatchDocument.StoredPath` là key tương đối; đọc file qua stream, không lộ physical path. Lệnh đã xóa: `IsDeleted` + query filter (search / dashboard / bảng kê không thấy).
 
 Mapping legacy → mới: [`schema-mapping.md`](schema-mapping.md).
 
@@ -385,21 +393,21 @@ Main nav **không** liệt kê từng key đó. Shell gom: **Tuyến đường**
 3. `HmaDatabaseInitializer.MigrateAndSeedAsync`
 4. `LoginWindow` (scope riêng)
 5. Scope phiên → `MainWindow`
-6. `ICurrentUser` **singleton** sống suốt process sau login
+6. `DesktopUserSession` **singleton** giữ principal read-only sau login; Application không sở hữu lifetime này
 
 Lỗi UI: `DispatcherUnhandledException` → MessageBox tiếng Việt, không crash.
 
 ### 10.2 Shell
 
-`MainWindow`: nav trái (lọc theo View/Create, cộng quy tắc hub Cấu hình / Tuyến đường), `ContentControl` + `DataTemplate` theo kiểu ViewModel.
+`MainWindow`: nav trái (lọc theo View/Create, cộng quy tắc hub Cấu hình / Tuyến đường), `ContentControl` + `DataTemplate` theo kiểu ViewModel. `IWorkspaceRegistry` cung cấp danh sách workspace; `IWorkspaceNavigator` là seam điều hướng.
 
 `MainViewModel` giữ workspace scoped của **item nav**. Hub `SettingsWorkspaceViewModel` / `RouteCatalogWorkspaceViewModel` / `DispatchHubWorkspaceViewModel` bọc view lồng (City, User, Location, Route, form lệnh, lưới theo khách, nhập Excel). `WorkspaceNavigator.OpenDispatch` chọn nav lệnh và `DispatchHubWorkspaceViewModel.OpenOrderAsync`.
 
 ### 10.3 Workspace
 
-Một màn catalog = `FooView.xaml` + code-behind tối thiểu + `FooWorkspaceViewModel`. Hub (Cấu hình, Tuyến đường, Lệnh điều xe) là một ViewModel vỏ + section ListBox, host view con; `AppScreen.Key` vẫn gắn view con.
+Mỗi feature nằm tại `Presentation/Features/<Feature>/{Views,ViewModels,Models}`. Một màn catalog = `FooView.xaml` + code-behind tối thiểu + `FooWorkspaceViewModel`. Hub (Cấu hình, Tuyến đường, Lệnh điều xe) là một ViewModel vỏ + section ListBox, host view con; `AppScreen.Key` vẫn gắn view con.
 
-`WorkspaceBase`: mode Browse/Create/Edit, overlay editor, toast, `RunAsync` bắt exception → toast lỗi, `UsePermissions(screenKey)` cho enable nút.
+`WorkspaceBase`: mode Browse/Create/Edit, overlay editor, toast, `RunAsync` bắt exception → toast lỗi, `UsePermissions(screenKey)` cho enable nút. Dirty state dùng `EditorState` snapshot bất biến, không reflection. Tác vụ DB trên desktop được tuần tự hóa qua `IUiOperationGate` inject, giữ nguyên lifetime DbContext theo phiên.
 
 UX:
 
@@ -407,9 +415,9 @@ UX:
 - Lệnh: **lưới trên — form dưới**.  
 - Pattern legacy: Tìm → lưới → xem / double-click → chi tiết.
 
-In: ViewModel lấy `Company` + entity đã load, gọi `IDocumentPrinter`, mở file temp. Không Crystal.
+In: ViewModel lấy Application details/summary, gọi `IDocumentRenderer`, rồi `IDocumentInteractionService` ghi file tạm và mở bằng shell. ViewModel không nhận physical path và không bind persisted entity.
 
-Theme: `Themes/Fields.xaml`, `Typography.xaml`. Converter validation: `FirstValidationErrorConverter`. Rule nhập (`InputRuleKind`) dùng chung Domain cho SĐT / email / MST / tiền.
+Theme: `Infrastructure/Theming/Fields.xaml`, `Typography.xaml`. Validation UI (`InputRuleKind`, evaluator, label alias) thuộc Desktop; domain rules chỉ giữ invariant nghiệp vụ.
 
 ---
 
@@ -417,7 +425,7 @@ Theme: `Themes/Fields.xaml`, `Typography.xaml`. Converter validation: `FirstVali
 
 ## 11. Reporting
 
-`IDocumentPrinter` / `DocumentPrinter` — adapter, không rule:
+`IDocumentRenderer` nằm ở Application; `ReportDocumentRenderer` trong Reporting implement bằng `DocumentPrinter`, QuestPDF và ClosedXML. Port chỉ nhận Application contract và trả `GeneratedDocument` (file name, MIME, bytes), không entity hay đường dẫn vật lý:
 
 
 | API                                                                            | Đầu ra                       |
@@ -450,13 +458,14 @@ Rules tĩnh, ném tiếng Việt:
 | `EmailRules`                                                       | Định dạng email                         |
 | `TaxCodeRules`                                                     | 10 hoặc 13 số                           |
 | `MoneyRules`                                                       | Parse, không âm / phải dương            |
-| `InputRuleEvaluator`                                               | Flag cho binding UI                     |
 
 
 Test khóa hành vi (không test UI):
 
-- **Domain:** SĐT, email, MST, tiền, customer/dispatch rules, đọc số, `InputRuleEvaluator`  
-- **Application:** `PermissionGuard`, `AmountText`
+- **Domain:** SĐT, email, MST, tiền, customer/dispatch rules, đọc số
+- **Application:** quyền, auth principal, persistence guard, storage key, import matching, VAT calculation
+- **Desktop:** mapping presentation ↔ command, dirty state, registry/navigation, WPF binding smoke
+- **Architecture:** dependency, namespace/folder, interface placement, một type/file, cấm ViewModel/report port lộ persisted entity
 
 Thêm test mới cạnh hành vi: cước, sequence, đọc số, quyền.
 
@@ -498,20 +507,20 @@ Thứ tự script:
 | ----------------- | ------------------------------- | ---------------------------- | --------------------------------------------- |
 | `dashboard`       | DashboardView                   | DashboardWorkspaceViewModel  | DashboardQueryService                         |
 | `customers`       | CustomerView                    | CustomerWorkspaceViewModel   | CustomerService                               |
-| `partners`        | PartnerView                     | PartnerWorkspaceViewModel    | CatalogService                                |
-| `drivers`         | DriverView                      | DriverWorkspaceViewModel     | CatalogService                                |
-| `vehicles`        | VehicleView                     | VehicleWorkspaceViewModel    | CatalogService                                |
-| `employees`       | EmployeeView                    | EmployeeWorkspaceViewModel   | CatalogService                                |
-| `departments`     | DepartmentView                  | DepartmentWorkspaceViewModel | CatalogService                                |
-| `job-titles`      | JobTitleView                    | JobTitleWorkspaceViewModel   | CatalogService                                |
-| `cities`          | CityView (hub Cấu hình)     | CityWorkspaceViewModel       | CatalogService                                |
+| `partners`        | PartnerView                     | PartnerWorkspaceViewModel    | PartnerService                                |
+| `drivers`         | DriverView                      | DriverWorkspaceViewModel     | DriverService + DispatchOrderQueryService     |
+| `vehicles`        | VehicleView                     | VehicleWorkspaceViewModel    | VehicleService + DispatchOrderQueryService    |
+| `employees`       | EmployeeView                    | EmployeeWorkspaceViewModel   | EmployeeService                               |
+| `departments`     | DepartmentView                  | DepartmentWorkspaceViewModel | DepartmentService                             |
+| `job-titles`      | JobTitleView                    | JobTitleWorkspaceViewModel   | JobTitleService                               |
+| `cities`          | CityView (hub Cấu hình)         | CityWorkspaceViewModel       | CityService                                   |
 | `locations`       | LocationView (hub Tuyến đường) | LocationWorkspaceViewModel | LocationService                               |
 | `routes`          | RouteView (hub Tuyến đường) | RouteWorkspaceViewModel      | RouteService                                  |
 | `price-lists`     | PriceListView                   | PriceListWorkspaceViewModel  | PriceListService                              |
-| `dispatch-orders` | DispatchHubView → DispatchView / DispatchImportView | DispatchHubWorkspaceViewModel, DispatchWorkspaceViewModel, DispatchImportWorkspaceViewModel | DispatchOrderService, DispatchDocumentService, DispatchImportService |
-| `dispatch-grid-edit` | DispatchGridEditView (hub lệnh) | DispatchGridEditWorkspaceViewModel | DispatchOrderService                    |
-| `lookup`          | LookupView                      | LookupWorkspaceViewModel     | DispatchOrderService                          |
-| `reconcile`       | ReconcileView                   | ReconcileWorkspaceViewModel  | DispatchOrderService, ChangeLogService        |
+| `dispatch-orders` | DispatchHubView → DispatchView / DispatchImportView | DispatchHubWorkspaceViewModel, DispatchWorkspaceViewModel, DispatchImportWorkspaceViewModel | DispatchOrderQueryService, DispatchOrderEditorService, DispatchDocumentService, DispatchImportService |
+| `dispatch-grid-edit` | DispatchGridEditView (hub lệnh) | DispatchGridEditWorkspaceViewModel | DispatchGridService                      |
+| `lookup`          | LookupView                      | LookupWorkspaceViewModel     | DispatchOrderQueryService                     |
+| `reconcile`       | ReconcileView                   | ReconcileWorkspaceViewModel  | DispatchReconciliationService, ChangeLogService |
 | `statements`      | StatementView                   | StatementWorkspaceViewModel  | FreightStatementService                       |
 | `reports`         | ReportView                      | ReportWorkspaceViewModel     | ReportQueryService, DashboardQueryService     |
 | `settings`        | SettingsView                    | SettingsWorkspaceViewModel   | SettingsService, CompanyService, LocationAliasService, RouteAliasService, CustomerAliasService |
@@ -568,5 +577,3 @@ Phase kế toán sau này: bật nav cash/VAT, chạy ETL 04/05, siết `Permiss
 | `[legacy-inventory.md](legacy-inventory.md)` | Form, SP, report cũ                     |
 | `[../README.md](../README.md)`               | Chạy app, layout repo                   |
 | `.cursor/rules/hma-architecture.mdc`         | Ràng buộc lớp (luôn apply khi sửa code) |
-
-

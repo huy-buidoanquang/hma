@@ -1,4 +1,5 @@
-using Hma.Domain.Services;
+using Hma.Domain.Normalization;
+using Hma.Domain.Rules;
 
 namespace Hma.Domain.Tests;
 

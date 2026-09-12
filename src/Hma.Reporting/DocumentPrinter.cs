@@ -1,14 +1,14 @@
+using Hma.Application.Common.Formatting;
 using ClosedXML.Excel;
-using Hma.Application.Services;
 using Hma.Domain.Entities;
-using Hma.Domain.Services;
+using Hma.Domain.Rules;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace Hma.Reporting;
 
-public sealed class DocumentPrinter : IDocumentPrinter
+public sealed class DocumentPrinter
 {
     public DocumentPrinter()
     {

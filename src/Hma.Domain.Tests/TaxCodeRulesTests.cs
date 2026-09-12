@@ -1,4 +1,4 @@
-using Hma.Domain.Services;
+using Hma.Domain.Rules;
 
 namespace Hma.Domain.Tests;
 

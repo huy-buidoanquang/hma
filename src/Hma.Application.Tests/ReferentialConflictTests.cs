@@ -1,6 +1,6 @@
+using Hma.Application.Abstractions.Persistence;
+using Hma.Application.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Hma.Application.Abstractions;
-using Hma.Application.Services;
 using Hma.Domain.Entities;
 
 namespace Hma.Application.Tests;

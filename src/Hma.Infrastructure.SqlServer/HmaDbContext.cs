@@ -1,4 +1,4 @@
-using Hma.Application.Abstractions;
+using Hma.Application.Abstractions.Persistence;
 using Hma.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
